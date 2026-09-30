@@ -187,6 +187,9 @@ void main() {
 
     final old = AppDatabase(NativeDatabase(file));
     await seed(old);
+    if (version < 9) {
+      await old.customStatement('ALTER TABLE months DROP COLUMN notes');
+    }
     if (version < 8 && version >= 2) {
       await old.customStatement('ALTER TABLE expenses DROP COLUMN title');
     }
@@ -216,7 +219,7 @@ void main() {
     return upgraded;
   }
 
-  for (final version in [1, 2, 3, 4, 5, 6, 7]) {
+  for (final version in [1, 2, 3, 4, 5, 6, 7, 8]) {
     test('upgrading from schema $version keeps the plan', () async {
       late int monthId;
       late int rent;
@@ -321,6 +324,22 @@ void main() {
     await db.deleteBudget(insurance.id);
 
     expect((await db.watchMonth(september.id).first).carryOverCents, 10000);
+  });
+
+  test('month notes are saved trimmed and removed when blank', () async {
+    final month = await db.getOrCreateMonth(2026, 9);
+    Future<String?> notes() async =>
+        (await db.watchMonth(month.id).first).notes;
+    expect(await notes(), isNull);
+
+    await db.updateMonthNotes(month.id, '  Save for the holiday\n');
+    expect(await notes(), 'Save for the holiday');
+
+    // A new month starts with notes of its own.
+    expect((await db.getOrCreateMonth(2026, 10)).notes, isNull);
+
+    await db.updateMonthNotes(month.id, '   ');
+    expect(await notes(), isNull);
   });
 
   test('getOrCreateMonth reuses the existing month', () async {

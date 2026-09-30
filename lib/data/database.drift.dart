@@ -73,6 +73,15 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -81,6 +90,7 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
     incomeCents,
     lockedAt,
     carryOverCents,
+    notes,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -137,6 +147,12 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
         ),
       );
     }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
     return context;
   }
 
@@ -174,6 +190,10 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
         DriftSqlType.int,
         data['${effectivePrefix}carry_over_cents'],
       )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
     );
   }
 
@@ -197,6 +217,10 @@ class Month extends DataClass implements Insertable<Month> {
   /// Balance left from the month before (negative if it was overspent), which
   /// is available to assign on top of the income.
   final int carryOverCents;
+
+  /// Free-form notes about the month's plan, like goals or things to take
+  /// care of; null when there are none.
+  final String? notes;
   const Month({
     required this.id,
     required this.year,
@@ -204,6 +228,7 @@ class Month extends DataClass implements Insertable<Month> {
     required this.incomeCents,
     this.lockedAt,
     required this.carryOverCents,
+    this.notes,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -216,6 +241,9 @@ class Month extends DataClass implements Insertable<Month> {
       map['locked_at'] = Variable<DateTime>(lockedAt);
     }
     map['carry_over_cents'] = Variable<int>(carryOverCents);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
     return map;
   }
 
@@ -229,6 +257,9 @@ class Month extends DataClass implements Insertable<Month> {
           ? const Value.absent()
           : Value(lockedAt),
       carryOverCents: Value(carryOverCents),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
     );
   }
 
@@ -244,6 +275,7 @@ class Month extends DataClass implements Insertable<Month> {
       incomeCents: serializer.fromJson<int>(json['incomeCents']),
       lockedAt: serializer.fromJson<DateTime?>(json['lockedAt']),
       carryOverCents: serializer.fromJson<int>(json['carryOverCents']),
+      notes: serializer.fromJson<String?>(json['notes']),
     );
   }
   @override
@@ -256,6 +288,7 @@ class Month extends DataClass implements Insertable<Month> {
       'incomeCents': serializer.toJson<int>(incomeCents),
       'lockedAt': serializer.toJson<DateTime?>(lockedAt),
       'carryOverCents': serializer.toJson<int>(carryOverCents),
+      'notes': serializer.toJson<String?>(notes),
     };
   }
 
@@ -266,6 +299,7 @@ class Month extends DataClass implements Insertable<Month> {
     int? incomeCents,
     Value<DateTime?> lockedAt = const Value.absent(),
     int? carryOverCents,
+    Value<String?> notes = const Value.absent(),
   }) => Month(
     id: id ?? this.id,
     year: year ?? this.year,
@@ -273,6 +307,7 @@ class Month extends DataClass implements Insertable<Month> {
     incomeCents: incomeCents ?? this.incomeCents,
     lockedAt: lockedAt.present ? lockedAt.value : this.lockedAt,
     carryOverCents: carryOverCents ?? this.carryOverCents,
+    notes: notes.present ? notes.value : this.notes,
   );
   Month copyWithCompanion(MonthsCompanion data) {
     return Month(
@@ -286,6 +321,7 @@ class Month extends DataClass implements Insertable<Month> {
       carryOverCents: data.carryOverCents.present
           ? data.carryOverCents.value
           : this.carryOverCents,
+      notes: data.notes.present ? data.notes.value : this.notes,
     );
   }
 
@@ -297,14 +333,22 @@ class Month extends DataClass implements Insertable<Month> {
           ..write('month: $month, ')
           ..write('incomeCents: $incomeCents, ')
           ..write('lockedAt: $lockedAt, ')
-          ..write('carryOverCents: $carryOverCents')
+          ..write('carryOverCents: $carryOverCents, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, year, month, incomeCents, lockedAt, carryOverCents);
+  int get hashCode => Object.hash(
+    id,
+    year,
+    month,
+    incomeCents,
+    lockedAt,
+    carryOverCents,
+    notes,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -314,7 +358,8 @@ class Month extends DataClass implements Insertable<Month> {
           other.month == this.month &&
           other.incomeCents == this.incomeCents &&
           other.lockedAt == this.lockedAt &&
-          other.carryOverCents == this.carryOverCents);
+          other.carryOverCents == this.carryOverCents &&
+          other.notes == this.notes);
 }
 
 class MonthsCompanion extends UpdateCompanion<Month> {
@@ -324,6 +369,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
   final Value<int> incomeCents;
   final Value<DateTime?> lockedAt;
   final Value<int> carryOverCents;
+  final Value<String?> notes;
   const MonthsCompanion({
     this.id = const Value.absent(),
     this.year = const Value.absent(),
@@ -331,6 +377,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     this.incomeCents = const Value.absent(),
     this.lockedAt = const Value.absent(),
     this.carryOverCents = const Value.absent(),
+    this.notes = const Value.absent(),
   });
   MonthsCompanion.insert({
     this.id = const Value.absent(),
@@ -339,6 +386,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     this.incomeCents = const Value.absent(),
     this.lockedAt = const Value.absent(),
     this.carryOverCents = const Value.absent(),
+    this.notes = const Value.absent(),
   }) : year = Value(year),
        month = Value(month);
   static Insertable<Month> custom({
@@ -348,6 +396,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     Expression<int>? incomeCents,
     Expression<DateTime>? lockedAt,
     Expression<int>? carryOverCents,
+    Expression<String>? notes,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -356,6 +405,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
       if (incomeCents != null) 'income_cents': incomeCents,
       if (lockedAt != null) 'locked_at': lockedAt,
       if (carryOverCents != null) 'carry_over_cents': carryOverCents,
+      if (notes != null) 'notes': notes,
     });
   }
 
@@ -366,6 +416,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     Value<int>? incomeCents,
     Value<DateTime?>? lockedAt,
     Value<int>? carryOverCents,
+    Value<String?>? notes,
   }) {
     return MonthsCompanion(
       id: id ?? this.id,
@@ -374,6 +425,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
       incomeCents: incomeCents ?? this.incomeCents,
       lockedAt: lockedAt ?? this.lockedAt,
       carryOverCents: carryOverCents ?? this.carryOverCents,
+      notes: notes ?? this.notes,
     );
   }
 
@@ -398,6 +450,9 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     if (carryOverCents.present) {
       map['carry_over_cents'] = Variable<int>(carryOverCents.value);
     }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
     return map;
   }
 
@@ -409,7 +464,8 @@ class MonthsCompanion extends UpdateCompanion<Month> {
           ..write('month: $month, ')
           ..write('incomeCents: $incomeCents, ')
           ..write('lockedAt: $lockedAt, ')
-          ..write('carryOverCents: $carryOverCents')
+          ..write('carryOverCents: $carryOverCents, ')
+          ..write('notes: $notes')
           ..write(')'))
         .toString();
   }
@@ -1709,6 +1765,7 @@ typedef $$MonthsTableCreateCompanionBuilder = MonthsCompanion Function({
   Value<int> incomeCents,
   Value<DateTime?> lockedAt,
   Value<int> carryOverCents,
+  Value<String?> notes,
 });
 typedef $$MonthsTableUpdateCompanionBuilder = MonthsCompanion Function({
   Value<int> id,
@@ -1717,6 +1774,7 @@ typedef $$MonthsTableUpdateCompanionBuilder = MonthsCompanion Function({
   Value<int> incomeCents,
   Value<DateTime?> lockedAt,
   Value<int> carryOverCents,
+  Value<String?> notes,
 });
 
 final class $$MonthsTableReferences
@@ -1798,6 +1856,11 @@ class $$MonthsTableFilterComposer
 
   ColumnFilters<int> get carryOverCents => $composableBuilder(
     column: $table.carryOverCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1890,6 +1953,11 @@ class $$MonthsTableOrderingComposer
     column: $table.carryOverCents,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MonthsTableAnnotationComposer
@@ -1922,6 +1990,9 @@ class $$MonthsTableAnnotationComposer
     column: $table.carryOverCents,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
 
   Expression<T> incomesRefs<T extends Object>(
     Expression<T> Function($$IncomesTableAnnotationComposer a) f,
@@ -2008,6 +2079,7 @@ class $$MonthsTableTableManager
                 Value<int> incomeCents = const Value.absent(),
                 Value<DateTime?> lockedAt = const Value.absent(),
                 Value<int> carryOverCents = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => MonthsCompanion(
                 id: id,
                 year: year,
@@ -2015,6 +2087,7 @@ class $$MonthsTableTableManager
                 incomeCents: incomeCents,
                 lockedAt: lockedAt,
                 carryOverCents: carryOverCents,
+                notes: notes,
               ),
           createCompanionCallback:
               ({
@@ -2024,6 +2097,7 @@ class $$MonthsTableTableManager
                 Value<int> incomeCents = const Value.absent(),
                 Value<DateTime?> lockedAt = const Value.absent(),
                 Value<int> carryOverCents = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
               }) => MonthsCompanion.insert(
                 id: id,
                 year: year,
@@ -2031,6 +2105,7 @@ class $$MonthsTableTableManager
                 incomeCents: incomeCents,
                 lockedAt: lockedAt,
                 carryOverCents: carryOverCents,
+                notes: notes,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -144,13 +144,9 @@ class SpentVsPlanned extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(' of ', style: textTheme.bodyMedium),
                   Text(
-                    '${formatCents(plannedCents)}',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    ' of ${formatCents(plannedCents)} spent',
+                    style: textTheme.bodyLarge?.copyWith(),
                   ),
                 ],
               ),
@@ -159,8 +155,9 @@ class SpentVsPlanned extends StatelessWidget {
               overspent
                   ? '${formatCents(-leftCents)} over'
                   : '${formatCents(leftCents)} left',
-              style: textTheme.labelLarge?.copyWith(
-                color: overspent ? colors.error : null,
+              style: textTheme.bodyLarge?.copyWith(
+                color: overspent ? colors.error : Colors.green.shade700,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],

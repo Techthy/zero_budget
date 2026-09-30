@@ -12,19 +12,24 @@ part of 'spending_providers.dart';
 @ProviderFor(currentExpenses)
 final currentExpensesProvider = CurrentExpensesProvider._();
 
-final class CurrentExpensesProvider extends $FunctionalProvider<
-        AsyncValue<List<Expense>>, List<Expense>, Stream<List<Expense>>>
+final class CurrentExpensesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Expense>>,
+          List<Expense>,
+          Stream<List<Expense>>
+        >
     with $FutureModifier<List<Expense>>, $StreamProvider<List<Expense>> {
   CurrentExpensesProvider._()
-      : super(
-          from: null,
-          argument: null,
-          retry: null,
-          name: r'currentExpensesProvider',
-          isAutoDispose: true,
-          dependencies: null,
-          $allTransitiveDependencies: null,
-        );
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'currentExpensesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
 
   @override
   String debugGetCreateSourceHash() => _$currentExpensesHash();
@@ -33,8 +38,7 @@ final class CurrentExpensesProvider extends $FunctionalProvider<
   @override
   $StreamProviderElement<List<Expense>> $createElement(
     $ProviderPointer pointer,
-  ) =>
-      $StreamProviderElement(pointer);
+  ) => $StreamProviderElement(pointer);
 
   @override
   Stream<List<Expense>> create(Ref ref) {

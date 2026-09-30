@@ -144,6 +144,16 @@ class _BudgetPlan extends ConsumerWidget {
     }
   }
 
+  Future<void> _editNotes(BuildContext context, WidgetRef ref) async {
+    final notes = await showDialog<String>(
+      context: context,
+      builder: (_) => _NotesDialog(notes: month.notes),
+    );
+    if (notes != null) {
+      await ref.read(appDatabaseProvider).updateMonthNotes(month.id, notes);
+    }
+  }
+
   Future<void> _editPlan(BuildContext context, WidgetRef ref) async {
     final confirmed = await showConfirmDialog(
       context,
@@ -241,6 +251,12 @@ class _BudgetPlan extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(intro, style: textTheme.bodyLarge),
             const SizedBox(height: 24),
+            // Notes stay editable once locked in, for reminders that come up
+            // during the month.
+            _NotesCard(
+              notes: month.notes,
+              onEdit: () => _editNotes(context, ref),
+            ),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -498,6 +514,87 @@ class _LeftToAssignCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The month's notes, or a prompt to add some.
+class _NotesCard extends StatelessWidget {
+  const _NotesCard({required this.notes, required this.onEdit});
+
+  final String? notes;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final notes = this.notes;
+
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.sticky_note_2_outlined),
+        title: Text(notes == null ? 'Add notes' : 'Notes'),
+        subtitle: Text(
+          notes ?? 'Goals for this month, or things to take care of.',
+        ),
+        onTap: onEdit,
+        trailing: IconButton(
+          tooltip: notes == null ? 'Add notes' : 'Edit notes',
+          icon: const Icon(Icons.edit_outlined),
+          onPressed: onEdit,
+        ),
+      ),
+    );
+  }
+}
+
+/// Edits the month's [notes], returning the new text.
+class _NotesDialog extends StatefulWidget {
+  const _NotesDialog({this.notes});
+
+  final String? notes;
+
+  @override
+  State<_NotesDialog> createState() => _NotesDialogState();
+}
+
+class _NotesDialogState extends State<_NotesDialog> {
+  late final _notes = TextEditingController(text: widget.notes);
+
+  @override
+  void dispose() {
+    _notes.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Notes'),
+      content: SizedBox(
+        width: 400,
+        child: TextField(
+          controller: _notes,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'e.g. Save for the holiday, cancel the gym membership',
+            border: OutlineInputBorder(),
+          ),
+          textCapitalization: TextCapitalization.sentences,
+          keyboardType: TextInputType.multiline,
+          minLines: 4,
+          maxLines: 10,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_notes.text),
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }

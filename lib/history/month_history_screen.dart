@@ -116,6 +116,17 @@ class _MonthReview extends StatelessWidget {
               ),
             ),
             SpendingTotalWidget(budgets: budgets, expenses: expenses),
+            if (month.notes case final notes?) ...[
+              const SizedBox(height: 24),
+              Text('Notes', style: textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(notes, style: textTheme.bodyMedium),
+                ),
+              ),
+            ],
             if (budgets.isNotEmpty) ...[
               const SizedBox(height: 24),
               Text('Where the money went', style: textTheme.titleLarge),

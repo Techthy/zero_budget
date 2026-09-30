@@ -15,5 +15,5 @@ int? parseAmountToCents(String input) {
 String formatCents(int cents) {
   final sign = cents < 0 ? '-' : '';
   final abs = cents.abs();
-  return '$sign${abs ~/ 100}.${(abs % 100).toString().padLeft(2, '0')}';
+  return '$sign${abs ~/ 100},${(abs % 100).toString().padLeft(2, '0')}€';
 }

@@ -20,6 +20,10 @@ class Months extends Table {
   /// is available to assign on top of the income.
   IntColumn get carryOverCents => integer().withDefault(const Constant(0))();
 
+  /// Free-form notes about the month's plan, like goals or things to take
+  /// care of; null when there are none.
+  TextColumn get notes => text().nullable()();
+
   @override
   List<Set<Column>> get uniqueKeys => [
         {year, month},
@@ -125,7 +129,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'zero_budget'));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -160,6 +164,7 @@ class AppDatabase extends _$AppDatabase {
               'WHERE note IS NOT NULL',
             );
           }
+          if (from < 9) await m.addColumn(months, months.notes);
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -347,6 +352,14 @@ class AppDatabase extends _$AppDatabase {
         await (update(months)..where((m) => m.id.equals(monthId)))
             .write(MonthsCompanion(lockedAt: Value(DateTime.now())));
       });
+
+  /// Saves the month's notes. Blank notes are removed.
+  Future<void> updateMonthNotes(int monthId, String notes) {
+    final trimmed = notes.trim();
+    return (update(months)..where((m) => m.id.equals(monthId))).write(
+          MonthsCompanion(notes: Value(trimmed.isEmpty ? null : trimmed)),
+        );
+  }
 
   /// Unlocks the month's plan for editing. Tracked expenses are kept.
   Future<void> unlockMonth(int monthId) =>
