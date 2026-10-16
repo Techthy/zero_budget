@@ -51,6 +51,20 @@ a quick way to get the app I wanted, without writing every line by hand.
 
 All data stays on your device, in a local SQLite database.
 
+## Download
+
+Get the APK for Android from the
+[Releases page](https://github.com/Techthy/zero_budget/releases):
+
+- **Latest release:** the stable version, recommended for everyday use.
+- **Nightly:** the newest build with the latest changes, but possibly with
+  bugs.
+
+Both install over each other and keep your data. To get updates
+automatically, add the repository's URL to
+[Obtainium](https://github.com/ImranR98/Obtainium). It can follow either
+stable releases only, or include the nightly builds too.
+
 ## Getting started
 
 ### Requirements
@@ -81,13 +95,13 @@ how the app behaves when a new month starts. You can hide it in the settings.
 
 ### Build
 
-| Platform | Command | Output |
-| --- | --- | --- |
-| Android (APK) | `flutter build apk --release` | `build/app/outputs/flutter-apk/app-release.apk` |
-| Linux | `flutter build linux --release` | `build/linux/x64/release/bundle/` |
-| Web | `flutter build web --release` | `build/web/` |
-| Windows | `flutter build windows --release` | `build\windows\x64\runner\Release\` |
-| macOS / iOS | `flutter build macos` / `flutter build ios` | needs a Mac with Xcode |
+| Platform      | Command                                     | Output                                          |
+| ------------- | ------------------------------------------- | ----------------------------------------------- |
+| Android (APK) | `flutter build apk --release`               | `build/app/outputs/flutter-apk/app-release.apk` |
+| Linux         | `flutter build linux --release`             | `build/linux/x64/release/bundle/`               |
+| Web           | `flutter build web --release`               | `build/web/`                                    |
+| Windows       | `flutter build windows --release`           | `build\windows\x64\runner\Release\`             |
+| macOS / iOS   | `flutter build macos` / `flutter build ios` | needs a Mac with Xcode                          |
 
 ## Build and install the Android APK
 
@@ -118,13 +132,87 @@ how the app behaves when a new month starts. You can hide it in the settings.
    2. Open it on the phone. Android asks you to allow installing apps from
       that source. Allow it, then confirm the install.
 
-> **Note on signing:** release builds are currently signed with Flutter's
-> debug key, which is fine for installing the app on your own devices. To
-> publish the app, for example on Google Play, set up your own
-> [signing key](https://docs.flutter.dev/deployment/android#sign-the-app)
-> first. Builds signed with different keys can't update each other, so you
-> have to uninstall the old version first. Uninstalling also deletes the
-> app's data.
+> **Note on signing:** without a release key (see
+> [Releases and nightly builds](#releases-and-nightly-builds)), your local
+> builds are signed with Flutter's debug key. That's fine for trying the app
+> out. Android only installs an update when it's signed with the same key as
+> the installed app, though. So to switch between your own builds and the
+> published ones, you'd have to uninstall first, which deletes the app's
+> data.
+
+## Releases and nightly builds
+
+A [GitHub Actions workflow](.github/workflows/android.yml) builds the app at
+three levels:
+
+| Trigger                   | What happens                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| Pull request              | Analyze, test and build. The APK is attached to the run under **Artifacts**.                     |
+| Push to `main`            | The same checks, then the **Nightly** pre-release is replaced with the new build.                |
+| Version tag like `v1.2.0` | The same checks, then a **stable release** with release notes is published and marked as latest. |
+
+Nightly and stable builds are the same app, signed with the same key. They
+install as updates of each other and keep your data. Each build uses the
+workflow's run number as its version code, so a newer build always replaces
+an older one.
+
+### Publishing a release
+
+1. Set the new version in `pubspec.yaml`, for example `version: 1.2.0`, and
+   commit it.
+2. Tag the commit and push the tag:
+
+   ```sh
+   git tag v1.2.0
+   git push origin v1.2.0
+   ```
+
+The workflow checks that the tag matches the version in `pubspec.yaml`.
+Nightlies are named after the next release, for example `1.2.0-nightly.57`.
+
+### Setting up the release key (once)
+
+Published builds are signed with a release key that's stored as a GitHub
+secret. Until it's set up, the workflow still builds, but it publishes
+nothing.
+
+> [!WARNING]
+> Keep the key and its password safe, and back them up somewhere outside this
+> computer. If you lose them, you can never publish an update again. Users
+> would have to uninstall the app and lose their data to switch to a new key.
+> Never commit the key to git.
+
+1. Create the key. `keytool` comes with Java; choose a strong password when
+   it asks for one.
+
+   ```sh
+   keytool -genkeypair -v -keystore ~/zero-budget-release.jks \
+     -keyalg RSA -keysize 4096 -validity 10000 -alias zero-budget
+   ```
+
+2. Add it to the repository's secrets, either with the
+   [GitHub CLI](https://cli.github.com/) or under **Settings → Secrets and
+   variables → Actions**:
+
+   ```sh
+   base64 -w0 ~/zero-budget-release.jks | gh secret set ANDROID_KEYSTORE
+   gh secret set ANDROID_KEYSTORE_PASSWORD   # asks for the password
+   gh secret set ANDROID_KEY_PASSWORD        # the same password
+   gh secret set ANDROID_KEY_ALIAS --body zero-budget
+   ```
+
+3. To sign your local builds with the same key, create
+   `android/key.properties`. It's ignored by git.
+
+   ```properties
+   storeFile=/home/you/zero-budget-release.jks
+   storePassword=your password
+   keyAlias=zero-budget
+   keyPassword=your password
+   ```
+
+   Then `flutter build apk --release` produces APKs that update the published
+   ones and the other way round.
 
 ## Contributing
 
