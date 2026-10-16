@@ -76,11 +76,31 @@ jobs:
             exit 0
           fi
           echo "$ANDROID_KEYSTORE" | base64 --decode > android/app/release.jks
+          # A line break pasted along with a secret isn't part of it.
+          export ANDROID_KEYSTORE_PASSWORD="${ANDROID_KEYSTORE_PASSWORD%[$'\r\n']}"
+          export ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD%[$'\r\n']}"
+          ANDROID_KEY_ALIAS="${ANDROID_KEY_ALIAS%[$'\r\n']}"
+
+          # Checked here for a clearer error than Gradle's, minutes later.
+          if ! keytool -list -keystore android/app/release.jks \
+              -storepass:env ANDROID_KEYSTORE_PASSWORD > /dev/null; then
+            echo "::error::ANDROID_KEYSTORE_PASSWORD doesn't open the key in ANDROID_KEYSTORE."
+            exit 1
+          fi
+          if ! keytool -list -keystore android/app/release.jks \
+              -storepass:env ANDROID_KEYSTORE_PASSWORD \
+              -alias "$ANDROID_KEY_ALIAS" > /dev/null; then
+            echo "::error::The key has no alias named like ANDROID_KEY_ALIAS."
+            exit 1
+          fi
+
+          # Backslashes start escapes in .properties files.
+          escape() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
           {
             echo "storeFile=release.jks"
-            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
-            echo "keyAlias=$ANDROID_KEY_ALIAS"
-            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+            echo "storePassword=$(escape "$ANDROID_KEYSTORE_PASSWORD")"
+            echo "keyAlias=$(escape "$ANDROID_KEY_ALIAS")"
+            echo "keyPassword=$(escape "$ANDROID_KEY_PASSWORD")"
           } > android/key.properties
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
