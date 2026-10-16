@@ -17,3 +17,12 @@ String formatCents(int cents) {
   final abs = cents.abs();
   return '$sign${abs ~/ 100},${(abs % 100).toString().padLeft(2, '0')}€';
 }
+
+/// Like [formatCents], with a plus sign for positive amounts.
+String formatSignedCents(int cents) =>
+    '${cents > 0 ? '+' : ''}${formatCents(cents)}';
+
+/// Formats cents as plain input for an amount field, e.g. 123450 -> "1234.50",
+/// which [parseAmountToCents] reads back.
+String formatAmount(int cents) =>
+    '${cents ~/ 100}.${(cents % 100).toString().padLeft(2, '0')}';

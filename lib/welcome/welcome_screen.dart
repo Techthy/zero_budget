@@ -19,6 +19,7 @@ typedef _BudgetInput = ({
   int amountCents,
   bool isFixed,
   bool isSinkingFund,
+  bool isSavings,
 });
 
 class WelcomeScreen extends ConsumerWidget {
@@ -124,6 +125,7 @@ class _BudgetPlan extends ConsumerWidget {
             amountCents: edited.amountCents,
             isFixed: edited.isFixed,
             isSinkingFund: edited.isSinkingFund,
+            isSavings: edited.isSavings,
           );
     }
   }
@@ -140,6 +142,7 @@ class _BudgetPlan extends ConsumerWidget {
             budget.amountCents,
             isFixed: budget.isFixed,
             isSinkingFund: budget.isSinkingFund,
+            isSavings: budget.isSavings,
           );
     }
   }
@@ -151,6 +154,49 @@ class _BudgetPlan extends ConsumerWidget {
     );
     if (notes != null) {
       await ref.read(appDatabaseProvider).updateMonthNotes(month.id, notes);
+    }
+  }
+
+  Future<void> _copyPlanFromMonthBefore(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final monthName = formatMonth(month.year, month.month);
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Copy last month's plan?",
+      message: [
+        "This replaces $monthName's incomes and budgets with last month's.",
+        if (expenses.isNotEmpty)
+          'Its ${expenses.length} tracked '
+              '${expenses.length == 1 ? 'expense is' : 'expenses are'} '
+              'deleted too.',
+        'Your notes are kept.',
+      ].join(' '),
+      confirmLabel: 'Replace plan',
+    );
+    if (!confirmed) return;
+    final copied =
+        await ref.read(appDatabaseProvider).copyPlanFromMonthBefore(month.id);
+    if (!copied && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('There is no earlier month to copy.')),
+      );
+    }
+  }
+
+  Future<void> _editCarryOver(BuildContext context, WidgetRef ref) async {
+    final carryOverCents = await showDialog<int>(
+      context: context,
+      builder: (_) => _CarryOverDialog(
+        carryOverCents: month.carryOverCents,
+        leftCents: month.carryOverCents - month.carryOverAdjustmentCents,
+      ),
+    );
+    if (carryOverCents != null) {
+      await ref
+          .read(appDatabaseProvider)
+          .setCarryOverCents(month.id, carryOverCents);
     }
   }
 
@@ -203,6 +249,13 @@ class _BudgetPlan extends ConsumerWidget {
     final monthName = formatMonth(month.year, month.month);
     // A locked in plan is read only until it's unlocked for editing.
     final isLocked = month.lockedAt != null;
+    final carryOverText = [
+      '${formatSignedCents(month.carryOverCents)} carried over from last '
+          'month',
+      if (month.carryOverAdjustmentCents != 0)
+        '(incl. ${formatSignedCents(month.carryOverAdjustmentCents)} '
+            'correction)',
+    ].join(' ');
     // Tracked expenses mean the plan was locked in before and is being edited.
     final isEditing = expenses.isNotEmpty;
     final (title, intro) = switch ((isLocked, isEditing)) {
@@ -240,6 +293,12 @@ class _BudgetPlan extends ConsumerWidget {
                   child: Text(title, style: textTheme.headlineMedium),
                 ),
                 const HistoryButton(),
+                if (!isLocked)
+                  IconButton(
+                    tooltip: "Copy last month's plan",
+                    icon: const Icon(Icons.content_copy_outlined),
+                    onPressed: () => _copyPlanFromMonthBefore(context, ref),
+                  ),
                 if (isLocked)
                   OutlinedButton.icon(
                     onPressed: () => _editPlan(context, ref),
@@ -276,12 +335,27 @@ class _BudgetPlan extends ConsumerWidget {
                                 formatCents(month.incomeCents),
                                 style: textTheme.headlineSmall,
                               ),
-                              if (month.carryOverCents != 0)
-                                Text(
-                                  '${month.carryOverCents > 0 ? '+' : ''}'
-                                  '${formatCents(month.carryOverCents)} '
-                                  'carried over from last month',
-                                  style: textTheme.bodyMedium,
+                              // Shown while editing even when it's 0, so it can
+                              // be corrected.
+                              if (month.carryOverCents != 0 || !isLocked)
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        carryOverText,
+                                        style: textTheme.bodyMedium,
+                                      ),
+                                    ),
+                                    if (!isLocked)
+                                      IconButton(
+                                        tooltip: 'Correct carryover',
+                                        visualDensity: VisualDensity.compact,
+                                        iconSize: 18,
+                                        icon: const Icon(Icons.edit_outlined),
+                                        onPressed: () =>
+                                            _editCarryOver(context, ref),
+                                      ),
+                                  ],
                                 ),
                             ],
                           ),
@@ -389,6 +463,10 @@ class _BudgetPlan extends ConsumerWidget {
                         if (budget.isSinkingFund) ...[
                           const SizedBox(width: 8),
                           const SinkingFundBadge(),
+                        ],
+                        if (budget.isSavings) ...[
+                          const SizedBox(width: 8),
+                          const SavingsBadge(),
                         ],
                       ],
                     ),
@@ -599,6 +677,97 @@ class _NotesDialogState extends State<_NotesDialog> {
   }
 }
 
+/// Corrects the month's carryover, returning it in cents.
+class _CarryOverDialog extends StatefulWidget {
+  const _CarryOverDialog({
+    required this.carryOverCents,
+    required this.leftCents,
+  });
+
+  final int carryOverCents;
+
+  /// What last month left, which the carryover is without corrections.
+  final int leftCents;
+
+  @override
+  State<_CarryOverDialog> createState() => _CarryOverDialogState();
+}
+
+class _CarryOverDialogState extends State<_CarryOverDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _amount = TextEditingController(
+    text: formatAmount(widget.carryOverCents.abs()),
+  );
+  // Number keyboards on phones often have no minus key, so overspending is a
+  // switch instead.
+  late var _isOverspent = widget.carryOverCents < 0;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    final cents = parseAmountToCents(_amount.text)!;
+    Navigator.of(context).pop(_isOverspent ? -cents : cents);
+  }
+
+  void _useLeftCents() => setState(() {
+        _amount.text = formatAmount(widget.leftCents.abs());
+        _isOverspent = widget.leftCents < 0;
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Carried over'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Last month left ${formatCents(widget.leftCents)}, and this '
+              "follows any changes to it. Correct it if it doesn't match "
+              'what was actually left; the correction is kept on top.',
+            ),
+            if (widget.carryOverCents != widget.leftCents)
+              TextButton(
+                onPressed: _useLeftCents,
+                child: const Text('Remove correction'),
+              ),
+            AmountField(
+              controller: _amount,
+              autofocus: true,
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Overspent'),
+              subtitle: const Text(
+                'Last month went over, so this is taken off this month.',
+              ),
+              value: _isOverspent,
+              onChanged: (value) => setState(() => _isOverspent = value),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
+      ],
+    );
+  }
+}
+
 /// Adds a new income, or edits [income] when one is given.
 class _IncomeDialog extends StatefulWidget {
   const _IncomeDialog({this.income});
@@ -614,7 +783,7 @@ class _IncomeDialogState extends State<_IncomeDialog> {
   late final _name = TextEditingController(text: widget.income?.name);
   late final _amount = TextEditingController(
     text: switch (widget.income) {
-      final income? => formatCents(income.amountCents),
+      final income? => formatAmount(income.amountCents),
       null => '',
     },
   );
@@ -690,12 +859,13 @@ class _BudgetDialogState extends State<_BudgetDialog> {
   late final _name = TextEditingController(text: widget.budget?.name);
   late final _amount = TextEditingController(
     text: switch (widget.budget) {
-      final budget? => formatCents(budget.amountCents),
+      final budget? => formatAmount(budget.amountCents),
       null => '',
     },
   );
   late var _isFixed = widget.budget?.isFixed ?? false;
   late var _isSinkingFund = widget.budget?.isSinkingFund ?? false;
+  late var _isSavings = widget.budget?.isSavings ?? false;
 
   @override
   void dispose() {
@@ -711,6 +881,7 @@ class _BudgetDialogState extends State<_BudgetDialog> {
       amountCents: parseAmountToCents(_amount.text)!,
       isFixed: _isFixed,
       isSinkingFund: _isSinkingFund,
+      isSavings: _isSavings,
     );
     Navigator.of(context).pop(budget);
   }
@@ -721,6 +892,7 @@ class _BudgetDialogState extends State<_BudgetDialog> {
     final savedCents = widget.budget?.savedCents ?? 0;
 
     return AlertDialog(
+      scrollable: true,
       title: Text(isNew ? 'New budget' : 'Edit budget'),
       content: Form(
         key: _formKey,
@@ -769,7 +941,23 @@ class _BudgetDialogState extends State<_BudgetDialog> {
               value: _isSinkingFund,
               onChanged: (value) => setState(() {
                 _isSinkingFund = value;
-                if (value) _isFixed = false;
+                if (value) {
+                  _isFixed = false;
+                  _isSavings = false;
+                }
+              }),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Savings'),
+              subtitle: const Text(
+                'Counts towards your savings goal, like a transfer to your '
+                'savings account. Make it fixed to count it in full.',
+              ),
+              value: _isSavings,
+              onChanged: (value) => setState(() {
+                _isSavings = value;
+                if (value) _isSinkingFund = false;
               }),
             ),
           ],

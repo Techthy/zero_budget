@@ -30,6 +30,21 @@ class SinkingFundBadge extends StatelessWidget {
   }
 }
 
+/// Marks a budget that counts towards the savings goal.
+class SavingsBadge extends StatelessWidget {
+  const SavingsBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return _Badge(
+      label: 'Savings',
+      background: colors.primaryContainer,
+      foreground: colors.onPrimaryContainer,
+    );
+  }
+}
+
 class _Badge extends StatelessWidget {
   const _Badge({
     required this.label,

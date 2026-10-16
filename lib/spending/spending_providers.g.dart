@@ -8,6 +8,43 @@ part of 'spending_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// The buffer to keep in the bank account on top of the plan.
+
+@ProviderFor(bufferCents)
+final bufferCentsProvider = BufferCentsProvider._();
+
+/// The buffer to keep in the bank account on top of the plan.
+
+final class BufferCentsProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, Stream<int>>
+    with $FutureModifier<int>, $StreamProvider<int> {
+  /// The buffer to keep in the bank account on top of the plan.
+  BufferCentsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'bufferCentsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$bufferCentsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<int> create(Ref ref) {
+    return bufferCents(ref);
+  }
+}
+
+String _$bufferCentsHash() => r'37f36c6ee8651a4b9568a083b1ec2003c50a715f';
 
 @ProviderFor(currentExpenses)
 final currentExpensesProvider = CurrentExpensesProvider._();

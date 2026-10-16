@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
 import 'package:zero_budget/data/database_provider.dart';
+import 'package:zero_budget/dates.dart';
 import 'package:zero_budget/money.dart';
+import 'package:zero_budget/savings/savings_providers.dart';
 import 'package:zero_budget/welcome/welcome_providers.dart';
 
 void main() {
@@ -187,6 +189,30 @@ void main() {
 
     final old = AppDatabase(NativeDatabase(file));
     await seed(old);
+    if (version < 14) {
+      await old.customStatement('ALTER TABLE budgets DROP COLUMN is_savings');
+    }
+    if (version >= 10 && version < 14) {
+      await old.customStatement(
+          'ALTER TABLE settings DROP COLUMN savings_goal_cents');
+      await old.customStatement(
+          'ALTER TABLE settings DROP COLUMN savings_goal_period');
+    }
+    if (version < 12) {
+      await old.customStatement(
+          'ALTER TABLE months DROP COLUMN carry_over_adjustment_cents');
+    }
+    if (version >= 10 && version < 13) {
+      await old
+          .customStatement('ALTER TABLE settings DROP COLUMN show_debug_bar');
+    }
+    if (version == 10) {
+      await old.customStatement(
+          'ALTER TABLE settings DROP COLUMN selected_year_month');
+      await old.customStatement(
+          'ALTER TABLE settings DROP COLUMN offered_year_month');
+    }
+    if (version < 10) await old.customStatement('DROP TABLE settings');
     if (version < 9) {
       await old.customStatement('ALTER TABLE months DROP COLUMN notes');
     }
@@ -219,7 +245,7 @@ void main() {
     return upgraded;
   }
 
-  for (final version in [1, 2, 3, 4, 5, 6, 7, 8]) {
+  for (final version in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]) {
     test('upgrading from schema $version keeps the plan', () async {
       late int monthId;
       late int rent;
@@ -234,8 +260,42 @@ void main() {
       expect((await upgraded.watchBudgets(monthId).first).single.name, 'Rent');
       expect(await upgraded.watchExpenses(monthId).first, hasLength(1));
       expect((await upgraded.watchMonth(monthId).first).lockedAt, isNotNull);
+      await upgraded.setBufferCents(50000);
+      expect(await upgraded.watchBufferCents().first, 50000);
+      await upgraded.selectMonth((year: 2026, month: 9),
+          calendar: (year: 2026, month: 9));
+      expect(await upgraded.watchSelectedYearMonth().first,
+          (year: 2026, month: 9));
+      expect((await upgraded.watchSettings().first).showDebugBar, isTrue);
+      expect((await upgraded.watchBudgets(monthId).first).single.isSavings,
+          isFalse);
+      await upgraded.setSavingsGoal(100000, SavingsPeriod.quarter);
+      expect((await upgraded.watchSettings().first).savingsGoalCents, 100000);
     });
   }
+
+  test('upgrading from schema 11 keeps carryovers, then syncs them',
+      () async {
+    late int september;
+    late int october;
+    late int food;
+    final upgraded = await openUpgradedFrom(11, (old) async {
+      september = (await old.getOrCreateMonth(2026, 9)).id;
+      await old.addIncome(september, 'Salary', 300000);
+      food = await old.addBudget(september, 'Food', 40000);
+      october = (await old.getOrCreateMonth(2026, 10)).id;
+      // Corrected by hand, or out of date.
+      await old.customStatement(
+          'UPDATE months SET carry_over_cents = 250000 WHERE id = $october');
+    });
+    Future<Month> octoberNow() => upgraded.watchMonth(october).first;
+
+    expect((await octoberNow()).carryOverCents, 250000);
+    expect((await octoberNow()).carryOverAdjustmentCents, -50000);
+
+    await upgraded.addExpense(food, 5000);
+    expect((await octoberNow()).carryOverCents, 245000);
+  });
 
   test('upgrading from schema 7 turns notes into titles', () async {
     late int monthId;
@@ -342,6 +402,157 @@ void main() {
     expect(await notes(), isNull);
   });
 
+  test('the debug bar shows until it is turned off', () async {
+    expect((await db.watchSettings().first).showDebugBar, isTrue);
+
+    await db.setShowDebugBar(false);
+    final settings = await db.watchSettings().first;
+    expect(settings.showDebugBar, isFalse);
+    // Other settings are left alone.
+    expect(settings.bufferCents, defaultBufferCents);
+  });
+
+  test('the buffer defaults to 1000 and can be changed', () async {
+    expect(await db.watchBufferCents().first, 100000);
+
+    await db.setBufferCents(50000);
+    expect(await db.watchBufferCents().first, 50000);
+    await db.setBufferCents(0);
+    expect(await db.watchBufferCents().first, 0);
+    expect(await db.select(db.settings).get(), hasLength(1));
+  });
+
+  test('the bank balance follows the money across months', () async {
+    final august = await db.getOrCreateMonth(2026, 8);
+    await db.addIncome(august.id, 'Salary', 300000);
+    await db.addBudget(august.id, 'Rent', 120000, isFixed: true);
+    final food = await db.addBudget(august.id, 'Food', 40000);
+    await db.addBudget(august.id, 'Insurance', 20000, isSinkingFund: true);
+    await db.lockMonth(august.id);
+    await db.addExpense(food, 5000);
+
+    Future<int> balanceCents(int monthId) async =>
+        expectedBankBalanceCents(
+          await db.watchMonth(monthId).first,
+          await db.watchBudgets(monthId).first,
+          await db.watchExpenses(monthId).first,
+          bufferCents: 100000,
+        );
+
+    // 1000.00 buffer + 3000.00 income - 1200.00 rent - 50.00 food.
+    expect(await balanceCents(august.id), 275000);
+
+    // The new month starts from what was left, with the insurance savings
+    // still in the account, plus its own income.
+    final september = await db.getOrCreateMonth(2026, 9);
+    expect(await balanceCents(september.id), 275000 + 300000);
+  });
+
+  test("copying the month before replaces the month's plan", () async {
+    final september = await db.getOrCreateMonth(2026, 9);
+    final october = await db.getOrCreateMonth(2026, 10);
+    await db.addIncome(october.id, 'Old income', 1000);
+    final old = await db.addBudget(october.id, 'Old budget', 1000);
+    await db.lockMonth(october.id);
+    await db.addExpense(old, 500);
+    await db.updateMonthNotes(october.id, 'Keep me');
+    // September is planned only after October was created.
+    await db.addIncome(september.id, 'Salary', 300000);
+    final food = await db.addBudget(september.id, 'Food', 40000);
+    await db.addBudget(september.id, 'Rent', 120000, isFixed: true);
+    await db.lockMonth(september.id);
+    await db.addExpense(food, 5000);
+
+    expect(await db.copyPlanFromMonthBefore(october.id), isTrue);
+
+    final copied = await db.watchMonth(october.id).first;
+    expect(copied.incomeCents, 300000);
+    // 3000.00 income - 1200.00 fixed rent - 50.00 food.
+    expect(copied.carryOverCents, 175000);
+    expect(copied.lockedAt, isNull);
+    expect(copied.notes, 'Keep me');
+    final incomes = await db.watchIncomes(october.id).first;
+    expect(incomes.map((i) => (i.name, i.amountCents)), [('Salary', 300000)]);
+    final budgets = await db.watchBudgets(october.id).first;
+    expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed)), [
+      ('Food', 40000, false),
+      ('Rent', 120000, true),
+    ]);
+    expect(await db.watchExpenses(october.id).first, isEmpty);
+    // September itself is left alone.
+    expect(await db.watchBudgets(september.id).first, hasLength(2));
+    expect(await db.watchExpenses(september.id).first, hasLength(2));
+
+    // The first month has nothing to copy from.
+    expect(await db.copyPlanFromMonthBefore(september.id), isFalse);
+    expect(await db.watchBudgets(september.id).first, hasLength(2));
+  });
+
+  test('carryovers follow later changes to the months before', () async {
+    final august = await db.getOrCreateMonth(2026, 8);
+    await db.addIncome(august.id, 'Salary', 300000);
+    final food = await db.addBudget(august.id, 'Food', 40000);
+    final september = await db.getOrCreateMonth(2026, 9);
+    final october = await db.getOrCreateMonth(2026, 10);
+    Future<int> carryOverCents(Month month) async =>
+        (await db.watchMonth(month.id).first).carryOverCents;
+    expect(await carryOverCents(september), 300000);
+    expect(await carryOverCents(october), 600000);
+
+    final groceries = await db.addExpense(food, 5000);
+    expect(await carryOverCents(september), 295000);
+    expect(await carryOverCents(october), 595000);
+
+    await db.addIncome(august.id, 'Bonus', 10000);
+    expect(await carryOverCents(october), 605000);
+    await db.updateBudget(food, name: 'Food', amountCents: 40000,
+        isFixed: false, isSinkingFund: true);
+    // The whole sinking fund amount stays in the fund.
+    expect(await carryOverCents(september), 270000);
+    await db.deleteBudget(food);
+    expect(await carryOverCents(september), 310000);
+
+    // The plan of a month in between counts too.
+    final rent = await db.addBudget(september.id, 'Rent', 120000);
+    expect(await carryOverCents(october), 610000);
+    await db.updateBudget(rent, name: 'Rent', amountCents: 120000,
+        isFixed: true);
+    await db.lockMonth(september.id);
+    expect(await carryOverCents(october), 490000);
+    await db.deleteExpense(groceries);
+    expect(await carryOverCents(october), 490000);
+  });
+
+  test('corrections to the carryover are kept as it changes', () async {
+    final september = await db.getOrCreateMonth(2026, 9);
+    await db.addIncome(september.id, 'Salary', 300000);
+    final food = await db.addBudget(september.id, 'Food', 40000);
+    final october = await db.getOrCreateMonth(2026, 10);
+    Future<Month> octoberNow() => db.watchMonth(october.id).first;
+
+    // 50.00 more was spent than tracked.
+    await db.setCarryOverCents(october.id, 295000);
+    expect((await octoberNow()).carryOverAdjustmentCents, -5000);
+
+    await db.addExpense(food, 2500);
+    expect((await octoberNow()).carryOverCents, 292500);
+
+    // Correcting it again replaces the correction, down into the negative.
+    await db.setCarryOverCents(october.id, -2550);
+    expect((await octoberNow()).carryOverCents, -2550);
+    expect((await octoberNow()).carryOverAdjustmentCents, -300050);
+
+    // The first month has nothing before it, so it carries over just that.
+    await db.setCarryOverCents(september.id, 10000);
+    expect((await db.watchMonth(september.id).first).carryOverCents, 10000);
+    expect((await octoberNow()).carryOverCents, 7450);
+
+    // Copying the plan again starts over without corrections.
+    await db.copyPlanFromMonthBefore(october.id);
+    expect((await octoberNow()).carryOverAdjustmentCents, 0);
+    expect((await octoberNow()).carryOverCents, 307500);
+  });
+
   test('getOrCreateMonth reuses the existing month', () async {
     final first = await db.getOrCreateMonth(2026, 9);
     final second = await db.getOrCreateMonth(2026, 9);
@@ -377,28 +588,224 @@ void main() {
     expect(budgets.single.name, 'Rent');
   });
 
-  test('the month offset moves the current month across years', () async {
+  test('the app starts in today\'s month and remembers the chosen one',
+      () async {
     final now = DateTime.now();
-    final container = ProviderContainer.test(
+    final today = (year: now.year, month: now.month);
+    final next = yearMonthOf(DateTime(now.year, now.month + 1));
+    var container = ProviderContainer.test(
       overrides: [appDatabaseProvider.overrideWithValue(db)],
     );
     container.listen(currentMonthProvider, (_, _) {});
-    final offset = container.read(monthOffsetProvider.notifier);
 
-    // Back to December of last year.
+    expect(await container.read(currentYearMonthProvider.future), today);
+    expect(await db.watchSelectedYearMonth().first, today);
+
+    await db.selectMonth(next, calendar: today);
+    await pumpEventQueue();
+    final month = await container.read(currentMonthProvider.future);
+    expect((month.year, month.month), (next.year, next.month));
+
+    // Opening the app again stays in the chosen month.
+    container = ProviderContainer.test(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+    );
+    container.listen(currentYearMonthProvider, (_, _) {});
+    expect(await container.read(currentYearMonthProvider.future), next);
+  });
+
+  test('a new month is offered once it starts, and only once', () async {
+    final container = ProviderContainer.test(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+    );
+    container.listen(monthToOfferProvider, (_, _) {});
+    final start = await container.read(currentYearMonthProvider.future);
+    expect(await container.read(monthToOfferProvider.future), isNull);
+
+    container.read(dayOffsetProvider.notifier).shiftToMonthStart(1);
+    final next = yearMonthOf(container.read(todayProvider));
+    expect(await container.read(monthToOfferProvider.future), next);
+
+    // Declining stays in the month before.
+    await db.declineMonth(next);
+    await pumpEventQueue();
+    expect(await container.read(monthToOfferProvider.future), isNull);
+    expect(await container.read(currentYearMonthProvider.future), start);
+
+    // And so does going back to it after moving on.
+    await db.selectMonth(next, calendar: next);
+    await db.selectMonth(start, calendar: next);
+    await pumpEventQueue();
+    expect(await container.read(monthToOfferProvider.future), isNull);
+
+    // The month after that is offered again.
+    container.read(dayOffsetProvider.notifier).shiftToMonthStart(1);
+    expect(
+      await container.read(monthToOfferProvider.future),
+      yearMonthOf(container.read(todayProvider)),
+    );
+  });
+
+  test('the debug day offset moves today across years', () async {
+    final container = ProviderContainer.test();
+    final now = DateTime.now();
+    final offset = container.read(dayOffsetProvider.notifier);
+
     for (var i = 0; i < now.month; i++) {
-      offset.previous();
+      offset.shiftToMonthStart(-1);
     }
-    expect(container.read(currentYearMonthProvider),
-        (year: now.year - 1, month: 12));
-    final december = await container.read(currentMonthProvider.future);
-    expect((december.year, december.month), (now.year - 1, 12));
+    expect(container.read(todayProvider), DateTime(now.year - 1, 12));
+    offset.shiftDays(31);
+    expect(container.read(todayProvider), DateTime(now.year));
 
     offset.reset();
-    offset.next();
-    final next = DateTime(now.year, now.month + 1);
-    expect(container.read(currentYearMonthProvider),
-        (year: next.year, month: next.month));
+    expect(container.read(todayProvider), DateTime(now.year, now.month, now.day));
+  });
+
+  test('savings budgets count towards the goal month by month', () async {
+    final september = await db.getOrCreateMonth(2026, 9);
+    await db.addIncome(september.id, 'Salary', 300000);
+    await db.addBudget(september.id, 'ETF', 20000,
+        isFixed: true, isSavings: true);
+    final savings = await db.addBudget(september.id, 'Savings', 30000,
+        isSavings: true);
+    final food = await db.addBudget(september.id, 'Food', 40000);
+    await db.addBudget(september.id, 'Holiday', 10000, isSinkingFund: true);
+    Future<List<MonthSavings>> savedIn(int from, int to) =>
+        db.watchSavingsByMonth((year: 2026, month: from),
+            (year: 2026, month: to)).first;
+
+    // Only what's spent counts: fixed savings once the plan is locked in.
+    expect(await savedIn(1, 12), isEmpty);
+    await db.lockMonth(september.id);
+    await db.addExpense(savings, 10000);
+    await db.addExpense(food, 5000);
+    expect(await savedIn(1, 12), [
+      (month: (year: 2026, month: 9), savedCents: 30000),
+    ]);
+
+    // New months keep their budgets' savings flag.
+    final october = await db.getOrCreateMonth(2026, 10);
+    final octoberBudgets = await db.watchBudgets(october.id).first;
+    expect(octoberBudgets.where((b) => b.isSavings).map((b) => b.name),
+        ['ETF', 'Savings']);
+    await db.lockMonth(october.id);
+    expect((await savedIn(1, 12)).map((m) => m.savedCents), [30000, 20000]);
+    // Only months in the period count.
+    expect((await savedIn(10, 12)).map((m) => m.savedCents), [20000]);
+  });
+
+  test('the savings goal starts unset, per year, and can be changed',
+      () async {
+    var settings = await db.watchSettings().first;
+    expect(settings.savingsGoalCents, isNull);
+    expect(settings.savingsGoalPeriod, SavingsPeriod.year);
+
+    await db.setSavingsGoal(150000, SavingsPeriod.quarter);
+    settings = await db.watchSettings().first;
+    expect(settings.savingsGoalCents, 150000);
+    expect(settings.savingsGoalPeriod, SavingsPeriod.quarter);
+
+    await db.setSavingsGoal(null, SavingsPeriod.quarter);
+    expect((await db.watchSettings().first).savingsGoalCents, isNull);
+  });
+
+  test('savingsProgress follows the period of the current month', () async {
+    final container = ProviderContainer.test(
+      overrides: [appDatabaseProvider.overrideWithValue(db)],
+    );
+    await db.selectMonth((year: 2026, month: 11),
+        calendar: (year: 2026, month: 11));
+    final august = await db.getOrCreateMonth(2026, 8);
+    await db.addBudget(august.id, 'Savings', 50000,
+        isFixed: true, isSavings: true);
+    await db.lockMonth(august.id);
+    final november = await db.getOrCreateMonth(2026, 11);
+    await db.lockMonth(november.id);
+    container.listen(savingsProgressProvider, (_, _) {});
+    Future<SavingsProgress> progress() async {
+      await pumpEventQueue();
+      return container.read(savingsProgressProvider.future);
+    }
+
+    // August is in the year, but not in the fourth quarter.
+    await db.setSavingsGoal(200000, SavingsPeriod.year);
+    var now = await progress();
+    expect(now.periodName, '2026');
+    expect(now.savedCents, 100000);
+    expect(now.fraction, 0.5);
+
+    await db.setSavingsGoal(40000, SavingsPeriod.quarter);
+    now = await progress();
+    expect(now.periodName, 'Q4 2026');
+    expect(now.savedCents, 50000);
+    expect(now.fraction, 1);
+  });
+
+  test('savingsPeriodOf', () {
+    expect(savingsPeriodOf((year: 2026, month: 11), SavingsPeriod.quarter), (
+      first: (year: 2026, month: 10),
+      last: (year: 2026, month: 12),
+    ));
+    expect(savingsPeriodOf((year: 2026, month: 1), SavingsPeriod.quarter), (
+      first: (year: 2026, month: 1),
+      last: (year: 2026, month: 3),
+    ));
+    expect(savingsPeriodOf((year: 2026, month: 5), SavingsPeriod.year), (
+      first: (year: 2026, month: 1),
+      last: (year: 2026, month: 12),
+    ));
+  });
+
+  group('monthsToChooseFrom', () {
+    test('offers the next month three days before it starts', () {
+      const october = (year: 2026, month: 10);
+      const november = (year: 2026, month: 11);
+      expect(monthsToChooseFrom([], DateTime(2026, 10, 28)), [october]);
+      expect(monthsToChooseFrom([], DateTime(2026, 10, 29)),
+          [november, october]);
+      expect(monthsToChooseFrom([], DateTime(2026, 12, 29)), [
+        (year: 2027, month: 1),
+        (year: 2026, month: 12),
+      ]);
+    });
+
+    test('includes planned months once, newest first', () {
+      expect(
+        monthsToChooseFrom([
+          (year: 2026, month: 9),
+          (year: 2025, month: 12),
+          (year: 2026, month: 10),
+        ], DateTime(2026, 10, 5)),
+        [
+          (year: 2026, month: 10),
+          (year: 2026, month: 9),
+          (year: 2025, month: 12),
+        ],
+      );
+    });
+  });
+
+  test('newMonthToOffer', () {
+    const september = (year: 2026, month: 9);
+    const october = (year: 2026, month: 10);
+    final inOctober = DateTime(2026, 10, 1);
+    expect(
+      newMonthToOffer(current: september, offered: null, today: inOctober),
+      october,
+    );
+    expect(
+      newMonthToOffer(current: september, offered: september, today: inOctober),
+      october,
+    );
+    expect(
+      newMonthToOffer(current: september, offered: october, today: inOctober),
+      isNull,
+    );
+    expect(
+      newMonthToOffer(current: october, offered: null, today: inOctober),
+      isNull,
+    );
   });
 
   group('parseAmountToCents', () {
@@ -417,8 +824,16 @@ void main() {
   });
 
   test('formatCents', () {
-    expect(formatCents(123450), '1234.50');
-    expect(formatCents(5), '0.05');
-    expect(formatCents(-2500), '-25.00');
+    expect(formatCents(123450), '1234,50€');
+    expect(formatCents(5), '0,05€');
+    expect(formatCents(-2500), '-25,00€');
+  });
+
+  test('formatAmount is read back by parseAmountToCents', () {
+    expect(formatAmount(123450), '1234.50');
+    expect(formatAmount(5), '0.05');
+    for (final cents in [0, 5, 100000, 123450]) {
+      expect(parseAmountToCents(formatAmount(cents)), cents);
+    }
   });
 }

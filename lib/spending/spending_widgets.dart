@@ -18,52 +18,35 @@ class SpendingTotalWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final spentCents = expenses.fold(0, (sum, e) => sum + e.amountCents);
+    final plannedCents = budgets.fold(0, (sum, b) => sum + availableCents(b));
+    final leftCents = plannedCents - spentCents;
 
-    return SizedBox(
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //   children: [
-            //     // Flexible lets the texts wrap instead of overflowing when the
-            //     // card is narrow.
-            //     Flexible(
-            //       child: Text(
-            //         '${formatCents(budgets.fold(0, (sum, b) => sum + availableCents(b)))} available',
-            //         style: textTheme.bodyLarge?.copyWith(
-            //           color: Theme.of(context).colorScheme.primary,
-            //           fontWeight: FontWeight.bold,
-            //         ),
-            //       ),
-            //     ),
-            //     const SizedBox(width: 8),
-            //     Flexible(
-            //       child: Text(
-            //         '${formatCents(spentCents)} spent',
-            //         textAlign: TextAlign.end,
-            //         style: textTheme.bodyLarge?.copyWith(
-            //           color: Theme.of(context).colorScheme.error,
-            //           fontWeight: FontWeight.bold,
-            //         ),
-            //       ),
-            //     ),
-            //   ],
-            // ),
-            const SizedBox(height: 12),
-            SpentVsPlanned(
-              plannedCents: budgets.fold(
-                0,
-                (sum, b) => sum + availableCents(b),
-              ),
-              spentCents: spentCents,
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            leftCents < 0 ? 'Over budget' : 'Left to spend',
+            style: textTheme.labelLarge,
+          ),
+          Text(
+            formatCents(leftCents.abs()),
+            style: textTheme.displaySmall?.copyWith(
+              color: leftCents < 0 ? colors.error : null,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          SpentVsPlanned(
+            plannedCents: plannedCents,
+            spentCents: spentCents,
+            showLeft: false,
+          ),
+        ],
       ),
     );
   }
@@ -111,10 +94,14 @@ class SpentVsPlanned extends StatelessWidget {
     super.key,
     required this.plannedCents,
     required this.spentCents,
+    this.showLeft = true,
   });
 
   final int plannedCents;
   final int spentCents;
+
+  /// Whether to show what's left or over, unless that's shown elsewhere.
+  final bool showLeft;
 
   @override
   Widget build(BuildContext context) {
@@ -128,38 +115,34 @@ class SpentVsPlanned extends StatelessWidget {
       children: [
         Row(
           children: [
-            //   child: Text(
-            //     '${formatCents(spentCents)} of ${formatCents(plannedCents)}',
-            //     style: textTheme.bodyMedium,
-            //   ),
-            // ),
             Expanded(
               child: Row(
                 children: [
                   Text(
                     '${formatCents(spentCents)}',
                     textAlign: TextAlign.end,
-                    style: textTheme.bodyLarge?.copyWith(
+                    style: textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.error,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     ' of ${formatCents(plannedCents)} spent',
-                    style: textTheme.bodyLarge?.copyWith(),
+                    style: textTheme.bodyMedium?.copyWith(),
                   ),
                 ],
               ),
             ),
-            Text(
-              overspent
-                  ? '${formatCents(-leftCents)} over'
-                  : '${formatCents(leftCents)} left',
-              style: textTheme.bodyLarge?.copyWith(
-                color: overspent ? colors.error : Colors.green.shade700,
-                fontWeight: FontWeight.bold,
+            if (showLeft)
+              Text(
+                overspent
+                    ? '${formatCents(-leftCents)} over'
+                    : '${formatCents(leftCents)} left',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: overspent ? colors.error : Colors.green.shade700,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -207,6 +190,10 @@ class _BudgetSpendingCard extends StatelessWidget {
             if (budget.isSinkingFund) ...[
               const SizedBox(width: 8),
               const SinkingFundBadge(),
+            ],
+            if (budget.isSavings) ...[
+              const SizedBox(width: 8),
+              const SavingsBadge(),
             ],
           ],
         ),

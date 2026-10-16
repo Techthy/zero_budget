@@ -8,34 +8,34 @@ part of 'welcome_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Months to shift the current month by, so moving through months can be
-/// tried out in debug builds.
+/// Days to shift today by, so moving through time can be tried out in debug
+/// builds.
 
-@ProviderFor(MonthOffset)
-final monthOffsetProvider = MonthOffsetProvider._();
+@ProviderFor(DayOffset)
+final dayOffsetProvider = DayOffsetProvider._();
 
-/// Months to shift the current month by, so moving through months can be
-/// tried out in debug builds.
-final class MonthOffsetProvider extends $NotifierProvider<MonthOffset, int> {
-  /// Months to shift the current month by, so moving through months can be
-  /// tried out in debug builds.
-  MonthOffsetProvider._()
+/// Days to shift today by, so moving through time can be tried out in debug
+/// builds.
+final class DayOffsetProvider extends $NotifierProvider<DayOffset, int> {
+  /// Days to shift today by, so moving through time can be tried out in debug
+  /// builds.
+  DayOffsetProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'monthOffsetProvider',
+        name: r'dayOffsetProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$monthOffsetHash();
+  String debugGetCreateSourceHash() => _$dayOffsetHash();
 
   @$internal
   @override
-  MonthOffset create() => MonthOffset();
+  DayOffset create() => DayOffset();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(int value) {
@@ -46,12 +46,12 @@ final class MonthOffsetProvider extends $NotifierProvider<MonthOffset, int> {
   }
 }
 
-String _$monthOffsetHash() => r'e58d3471022ad5ac219b51c04dbf9603b9f0ba75';
+String _$dayOffsetHash() => r'3dc08eece1b67661b3938453fbbea72e9116944f';
 
-/// Months to shift the current month by, so moving through months can be
-/// tried out in debug builds.
+/// Days to shift today by, so moving through time can be tried out in debug
+/// builds.
 
-abstract class _$MonthOffset extends $Notifier<int> {
+abstract class _$DayOffset extends $Notifier<int> {
   int build();
   @$mustCallSuper
   @override
@@ -69,22 +69,86 @@ abstract class _$MonthOffset extends $Notifier<int> {
   }
 }
 
-/// The year and month the app treats as the current one.
+/// Today's date, shifted by [DayOffset] in debug builds.
+///
+/// Invalidate it when the app comes back to the foreground, as the day may
+/// have changed.
+
+@ProviderFor(today)
+final todayProvider = TodayProvider._();
+
+/// Today's date, shifted by [DayOffset] in debug builds.
+///
+/// Invalidate it when the app comes back to the foreground, as the day may
+/// have changed.
+
+final class TodayProvider
+    extends $FunctionalProvider<DateTime, DateTime, DateTime>
+    with $Provider<DateTime> {
+  /// Today's date, shifted by [DayOffset] in debug builds.
+  ///
+  /// Invalidate it when the app comes back to the foreground, as the day may
+  /// have changed.
+  TodayProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'todayProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$todayHash();
+
+  @$internal
+  @override
+  $ProviderElement<DateTime> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  DateTime create(Ref ref) {
+    return today(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DateTime value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DateTime>(value),
+    );
+  }
+}
+
+String _$todayHash() => r'bcaae42e5a83533c3cf357e8ab4770f68fcb3553';
+
+/// The month the user works in, which they choose themselves.
+///
+/// The app starts in today's month and stays in it, even once a new month
+/// starts, until the user moves on.
 
 @ProviderFor(currentYearMonth)
 final currentYearMonthProvider = CurrentYearMonthProvider._();
 
-/// The year and month the app treats as the current one.
+/// The month the user works in, which they choose themselves.
+///
+/// The app starts in today's month and stays in it, even once a new month
+/// starts, until the user moves on.
 
 final class CurrentYearMonthProvider
     extends
         $FunctionalProvider<
-          ({int month, int year}),
-          ({int month, int year}),
-          ({int month, int year})
+          AsyncValue<YearMonth>,
+          YearMonth,
+          FutureOr<YearMonth>
         >
-    with $Provider<({int month, int year})> {
-  /// The year and month the app treats as the current one.
+    with $FutureModifier<YearMonth>, $FutureProvider<YearMonth> {
+  /// The month the user works in, which they choose themselves.
+  ///
+  /// The app starts in today's month and stays in it, even once a new month
+  /// starts, until the user moves on.
   CurrentYearMonthProvider._()
     : super(
         from: null,
@@ -101,25 +165,182 @@ final class CurrentYearMonthProvider
 
   @$internal
   @override
-  $ProviderElement<({int month, int year})> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
+  $FutureProviderElement<YearMonth> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
 
   @override
-  ({int month, int year}) create(Ref ref) {
+  FutureOr<YearMonth> create(Ref ref) {
     return currentYearMonth(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(({int month, int year}) value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<({int month, int year})>(value),
-    );
   }
 }
 
-String _$currentYearMonthHash() => r'64c4c8eb65dd76933974abd0bcbaf3d05e058de2';
+String _$currentYearMonthHash() => r'6c3ba40037bffe22135ad00aad3a19fae65862c1';
+
+@ProviderFor(selectedYearMonth)
+final selectedYearMonthProvider = SelectedYearMonthProvider._();
+
+final class SelectedYearMonthProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<YearMonth?>,
+          YearMonth?,
+          Stream<YearMonth?>
+        >
+    with $FutureModifier<YearMonth?>, $StreamProvider<YearMonth?> {
+  SelectedYearMonthProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'selectedYearMonthProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$selectedYearMonthHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<YearMonth?> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<YearMonth?> create(Ref ref) {
+    return selectedYearMonth(ref);
+  }
+}
+
+String _$selectedYearMonthHash() => r'3af0cd51868fc7f06e2385d4d50553e4a222c2b1';
+
+/// The months the user can switch to, newest first.
+
+@ProviderFor(selectableMonths)
+final selectableMonthsProvider = SelectableMonthsProvider._();
+
+/// The months the user can switch to, newest first.
+
+final class SelectableMonthsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<YearMonth>>,
+          List<YearMonth>,
+          Stream<List<YearMonth>>
+        >
+    with $FutureModifier<List<YearMonth>>, $StreamProvider<List<YearMonth>> {
+  /// The months the user can switch to, newest first.
+  SelectableMonthsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'selectableMonthsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$selectableMonthsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<YearMonth>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<YearMonth>> create(Ref ref) {
+    return selectableMonths(ref);
+  }
+}
+
+String _$selectableMonthsHash() => r'910d6fd87fdd6048feee92095b43ce17d9e84d6a';
+
+/// A month that started after the current one, to ask the user whether to
+/// move on to it; null if there's none.
+
+@ProviderFor(monthToOffer)
+final monthToOfferProvider = MonthToOfferProvider._();
+
+/// A month that started after the current one, to ask the user whether to
+/// move on to it; null if there's none.
+
+final class MonthToOfferProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<YearMonth?>,
+          YearMonth?,
+          FutureOr<YearMonth?>
+        >
+    with $FutureModifier<YearMonth?>, $FutureProvider<YearMonth?> {
+  /// A month that started after the current one, to ask the user whether to
+  /// move on to it; null if there's none.
+  MonthToOfferProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'monthToOfferProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$monthToOfferHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<YearMonth?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<YearMonth?> create(Ref ref) {
+    return monthToOffer(ref);
+  }
+}
+
+String _$monthToOfferHash() => r'317b3991a7e5b6c96aab357f4fbb71eddf0561c8';
+
+@ProviderFor(offeredYearMonth)
+final offeredYearMonthProvider = OfferedYearMonthProvider._();
+
+final class OfferedYearMonthProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<YearMonth?>,
+          YearMonth?,
+          Stream<YearMonth?>
+        >
+    with $FutureModifier<YearMonth?>, $StreamProvider<YearMonth?> {
+  OfferedYearMonthProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'offeredYearMonthProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$offeredYearMonthHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<YearMonth?> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<YearMonth?> create(Ref ref) {
+    return offeredYearMonth(ref);
+  }
+}
+
+String _$offeredYearMonthHash() => r'8997cf467a0853d315d12591099f01e726a31c43';
 
 /// Id of the current month's row, created the first time it's needed.
 
@@ -157,7 +378,7 @@ final class CurrentMonthIdProvider
   }
 }
 
-String _$currentMonthIdHash() => r'ca3b114043f44e8a537932350b8bd5b189c657ac';
+String _$currentMonthIdHash() => r'33ea39abb1240dbcb727ce5831cb3eb6b63fcc37';
 
 @ProviderFor(currentMonth)
 final currentMonthProvider = CurrentMonthProvider._();

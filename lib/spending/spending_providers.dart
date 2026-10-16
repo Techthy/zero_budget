@@ -6,6 +6,11 @@ import '../welcome/welcome_providers.dart';
 
 part 'spending_providers.g.dart';
 
+/// The buffer to keep in the bank account on top of the plan.
+@riverpod
+Stream<int> bufferCents(Ref ref) =>
+    ref.watch(appDatabaseProvider).watchBufferCents();
+
 @riverpod
 Stream<List<Expense>> currentExpenses(Ref ref) async* {
   final db = ref.watch(appDatabaseProvider);

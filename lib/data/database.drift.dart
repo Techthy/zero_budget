@@ -73,6 +73,18 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _carryOverAdjustmentCentsMeta =
+      const VerificationMeta('carryOverAdjustmentCents');
+  @override
+  late final GeneratedColumn<int> carryOverAdjustmentCents =
+      GeneratedColumn<int>(
+        'carry_over_adjustment_cents',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -90,6 +102,7 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
     incomeCents,
     lockedAt,
     carryOverCents,
+    carryOverAdjustmentCents,
     notes,
   ];
   @override
@@ -147,6 +160,15 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
         ),
       );
     }
+    if (data.containsKey('carry_over_adjustment_cents')) {
+      context.handle(
+        _carryOverAdjustmentCentsMeta,
+        carryOverAdjustmentCents.isAcceptableOrUnknown(
+          data['carry_over_adjustment_cents']!,
+          _carryOverAdjustmentCentsMeta,
+        ),
+      );
+    }
     if (data.containsKey('notes')) {
       context.handle(
         _notesMeta,
@@ -190,6 +212,10 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
         DriftSqlType.int,
         data['${effectivePrefix}carry_over_cents'],
       )!,
+      carryOverAdjustmentCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}carry_over_adjustment_cents'],
+      )!,
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
@@ -216,7 +242,14 @@ class Month extends DataClass implements Insertable<Month> {
 
   /// Balance left from the month before (negative if it was overspent), which
   /// is available to assign on top of the income.
+  ///
+  /// Kept in sync with the month before whenever anything changes, plus
+  /// [carryOverAdjustmentCents].
   final int carryOverCents;
+
+  /// Added to what the month before left: manual corrections, and savings
+  /// released from sinking funds.
+  final int carryOverAdjustmentCents;
 
   /// Free-form notes about the month's plan, like goals or things to take
   /// care of; null when there are none.
@@ -228,6 +261,7 @@ class Month extends DataClass implements Insertable<Month> {
     required this.incomeCents,
     this.lockedAt,
     required this.carryOverCents,
+    required this.carryOverAdjustmentCents,
     this.notes,
   });
   @override
@@ -241,6 +275,9 @@ class Month extends DataClass implements Insertable<Month> {
       map['locked_at'] = Variable<DateTime>(lockedAt);
     }
     map['carry_over_cents'] = Variable<int>(carryOverCents);
+    map['carry_over_adjustment_cents'] = Variable<int>(
+      carryOverAdjustmentCents,
+    );
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
@@ -257,6 +294,7 @@ class Month extends DataClass implements Insertable<Month> {
           ? const Value.absent()
           : Value(lockedAt),
       carryOverCents: Value(carryOverCents),
+      carryOverAdjustmentCents: Value(carryOverAdjustmentCents),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
@@ -275,6 +313,9 @@ class Month extends DataClass implements Insertable<Month> {
       incomeCents: serializer.fromJson<int>(json['incomeCents']),
       lockedAt: serializer.fromJson<DateTime?>(json['lockedAt']),
       carryOverCents: serializer.fromJson<int>(json['carryOverCents']),
+      carryOverAdjustmentCents: serializer.fromJson<int>(
+        json['carryOverAdjustmentCents'],
+      ),
       notes: serializer.fromJson<String?>(json['notes']),
     );
   }
@@ -288,6 +329,9 @@ class Month extends DataClass implements Insertable<Month> {
       'incomeCents': serializer.toJson<int>(incomeCents),
       'lockedAt': serializer.toJson<DateTime?>(lockedAt),
       'carryOverCents': serializer.toJson<int>(carryOverCents),
+      'carryOverAdjustmentCents': serializer.toJson<int>(
+        carryOverAdjustmentCents,
+      ),
       'notes': serializer.toJson<String?>(notes),
     };
   }
@@ -299,6 +343,7 @@ class Month extends DataClass implements Insertable<Month> {
     int? incomeCents,
     Value<DateTime?> lockedAt = const Value.absent(),
     int? carryOverCents,
+    int? carryOverAdjustmentCents,
     Value<String?> notes = const Value.absent(),
   }) => Month(
     id: id ?? this.id,
@@ -307,6 +352,8 @@ class Month extends DataClass implements Insertable<Month> {
     incomeCents: incomeCents ?? this.incomeCents,
     lockedAt: lockedAt.present ? lockedAt.value : this.lockedAt,
     carryOverCents: carryOverCents ?? this.carryOverCents,
+    carryOverAdjustmentCents:
+        carryOverAdjustmentCents ?? this.carryOverAdjustmentCents,
     notes: notes.present ? notes.value : this.notes,
   );
   Month copyWithCompanion(MonthsCompanion data) {
@@ -321,6 +368,9 @@ class Month extends DataClass implements Insertable<Month> {
       carryOverCents: data.carryOverCents.present
           ? data.carryOverCents.value
           : this.carryOverCents,
+      carryOverAdjustmentCents: data.carryOverAdjustmentCents.present
+          ? data.carryOverAdjustmentCents.value
+          : this.carryOverAdjustmentCents,
       notes: data.notes.present ? data.notes.value : this.notes,
     );
   }
@@ -334,6 +384,7 @@ class Month extends DataClass implements Insertable<Month> {
           ..write('incomeCents: $incomeCents, ')
           ..write('lockedAt: $lockedAt, ')
           ..write('carryOverCents: $carryOverCents, ')
+          ..write('carryOverAdjustmentCents: $carryOverAdjustmentCents, ')
           ..write('notes: $notes')
           ..write(')'))
         .toString();
@@ -347,6 +398,7 @@ class Month extends DataClass implements Insertable<Month> {
     incomeCents,
     lockedAt,
     carryOverCents,
+    carryOverAdjustmentCents,
     notes,
   );
   @override
@@ -359,6 +411,7 @@ class Month extends DataClass implements Insertable<Month> {
           other.incomeCents == this.incomeCents &&
           other.lockedAt == this.lockedAt &&
           other.carryOverCents == this.carryOverCents &&
+          other.carryOverAdjustmentCents == this.carryOverAdjustmentCents &&
           other.notes == this.notes);
 }
 
@@ -369,6 +422,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
   final Value<int> incomeCents;
   final Value<DateTime?> lockedAt;
   final Value<int> carryOverCents;
+  final Value<int> carryOverAdjustmentCents;
   final Value<String?> notes;
   const MonthsCompanion({
     this.id = const Value.absent(),
@@ -377,6 +431,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     this.incomeCents = const Value.absent(),
     this.lockedAt = const Value.absent(),
     this.carryOverCents = const Value.absent(),
+    this.carryOverAdjustmentCents = const Value.absent(),
     this.notes = const Value.absent(),
   });
   MonthsCompanion.insert({
@@ -386,6 +441,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     this.incomeCents = const Value.absent(),
     this.lockedAt = const Value.absent(),
     this.carryOverCents = const Value.absent(),
+    this.carryOverAdjustmentCents = const Value.absent(),
     this.notes = const Value.absent(),
   }) : year = Value(year),
        month = Value(month);
@@ -396,6 +452,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     Expression<int>? incomeCents,
     Expression<DateTime>? lockedAt,
     Expression<int>? carryOverCents,
+    Expression<int>? carryOverAdjustmentCents,
     Expression<String>? notes,
   }) {
     return RawValuesInsertable({
@@ -405,6 +462,8 @@ class MonthsCompanion extends UpdateCompanion<Month> {
       if (incomeCents != null) 'income_cents': incomeCents,
       if (lockedAt != null) 'locked_at': lockedAt,
       if (carryOverCents != null) 'carry_over_cents': carryOverCents,
+      if (carryOverAdjustmentCents != null)
+        'carry_over_adjustment_cents': carryOverAdjustmentCents,
       if (notes != null) 'notes': notes,
     });
   }
@@ -416,6 +475,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     Value<int>? incomeCents,
     Value<DateTime?>? lockedAt,
     Value<int>? carryOverCents,
+    Value<int>? carryOverAdjustmentCents,
     Value<String?>? notes,
   }) {
     return MonthsCompanion(
@@ -425,6 +485,8 @@ class MonthsCompanion extends UpdateCompanion<Month> {
       incomeCents: incomeCents ?? this.incomeCents,
       lockedAt: lockedAt ?? this.lockedAt,
       carryOverCents: carryOverCents ?? this.carryOverCents,
+      carryOverAdjustmentCents:
+          carryOverAdjustmentCents ?? this.carryOverAdjustmentCents,
       notes: notes ?? this.notes,
     );
   }
@@ -450,6 +512,11 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     if (carryOverCents.present) {
       map['carry_over_cents'] = Variable<int>(carryOverCents.value);
     }
+    if (carryOverAdjustmentCents.present) {
+      map['carry_over_adjustment_cents'] = Variable<int>(
+        carryOverAdjustmentCents.value,
+      );
+    }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
@@ -465,6 +532,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
           ..write('incomeCents: $incomeCents, ')
           ..write('lockedAt: $lockedAt, ')
           ..write('carryOverCents: $carryOverCents, ')
+          ..write('carryOverAdjustmentCents: $carryOverAdjustmentCents, ')
           ..write('notes: $notes')
           ..write(')'))
         .toString();
@@ -874,6 +942,21 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _isSavingsMeta = const VerificationMeta(
+    'isSavings',
+  );
+  @override
+  late final GeneratedColumn<bool> isSavings = GeneratedColumn<bool>(
+    'is_savings',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_savings" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -883,6 +966,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     isFixed,
     isSinkingFund,
     savedCents,
+    isSavings,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -947,6 +1031,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         savedCents.isAcceptableOrUnknown(data['saved_cents']!, _savedCentsMeta),
       );
     }
+    if (data.containsKey('is_savings')) {
+      context.handle(
+        _isSavingsMeta,
+        isSavings.isAcceptableOrUnknown(data['is_savings']!, _isSavingsMeta),
+      );
+    }
     return context;
   }
 
@@ -984,6 +1074,10 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         DriftSqlType.int,
         data['${effectivePrefix}saved_cents'],
       )!,
+      isSavings: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_savings'],
+      )!,
     );
   }
 
@@ -1010,6 +1104,11 @@ class Budget extends DataClass implements Insertable<Budget> {
   /// What a sinking fund had saved before this month; always 0 for other
   /// budgets.
   final int savedCents;
+
+  /// Savings budgets, like a transfer to a savings account, count towards
+  /// the savings goal with what's spent from them. They can be fixed, but
+  /// never a sinking fund.
+  final bool isSavings;
   const Budget({
     required this.id,
     required this.monthId,
@@ -1018,6 +1117,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     required this.isFixed,
     required this.isSinkingFund,
     required this.savedCents,
+    required this.isSavings,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1029,6 +1129,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     map['is_fixed'] = Variable<bool>(isFixed);
     map['is_sinking_fund'] = Variable<bool>(isSinkingFund);
     map['saved_cents'] = Variable<int>(savedCents);
+    map['is_savings'] = Variable<bool>(isSavings);
     return map;
   }
 
@@ -1041,6 +1142,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       isFixed: Value(isFixed),
       isSinkingFund: Value(isSinkingFund),
       savedCents: Value(savedCents),
+      isSavings: Value(isSavings),
     );
   }
 
@@ -1057,6 +1159,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       isFixed: serializer.fromJson<bool>(json['isFixed']),
       isSinkingFund: serializer.fromJson<bool>(json['isSinkingFund']),
       savedCents: serializer.fromJson<int>(json['savedCents']),
+      isSavings: serializer.fromJson<bool>(json['isSavings']),
     );
   }
   @override
@@ -1070,6 +1173,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       'isFixed': serializer.toJson<bool>(isFixed),
       'isSinkingFund': serializer.toJson<bool>(isSinkingFund),
       'savedCents': serializer.toJson<int>(savedCents),
+      'isSavings': serializer.toJson<bool>(isSavings),
     };
   }
 
@@ -1081,6 +1185,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     bool? isFixed,
     bool? isSinkingFund,
     int? savedCents,
+    bool? isSavings,
   }) => Budget(
     id: id ?? this.id,
     monthId: monthId ?? this.monthId,
@@ -1089,6 +1194,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     isFixed: isFixed ?? this.isFixed,
     isSinkingFund: isSinkingFund ?? this.isSinkingFund,
     savedCents: savedCents ?? this.savedCents,
+    isSavings: isSavings ?? this.isSavings,
   );
   Budget copyWithCompanion(BudgetsCompanion data) {
     return Budget(
@@ -1105,6 +1211,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       savedCents: data.savedCents.present
           ? data.savedCents.value
           : this.savedCents,
+      isSavings: data.isSavings.present ? data.isSavings.value : this.isSavings,
     );
   }
 
@@ -1117,7 +1224,8 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('amountCents: $amountCents, ')
           ..write('isFixed: $isFixed, ')
           ..write('isSinkingFund: $isSinkingFund, ')
-          ..write('savedCents: $savedCents')
+          ..write('savedCents: $savedCents, ')
+          ..write('isSavings: $isSavings')
           ..write(')'))
         .toString();
   }
@@ -1131,6 +1239,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     isFixed,
     isSinkingFund,
     savedCents,
+    isSavings,
   );
   @override
   bool operator ==(Object other) =>
@@ -1142,7 +1251,8 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.amountCents == this.amountCents &&
           other.isFixed == this.isFixed &&
           other.isSinkingFund == this.isSinkingFund &&
-          other.savedCents == this.savedCents);
+          other.savedCents == this.savedCents &&
+          other.isSavings == this.isSavings);
 }
 
 class BudgetsCompanion extends UpdateCompanion<Budget> {
@@ -1153,6 +1263,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<bool> isFixed;
   final Value<bool> isSinkingFund;
   final Value<int> savedCents;
+  final Value<bool> isSavings;
   const BudgetsCompanion({
     this.id = const Value.absent(),
     this.monthId = const Value.absent(),
@@ -1161,6 +1272,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.isFixed = const Value.absent(),
     this.isSinkingFund = const Value.absent(),
     this.savedCents = const Value.absent(),
+    this.isSavings = const Value.absent(),
   });
   BudgetsCompanion.insert({
     this.id = const Value.absent(),
@@ -1170,6 +1282,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.isFixed = const Value.absent(),
     this.isSinkingFund = const Value.absent(),
     this.savedCents = const Value.absent(),
+    this.isSavings = const Value.absent(),
   }) : monthId = Value(monthId),
        name = Value(name),
        amountCents = Value(amountCents);
@@ -1181,6 +1294,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Expression<bool>? isFixed,
     Expression<bool>? isSinkingFund,
     Expression<int>? savedCents,
+    Expression<bool>? isSavings,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1190,6 +1304,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (isFixed != null) 'is_fixed': isFixed,
       if (isSinkingFund != null) 'is_sinking_fund': isSinkingFund,
       if (savedCents != null) 'saved_cents': savedCents,
+      if (isSavings != null) 'is_savings': isSavings,
     });
   }
 
@@ -1201,6 +1316,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Value<bool>? isFixed,
     Value<bool>? isSinkingFund,
     Value<int>? savedCents,
+    Value<bool>? isSavings,
   }) {
     return BudgetsCompanion(
       id: id ?? this.id,
@@ -1210,6 +1326,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       isFixed: isFixed ?? this.isFixed,
       isSinkingFund: isSinkingFund ?? this.isSinkingFund,
       savedCents: savedCents ?? this.savedCents,
+      isSavings: isSavings ?? this.isSavings,
     );
   }
 
@@ -1237,6 +1354,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (savedCents.present) {
       map['saved_cents'] = Variable<int>(savedCents.value);
     }
+    if (isSavings.present) {
+      map['is_savings'] = Variable<bool>(isSavings.value);
+    }
     return map;
   }
 
@@ -1249,7 +1369,8 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('amountCents: $amountCents, ')
           ..write('isFixed: $isFixed, ')
           ..write('isSinkingFund: $isSinkingFund, ')
-          ..write('savedCents: $savedCents')
+          ..write('savedCents: $savedCents, ')
+          ..write('isSavings: $isSavings')
           ..write(')'))
         .toString();
   }
@@ -1715,6 +1836,514 @@ class ExpensesCompanion extends UpdateCompanion<Expense> {
   }
 }
 
+class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SettingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bufferCentsMeta = const VerificationMeta(
+    'bufferCents',
+  );
+  @override
+  late final GeneratedColumn<int> bufferCents = GeneratedColumn<int>(
+    'buffer_cents',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(defaultBufferCents),
+  );
+  static const VerificationMeta _selectedYearMonthMeta = const VerificationMeta(
+    'selectedYearMonth',
+  );
+  @override
+  late final GeneratedColumn<int> selectedYearMonth = GeneratedColumn<int>(
+    'selected_year_month',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _offeredYearMonthMeta = const VerificationMeta(
+    'offeredYearMonth',
+  );
+  @override
+  late final GeneratedColumn<int> offeredYearMonth = GeneratedColumn<int>(
+    'offered_year_month',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _showDebugBarMeta = const VerificationMeta(
+    'showDebugBar',
+  );
+  @override
+  late final GeneratedColumn<bool> showDebugBar = GeneratedColumn<bool>(
+    'show_debug_bar',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_debug_bar" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _savingsGoalCentsMeta = const VerificationMeta(
+    'savingsGoalCents',
+  );
+  @override
+  late final GeneratedColumn<int> savingsGoalCents = GeneratedColumn<int>(
+    'savings_goal_cents',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<SavingsPeriod, String>
+  savingsGoalPeriod = GeneratedColumn<String>(
+    'savings_goal_period',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: Constant(SavingsPeriod.year.name),
+  ).withConverter<SavingsPeriod>($SettingsTable.$convertersavingsGoalPeriod);
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    bufferCents,
+    selectedYearMonth,
+    offeredYearMonth,
+    showDebugBar,
+    savingsGoalCents,
+    savingsGoalPeriod,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Setting> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('buffer_cents')) {
+      context.handle(
+        _bufferCentsMeta,
+        bufferCents.isAcceptableOrUnknown(
+          data['buffer_cents']!,
+          _bufferCentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('selected_year_month')) {
+      context.handle(
+        _selectedYearMonthMeta,
+        selectedYearMonth.isAcceptableOrUnknown(
+          data['selected_year_month']!,
+          _selectedYearMonthMeta,
+        ),
+      );
+    }
+    if (data.containsKey('offered_year_month')) {
+      context.handle(
+        _offeredYearMonthMeta,
+        offeredYearMonth.isAcceptableOrUnknown(
+          data['offered_year_month']!,
+          _offeredYearMonthMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_debug_bar')) {
+      context.handle(
+        _showDebugBarMeta,
+        showDebugBar.isAcceptableOrUnknown(
+          data['show_debug_bar']!,
+          _showDebugBarMeta,
+        ),
+      );
+    }
+    if (data.containsKey('savings_goal_cents')) {
+      context.handle(
+        _savingsGoalCentsMeta,
+        savingsGoalCents.isAcceptableOrUnknown(
+          data['savings_goal_cents']!,
+          _savingsGoalCentsMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Setting map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Setting(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      bufferCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}buffer_cents'],
+      )!,
+      selectedYearMonth: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}selected_year_month'],
+      ),
+      offeredYearMonth: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}offered_year_month'],
+      ),
+      showDebugBar: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_debug_bar'],
+      )!,
+      savingsGoalCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}savings_goal_cents'],
+      ),
+      savingsGoalPeriod: $SettingsTable.$convertersavingsGoalPeriod.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}savings_goal_period'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $SettingsTable createAlias(String alias) {
+    return $SettingsTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<SavingsPeriod, String, String>
+  $convertersavingsGoalPeriod = const EnumNameConverter<SavingsPeriod>(
+    SavingsPeriod.values,
+  );
+}
+
+class Setting extends DataClass implements Insertable<Setting> {
+  /// Always [settingsRowId].
+  final int id;
+
+  /// Money always kept in the bank account on top of the plan, as a safety
+  /// net.
+  final int bufferCents;
+
+  /// The month the user works in, see [encodeYearMonth]; null until the app
+  /// first opens.
+  final int? selectedYearMonth;
+
+  /// The latest month the user was offered to move on to, or chose to be in,
+  /// see [encodeYearMonth]. Each new month is offered only once.
+  final int? offeredYearMonth;
+
+  /// Whether debug builds show the bar to move through days and months.
+  final bool showDebugBar;
+
+  /// What to save in each [savingsGoalPeriod]; null while there's no goal.
+  final int? savingsGoalCents;
+  final SavingsPeriod savingsGoalPeriod;
+  const Setting({
+    required this.id,
+    required this.bufferCents,
+    this.selectedYearMonth,
+    this.offeredYearMonth,
+    required this.showDebugBar,
+    this.savingsGoalCents,
+    required this.savingsGoalPeriod,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['buffer_cents'] = Variable<int>(bufferCents);
+    if (!nullToAbsent || selectedYearMonth != null) {
+      map['selected_year_month'] = Variable<int>(selectedYearMonth);
+    }
+    if (!nullToAbsent || offeredYearMonth != null) {
+      map['offered_year_month'] = Variable<int>(offeredYearMonth);
+    }
+    map['show_debug_bar'] = Variable<bool>(showDebugBar);
+    if (!nullToAbsent || savingsGoalCents != null) {
+      map['savings_goal_cents'] = Variable<int>(savingsGoalCents);
+    }
+    {
+      map['savings_goal_period'] = Variable<String>(
+        $SettingsTable.$convertersavingsGoalPeriod.toSql(savingsGoalPeriod),
+      );
+    }
+    return map;
+  }
+
+  SettingsCompanion toCompanion(bool nullToAbsent) {
+    return SettingsCompanion(
+      id: Value(id),
+      bufferCents: Value(bufferCents),
+      selectedYearMonth: selectedYearMonth == null && nullToAbsent
+          ? const Value.absent()
+          : Value(selectedYearMonth),
+      offeredYearMonth: offeredYearMonth == null && nullToAbsent
+          ? const Value.absent()
+          : Value(offeredYearMonth),
+      showDebugBar: Value(showDebugBar),
+      savingsGoalCents: savingsGoalCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(savingsGoalCents),
+      savingsGoalPeriod: Value(savingsGoalPeriod),
+    );
+  }
+
+  factory Setting.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Setting(
+      id: serializer.fromJson<int>(json['id']),
+      bufferCents: serializer.fromJson<int>(json['bufferCents']),
+      selectedYearMonth: serializer.fromJson<int?>(json['selectedYearMonth']),
+      offeredYearMonth: serializer.fromJson<int?>(json['offeredYearMonth']),
+      showDebugBar: serializer.fromJson<bool>(json['showDebugBar']),
+      savingsGoalCents: serializer.fromJson<int?>(json['savingsGoalCents']),
+      savingsGoalPeriod: $SettingsTable.$convertersavingsGoalPeriod.fromJson(
+        serializer.fromJson<String>(json['savingsGoalPeriod']),
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'bufferCents': serializer.toJson<int>(bufferCents),
+      'selectedYearMonth': serializer.toJson<int?>(selectedYearMonth),
+      'offeredYearMonth': serializer.toJson<int?>(offeredYearMonth),
+      'showDebugBar': serializer.toJson<bool>(showDebugBar),
+      'savingsGoalCents': serializer.toJson<int?>(savingsGoalCents),
+      'savingsGoalPeriod': serializer.toJson<String>(
+        $SettingsTable.$convertersavingsGoalPeriod.toJson(savingsGoalPeriod),
+      ),
+    };
+  }
+
+  Setting copyWith({
+    int? id,
+    int? bufferCents,
+    Value<int?> selectedYearMonth = const Value.absent(),
+    Value<int?> offeredYearMonth = const Value.absent(),
+    bool? showDebugBar,
+    Value<int?> savingsGoalCents = const Value.absent(),
+    SavingsPeriod? savingsGoalPeriod,
+  }) => Setting(
+    id: id ?? this.id,
+    bufferCents: bufferCents ?? this.bufferCents,
+    selectedYearMonth: selectedYearMonth.present
+        ? selectedYearMonth.value
+        : this.selectedYearMonth,
+    offeredYearMonth: offeredYearMonth.present
+        ? offeredYearMonth.value
+        : this.offeredYearMonth,
+    showDebugBar: showDebugBar ?? this.showDebugBar,
+    savingsGoalCents: savingsGoalCents.present
+        ? savingsGoalCents.value
+        : this.savingsGoalCents,
+    savingsGoalPeriod: savingsGoalPeriod ?? this.savingsGoalPeriod,
+  );
+  Setting copyWithCompanion(SettingsCompanion data) {
+    return Setting(
+      id: data.id.present ? data.id.value : this.id,
+      bufferCents: data.bufferCents.present
+          ? data.bufferCents.value
+          : this.bufferCents,
+      selectedYearMonth: data.selectedYearMonth.present
+          ? data.selectedYearMonth.value
+          : this.selectedYearMonth,
+      offeredYearMonth: data.offeredYearMonth.present
+          ? data.offeredYearMonth.value
+          : this.offeredYearMonth,
+      showDebugBar: data.showDebugBar.present
+          ? data.showDebugBar.value
+          : this.showDebugBar,
+      savingsGoalCents: data.savingsGoalCents.present
+          ? data.savingsGoalCents.value
+          : this.savingsGoalCents,
+      savingsGoalPeriod: data.savingsGoalPeriod.present
+          ? data.savingsGoalPeriod.value
+          : this.savingsGoalPeriod,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Setting(')
+          ..write('id: $id, ')
+          ..write('bufferCents: $bufferCents, ')
+          ..write('selectedYearMonth: $selectedYearMonth, ')
+          ..write('offeredYearMonth: $offeredYearMonth, ')
+          ..write('showDebugBar: $showDebugBar, ')
+          ..write('savingsGoalCents: $savingsGoalCents, ')
+          ..write('savingsGoalPeriod: $savingsGoalPeriod')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    bufferCents,
+    selectedYearMonth,
+    offeredYearMonth,
+    showDebugBar,
+    savingsGoalCents,
+    savingsGoalPeriod,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Setting &&
+          other.id == this.id &&
+          other.bufferCents == this.bufferCents &&
+          other.selectedYearMonth == this.selectedYearMonth &&
+          other.offeredYearMonth == this.offeredYearMonth &&
+          other.showDebugBar == this.showDebugBar &&
+          other.savingsGoalCents == this.savingsGoalCents &&
+          other.savingsGoalPeriod == this.savingsGoalPeriod);
+}
+
+class SettingsCompanion extends UpdateCompanion<Setting> {
+  final Value<int> id;
+  final Value<int> bufferCents;
+  final Value<int?> selectedYearMonth;
+  final Value<int?> offeredYearMonth;
+  final Value<bool> showDebugBar;
+  final Value<int?> savingsGoalCents;
+  final Value<SavingsPeriod> savingsGoalPeriod;
+  const SettingsCompanion({
+    this.id = const Value.absent(),
+    this.bufferCents = const Value.absent(),
+    this.selectedYearMonth = const Value.absent(),
+    this.offeredYearMonth = const Value.absent(),
+    this.showDebugBar = const Value.absent(),
+    this.savingsGoalCents = const Value.absent(),
+    this.savingsGoalPeriod = const Value.absent(),
+  });
+  SettingsCompanion.insert({
+    this.id = const Value.absent(),
+    this.bufferCents = const Value.absent(),
+    this.selectedYearMonth = const Value.absent(),
+    this.offeredYearMonth = const Value.absent(),
+    this.showDebugBar = const Value.absent(),
+    this.savingsGoalCents = const Value.absent(),
+    this.savingsGoalPeriod = const Value.absent(),
+  });
+  static Insertable<Setting> custom({
+    Expression<int>? id,
+    Expression<int>? bufferCents,
+    Expression<int>? selectedYearMonth,
+    Expression<int>? offeredYearMonth,
+    Expression<bool>? showDebugBar,
+    Expression<int>? savingsGoalCents,
+    Expression<String>? savingsGoalPeriod,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (bufferCents != null) 'buffer_cents': bufferCents,
+      if (selectedYearMonth != null) 'selected_year_month': selectedYearMonth,
+      if (offeredYearMonth != null) 'offered_year_month': offeredYearMonth,
+      if (showDebugBar != null) 'show_debug_bar': showDebugBar,
+      if (savingsGoalCents != null) 'savings_goal_cents': savingsGoalCents,
+      if (savingsGoalPeriod != null) 'savings_goal_period': savingsGoalPeriod,
+    });
+  }
+
+  SettingsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? bufferCents,
+    Value<int?>? selectedYearMonth,
+    Value<int?>? offeredYearMonth,
+    Value<bool>? showDebugBar,
+    Value<int?>? savingsGoalCents,
+    Value<SavingsPeriod>? savingsGoalPeriod,
+  }) {
+    return SettingsCompanion(
+      id: id ?? this.id,
+      bufferCents: bufferCents ?? this.bufferCents,
+      selectedYearMonth: selectedYearMonth ?? this.selectedYearMonth,
+      offeredYearMonth: offeredYearMonth ?? this.offeredYearMonth,
+      showDebugBar: showDebugBar ?? this.showDebugBar,
+      savingsGoalCents: savingsGoalCents ?? this.savingsGoalCents,
+      savingsGoalPeriod: savingsGoalPeriod ?? this.savingsGoalPeriod,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (bufferCents.present) {
+      map['buffer_cents'] = Variable<int>(bufferCents.value);
+    }
+    if (selectedYearMonth.present) {
+      map['selected_year_month'] = Variable<int>(selectedYearMonth.value);
+    }
+    if (offeredYearMonth.present) {
+      map['offered_year_month'] = Variable<int>(offeredYearMonth.value);
+    }
+    if (showDebugBar.present) {
+      map['show_debug_bar'] = Variable<bool>(showDebugBar.value);
+    }
+    if (savingsGoalCents.present) {
+      map['savings_goal_cents'] = Variable<int>(savingsGoalCents.value);
+    }
+    if (savingsGoalPeriod.present) {
+      map['savings_goal_period'] = Variable<String>(
+        $SettingsTable.$convertersavingsGoalPeriod.toSql(
+          savingsGoalPeriod.value,
+        ),
+      );
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SettingsCompanion(')
+          ..write('id: $id, ')
+          ..write('bufferCents: $bufferCents, ')
+          ..write('selectedYearMonth: $selectedYearMonth, ')
+          ..write('offeredYearMonth: $offeredYearMonth, ')
+          ..write('showDebugBar: $showDebugBar, ')
+          ..write('savingsGoalCents: $savingsGoalCents, ')
+          ..write('savingsGoalPeriod: $savingsGoalPeriod')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1722,6 +2351,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $IncomesTable incomes = $IncomesTable(this);
   late final $BudgetsTable budgets = $BudgetsTable(this);
   late final $ExpensesTable expenses = $ExpensesTable(this);
+  late final $SettingsTable settings = $SettingsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1731,6 +2361,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     incomes,
     budgets,
     expenses,
+    settings,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -1765,6 +2396,7 @@ typedef $$MonthsTableCreateCompanionBuilder = MonthsCompanion Function({
   Value<int> incomeCents,
   Value<DateTime?> lockedAt,
   Value<int> carryOverCents,
+  Value<int> carryOverAdjustmentCents,
   Value<String?> notes,
 });
 typedef $$MonthsTableUpdateCompanionBuilder = MonthsCompanion Function({
@@ -1774,6 +2406,7 @@ typedef $$MonthsTableUpdateCompanionBuilder = MonthsCompanion Function({
   Value<int> incomeCents,
   Value<DateTime?> lockedAt,
   Value<int> carryOverCents,
+  Value<int> carryOverAdjustmentCents,
   Value<String?> notes,
 });
 
@@ -1856,6 +2489,11 @@ class $$MonthsTableFilterComposer
 
   ColumnFilters<int> get carryOverCents => $composableBuilder(
     column: $table.carryOverCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get carryOverAdjustmentCents => $composableBuilder(
+    column: $table.carryOverAdjustmentCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1954,6 +2592,11 @@ class $$MonthsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get carryOverAdjustmentCents => $composableBuilder(
+    column: $table.carryOverAdjustmentCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get notes => $composableBuilder(
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
@@ -1988,6 +2631,11 @@ class $$MonthsTableAnnotationComposer
 
   GeneratedColumn<int> get carryOverCents => $composableBuilder(
     column: $table.carryOverCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get carryOverAdjustmentCents => $composableBuilder(
+    column: $table.carryOverAdjustmentCents,
     builder: (column) => column,
   );
 
@@ -2079,6 +2727,7 @@ class $$MonthsTableTableManager
                 Value<int> incomeCents = const Value.absent(),
                 Value<DateTime?> lockedAt = const Value.absent(),
                 Value<int> carryOverCents = const Value.absent(),
+                Value<int> carryOverAdjustmentCents = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
               }) => MonthsCompanion(
                 id: id,
@@ -2087,6 +2736,7 @@ class $$MonthsTableTableManager
                 incomeCents: incomeCents,
                 lockedAt: lockedAt,
                 carryOverCents: carryOverCents,
+                carryOverAdjustmentCents: carryOverAdjustmentCents,
                 notes: notes,
               ),
           createCompanionCallback:
@@ -2097,6 +2747,7 @@ class $$MonthsTableTableManager
                 Value<int> incomeCents = const Value.absent(),
                 Value<DateTime?> lockedAt = const Value.absent(),
                 Value<int> carryOverCents = const Value.absent(),
+                Value<int> carryOverAdjustmentCents = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
               }) => MonthsCompanion.insert(
                 id: id,
@@ -2105,6 +2756,7 @@ class $$MonthsTableTableManager
                 incomeCents: incomeCents,
                 lockedAt: lockedAt,
                 carryOverCents: carryOverCents,
+                carryOverAdjustmentCents: carryOverAdjustmentCents,
                 notes: notes,
               ),
           withReferenceMapper: (p0) => p0
@@ -2468,6 +3120,7 @@ typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   Value<bool> isFixed,
   Value<bool> isSinkingFund,
   Value<int> savedCents,
+  Value<bool> isSavings,
 });
 typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<int> id,
@@ -2477,6 +3130,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<bool> isFixed,
   Value<bool> isSinkingFund,
   Value<int> savedCents,
+  Value<bool> isSavings,
 });
 
 final class $$BudgetsTableReferences
@@ -2556,6 +3210,11 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<int> get savedCents => $composableBuilder(
     column: $table.savedCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSavings => $composableBuilder(
+    column: $table.isSavings,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2647,6 +3306,11 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isSavings => $composableBuilder(
+    column: $table.isSavings,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$MonthsTableOrderingComposer get monthId {
     final $$MonthsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2703,6 +3367,9 @@ class $$BudgetsTableAnnotationComposer
     column: $table.savedCents,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get isSavings =>
+      $composableBuilder(column: $table.isSavings, builder: (column) => column);
 
   $$MonthsTableAnnotationComposer get monthId {
     final $$MonthsTableAnnotationComposer composer = $composerBuilder(
@@ -2788,6 +3455,7 @@ class $$BudgetsTableTableManager
                 Value<bool> isFixed = const Value.absent(),
                 Value<bool> isSinkingFund = const Value.absent(),
                 Value<int> savedCents = const Value.absent(),
+                Value<bool> isSavings = const Value.absent(),
               }) => BudgetsCompanion(
                 id: id,
                 monthId: monthId,
@@ -2796,6 +3464,7 @@ class $$BudgetsTableTableManager
                 isFixed: isFixed,
                 isSinkingFund: isSinkingFund,
                 savedCents: savedCents,
+                isSavings: isSavings,
               ),
           createCompanionCallback:
               ({
@@ -2806,6 +3475,7 @@ class $$BudgetsTableTableManager
                 Value<bool> isFixed = const Value.absent(),
                 Value<bool> isSinkingFund = const Value.absent(),
                 Value<int> savedCents = const Value.absent(),
+                Value<bool> isSavings = const Value.absent(),
               }) => BudgetsCompanion.insert(
                 id: id,
                 monthId: monthId,
@@ -2814,6 +3484,7 @@ class $$BudgetsTableTableManager
                 isFixed: isFixed,
                 isSinkingFund: isSinkingFund,
                 savedCents: savedCents,
+                isSavings: isSavings,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3240,6 +3911,253 @@ typedef $$ExpensesTableProcessedTableManager =
       Expense,
       PrefetchHooks Function({bool budgetId})
     >;
+typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
+  Value<int> id,
+  Value<int> bufferCents,
+  Value<int?> selectedYearMonth,
+  Value<int?> offeredYearMonth,
+  Value<bool> showDebugBar,
+  Value<int?> savingsGoalCents,
+  Value<SavingsPeriod> savingsGoalPeriod,
+});
+typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
+  Value<int> id,
+  Value<int> bufferCents,
+  Value<int?> selectedYearMonth,
+  Value<int?> offeredYearMonth,
+  Value<bool> showDebugBar,
+  Value<int?> savingsGoalCents,
+  Value<SavingsPeriod> savingsGoalPeriod,
+});
+
+class $$SettingsTableFilterComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bufferCents => $composableBuilder(
+    column: $table.bufferCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get selectedYearMonth => $composableBuilder(
+    column: $table.selectedYearMonth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get offeredYearMonth => $composableBuilder(
+    column: $table.offeredYearMonth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showDebugBar => $composableBuilder(
+    column: $table.showDebugBar,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get savingsGoalCents => $composableBuilder(
+    column: $table.savingsGoalCents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<SavingsPeriod, SavingsPeriod, String>
+  get savingsGoalPeriod => $composableBuilder(
+    column: $table.savingsGoalPeriod,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+}
+
+class $$SettingsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bufferCents => $composableBuilder(
+    column: $table.bufferCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get selectedYearMonth => $composableBuilder(
+    column: $table.selectedYearMonth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get offeredYearMonth => $composableBuilder(
+    column: $table.offeredYearMonth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showDebugBar => $composableBuilder(
+    column: $table.showDebugBar,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get savingsGoalCents => $composableBuilder(
+    column: $table.savingsGoalCents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get savingsGoalPeriod => $composableBuilder(
+    column: $table.savingsGoalPeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SettingsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SettingsTable> {
+  $$SettingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get bufferCents => $composableBuilder(
+    column: $table.bufferCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get selectedYearMonth => $composableBuilder(
+    column: $table.selectedYearMonth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get offeredYearMonth => $composableBuilder(
+    column: $table.offeredYearMonth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showDebugBar => $composableBuilder(
+    column: $table.showDebugBar,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get savingsGoalCents => $composableBuilder(
+    column: $table.savingsGoalCents,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<SavingsPeriod, String>
+  get savingsGoalPeriod => $composableBuilder(
+    column: $table.savingsGoalPeriod,
+    builder: (column) => column,
+  );
+}
+
+class $$SettingsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SettingsTable,
+          Setting,
+          $$SettingsTableFilterComposer,
+          $$SettingsTableOrderingComposer,
+          $$SettingsTableAnnotationComposer,
+          $$SettingsTableCreateCompanionBuilder,
+          $$SettingsTableUpdateCompanionBuilder,
+          (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
+          Setting,
+          PrefetchHooks Function()
+        > {
+  $$SettingsTableTableManager(_$AppDatabase db, $SettingsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SettingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SettingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SettingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> bufferCents = const Value.absent(),
+                Value<int?> selectedYearMonth = const Value.absent(),
+                Value<int?> offeredYearMonth = const Value.absent(),
+                Value<bool> showDebugBar = const Value.absent(),
+                Value<int?> savingsGoalCents = const Value.absent(),
+                Value<SavingsPeriod> savingsGoalPeriod = const Value.absent(),
+              }) => SettingsCompanion(
+                id: id,
+                bufferCents: bufferCents,
+                selectedYearMonth: selectedYearMonth,
+                offeredYearMonth: offeredYearMonth,
+                showDebugBar: showDebugBar,
+                savingsGoalCents: savingsGoalCents,
+                savingsGoalPeriod: savingsGoalPeriod,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> bufferCents = const Value.absent(),
+                Value<int?> selectedYearMonth = const Value.absent(),
+                Value<int?> offeredYearMonth = const Value.absent(),
+                Value<bool> showDebugBar = const Value.absent(),
+                Value<int?> savingsGoalCents = const Value.absent(),
+                Value<SavingsPeriod> savingsGoalPeriod = const Value.absent(),
+              }) => SettingsCompanion.insert(
+                id: id,
+                bufferCents: bufferCents,
+                selectedYearMonth: selectedYearMonth,
+                offeredYearMonth: offeredYearMonth,
+                showDebugBar: showDebugBar,
+                savingsGoalCents: savingsGoalCents,
+                savingsGoalPeriod: savingsGoalPeriod,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SettingsTable, Setting>(table),
+                  BaseReferences<_$AppDatabase, $SettingsTable, Setting>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SettingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SettingsTable,
+      Setting,
+      $$SettingsTableFilterComposer,
+      $$SettingsTableOrderingComposer,
+      $$SettingsTableAnnotationComposer,
+      $$SettingsTableCreateCompanionBuilder,
+      $$SettingsTableUpdateCompanionBuilder,
+      (Setting, BaseReferences<_$AppDatabase, $SettingsTable, Setting>),
+      Setting,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3252,4 +4170,6 @@ class $AppDatabaseManager {
       $$BudgetsTableTableManager(_db, _db.budgets);
   $$ExpensesTableTableManager get expenses =>
       $$ExpensesTableTableManager(_db, _db.expenses);
+  $$SettingsTableTableManager get settings =>
+      $$SettingsTableTableManager(_db, _db.settings);
 }

@@ -5,6 +5,8 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../history/history_screen.dart';
+import '../money.dart';
+import '../settings/buffer_dialog.dart';
 import '../welcome/welcome_providers.dart';
 import '../widgets/budget_sankey.dart';
 import 'spending_providers.dart';
@@ -111,6 +113,11 @@ class _SpendingOverview extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 24),
+            _BankBalanceCard(
+              month: month,
+              budgets: budgets,
+              expenses: expenses,
+            ),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -150,6 +157,73 @@ class _SpendingOverview extends ConsumerWidget {
                     ref.read(appDatabaseProvider).deleteExpense(expense.id),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What should be in the bank account right now, buffer included. Tapping it
+/// changes the buffer.
+class _BankBalanceCard extends ConsumerWidget {
+  const _BankBalanceCard({
+    required this.month,
+    required this.budgets,
+    required this.expenses,
+  });
+
+  final Month month;
+  final List<Budget> budgets;
+  final List<Expense> expenses;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final textTheme = Theme.of(context).textTheme;
+    // Showing a balance without the right buffer would be misleading.
+    final bufferCents = ref.watch(bufferCentsProvider).value;
+    if (bufferCents == null) return const SizedBox.shrink();
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => editBuffer(context, ref, bufferCents),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Should be in your bank account',
+                      style: textTheme.labelLarge,
+                    ),
+                    Text(
+                      formatCents(
+                        expectedBankBalanceCents(
+                          month,
+                          budgets,
+                          expenses,
+                          bufferCents: bufferCents,
+                        ),
+                      ),
+                      style: textTheme.headlineSmall,
+                    ),
+                    Text(
+                      'Including your ${formatCents(bufferCents)} buffer',
+                      style: textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Change buffer',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () => editBuffer(context, ref, bufferCents),
+              ),
+            ],
+          ),
         ),
       ),
     );

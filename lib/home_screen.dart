@@ -2,11 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/database_provider.dart';
+import 'dates.dart';
 import 'debug/month_travel_bar.dart';
+import 'savings/savings_goal_sheet.dart';
 import 'spending/add_expense_screen.dart';
+import 'settings/settings_providers.dart';
+import 'settings/settings_screen.dart';
 import 'spending/spending_screen.dart';
 import 'welcome/welcome_providers.dart';
 import 'welcome/welcome_screen.dart';
+import 'widgets/confirm_dialog.dart';
+import 'widgets/month_switcher.dart';
 
 enum _Tab { plan, track }
 
@@ -14,7 +21,8 @@ enum _Tab { plan, track }
 /// to quickly add an expense.
 ///
 /// The plan is edited until it's locked in; tracking pauses while it's
-/// unlocked for editing again.
+/// unlocked for editing again. Once a new month starts, the user is asked
+/// whether to move on to it.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -24,6 +32,59 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   var _tab = _Tab.plan;
+  late final AppLifecycleListener _lifecycle;
+
+  /// The month the user is or was last asked to move on to, so they're
+  /// asked only once.
+  YearMonth? _offeredMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    // A new day, and maybe a new month, may have started in the background.
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.invalidate(todayProvider),
+    );
+    ref.listenManual(
+      monthToOfferProvider,
+      (_, month) {
+        // Not while reloading, which still has the month from before.
+        if (month case AsyncData(value: final month?)) _offerMonth(month);
+      },
+      fireImmediately: true,
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _offerMonth(YearMonth month) async {
+    if (month == _offeredMonth) return;
+    _offeredMonth = month;
+    // Dialogs can't be shown while building.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final monthName = formatMonth(month.year, month.month);
+    final start = await showConfirmDialog(
+      context,
+      title: '$monthName has started',
+      message: 'Do you want to start planning $monthName? You can switch '
+          'months at the top any time.',
+      confirmLabel: 'Start planning',
+      cancelLabel: 'Not yet',
+    );
+    if (!mounted) return;
+    final db = ref.read(appDatabaseProvider);
+    if (start) {
+      setState(() => _tab = _Tab.plan);
+      await db.selectMonth(month, calendar: month);
+    } else {
+      await db.declineMonth(month);
+    }
+  }
 
   void _addExpense(bool isLocked) {
     // A snack bar from the last expense would cover the button to add one.
@@ -61,23 +122,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       index: _tab.index,
       children: const [WelcomeScreen(), SpendingScreen()],
     );
-    if (kDebugMode) {
+    final showDebugBar = ref.watch(
+      settingsProvider.select((settings) => settings.value?.showDebugBar),
+    );
+    if (kDebugMode && (showDebugBar ?? false)) {
       body = Column(
         children: [
           const MonthTravelBar(),
-          Expanded(
-            // The bar already keeps clear of the status bar.
-            child: MediaQuery.removePadding(
-              context: context,
-              removeTop: true,
-              child: body,
-            ),
-          ),
+          Expanded(child: body),
         ],
       );
     }
 
     return Scaffold(
+      appBar: AppBar(
+        title: const MonthSwitcher(),
+        actions: const [SavingsPlantButton(), SettingsButton()],
+      ),
       body: body,
       bottomNavigationBar: NavigationBar(
         selectedIndex: switch (_tab) {
