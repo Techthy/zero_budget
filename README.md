@@ -197,7 +197,6 @@ nothing.
    ```sh
    base64 -w0 ~/zero-budget-release.jks | gh secret set ANDROID_KEYSTORE
    gh secret set ANDROID_KEYSTORE_PASSWORD   # asks for the password
-   gh secret set ANDROID_KEY_PASSWORD        # the same password
    gh secret set ANDROID_KEY_ALIAS --body zero-budget
    ```
 

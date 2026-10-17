@@ -68,7 +68,6 @@ jobs:
           ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$ANDROID_KEYSTORE" ]; then
             echo "::warning::No release key is set up, so this APK is signed with a debug key and won't be published."
@@ -78,7 +77,6 @@ jobs:
           echo "$ANDROID_KEYSTORE" | base64 --decode > android/app/release.jks
           # A line break pasted along with a secret isn't part of it.
           export ANDROID_KEYSTORE_PASSWORD="${ANDROID_KEYSTORE_PASSWORD%[$'\r\n']}"
-          export ANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD%[$'\r\n']}"
           ANDROID_KEY_ALIAS="${ANDROID_KEY_ALIAS%[$'\r\n']}"
 
           # Checked here for a clearer error than Gradle's, minutes later.
@@ -107,13 +105,14 @@ jobs:
             exit 1
           fi
 
-          # Backslashes start escapes in .properties files.
+          # Keys made by keytool have a single password for the key file and
+          # the key in it. Backslashes start escapes in .properties files.
           escape() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
           {
             echo "storeFile=release.jks"
             echo "storePassword=$(escape "$ANDROID_KEYSTORE_PASSWORD")"
             echo "keyAlias=$(escape "$ANDROID_KEY_ALIAS")"
-            echo "keyPassword=$(escape "$ANDROID_KEY_PASSWORD")"
+            echo "keyPassword=$(escape "$ANDROID_KEYSTORE_PASSWORD")"
           } > android/key.properties
           echo "signed=true" >> "$GITHUB_OUTPUT"
 
