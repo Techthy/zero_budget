@@ -82,9 +82,22 @@ jobs:
           ANDROID_KEY_ALIAS="${ANDROID_KEY_ALIAS%[$'\r\n']}"
 
           # Checked here for a clearer error than Gradle's, minutes later.
-          if ! keytool -list -keystore android/app/release.jks \
-              -storepass:env ANDROID_KEYSTORE_PASSWORD > /dev/null; then
+          if ! output=$(keytool -list -keystore android/app/release.jks \
+              -storepass:env ANDROID_KEYSTORE_PASSWORD 2>&1); then
             echo "::error::ANDROID_KEYSTORE_PASSWORD doesn't open the key in ANDROID_KEYSTORE."
+            echo "keytool says: $output"
+            # Hints that give nothing away, as the logs can be public.
+            echo "SHA-256 of the key file: $(sha256sum android/app/release.jks | cut -d' ' -f1)"
+            echo "Compare it with: sha256sum ~/zero-budget-release.jks"
+            if [ -z "$ANDROID_KEYSTORE_PASSWORD" ]; then
+              echo "ANDROID_KEYSTORE_PASSWORD is empty: check the secret's name, and that it's a repository secret."
+            fi
+            if [[ "$ANDROID_KEYSTORE_PASSWORD" =~ ^[[:space:]]|[[:space:]]$ ]]; then
+              echo "ANDROID_KEYSTORE_PASSWORD starts or ends with a space."
+            fi
+            if printf '%s' "$ANDROID_KEYSTORE_PASSWORD" | LC_ALL=C grep -q '[^ -~]'; then
+              echo "ANDROID_KEYSTORE_PASSWORD has characters other than plain ASCII, which key passwords can't have."
+            fi
             exit 1
           fi
           if ! keytool -list -keystore android/app/release.jks \

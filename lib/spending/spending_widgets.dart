@@ -119,7 +119,7 @@ class SpentVsPlanned extends StatelessWidget {
               child: Row(
                 children: [
                   Text(
-                    '${formatCents(spentCents)}',
+                    formatCents(spentCents),
                     textAlign: TextAlign.end,
                     style: textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.error,
