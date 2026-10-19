@@ -147,6 +147,67 @@ void main() {
     );
     expect(chip.selected, isTrue);
 
+    // The amount comes first, ready to type.
+    double topOf(Finder finder) => tester.getTopLeft(finder).dy;
+    final amount = find.widgetWithText(TextFormField, 'Amount');
+    expect(
+      topOf(amount),
+      lessThan(topOf(find.widgetWithText(TextFormField, 'Expense title'))),
+    );
+    expect(
+      tester
+          .widget<EditableText>(
+            find.descendant(of: amount, matching: find.byType(EditableText)),
+          )
+          .autofocus,
+      isTrue,
+    );
+
+    List<String> chipOrder() {
+      final labels = [
+        for (final element in find.byType(ChoiceChip).evaluate())
+          (
+            tester.getTopLeft(find.byWidget(element.widget)),
+            ((element.widget as ChoiceChip).label as Text).textSpan!
+                .toPlainText()
+                .split('  ')
+                .first,
+          ),
+      ];
+      labels.sort(
+        (a, b) => a.$1.dy != b.$1.dy
+            ? a.$1.dy.compareTo(b.$1.dy)
+            : a.$1.dx.compareTo(b.$1.dx),
+      );
+      return [for (final (_, label) in labels) label];
+    }
+
+    // Listed by category, fixed ones left out: groceries are essential, the
+    // long one is savings.
+    const long = 'A budget with a really very long name that goes on';
+    expect(chipOrder(), ['Groceries', long, 'Holiday']);
+
+    // The order can be changed here, but budgets aren't moved here.
+    await tester.tap(find.byTooltip('Sort budgets'));
+    await tester.pumpAndSettle();
+    expect(find.text('Custom'), findsOneWidget);
+    expect(find.text('Long press a budget to move it'), findsNothing);
+    await tester.tap(find.text('A to Z'));
+    await tester.pumpAndSettle();
+    expect(chipOrder(), [long, 'Groceries', 'Holiday']);
+    // Still picked after sorting again.
+    expect(
+      tester
+          .widget<ChoiceChip>(
+            find.ancestor(
+              of: find.textContaining('Groceries'),
+              matching: find.byType(ChoiceChip),
+            ),
+          )
+          .selected,
+      isTrue,
+    );
+
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Expense title'),
       'Bread',

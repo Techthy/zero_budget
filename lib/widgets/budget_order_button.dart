@@ -7,7 +7,11 @@ import '../settings/settings_providers.dart';
 
 /// Picks how budgets are listed, on the plan and while tracking alike.
 class BudgetOrderButton extends ConsumerWidget {
-  const BudgetOrderButton({super.key});
+  const BudgetOrderButton({super.key, this.showMoveHint = true});
+
+  /// Whether to say that budgets can be moved by long pressing them, on
+  /// screens where they can.
+  final bool showMoveHint;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,11 +40,13 @@ class BudgetOrderButton extends ConsumerWidget {
           checked: order == BudgetOrder.custom,
           child: const Text('Custom'),
         ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          enabled: false,
-          child: Text('Long press a budget to move it'),
-        ),
+        if (showMoveHint) ...[
+          const PopupMenuDivider(),
+          const PopupMenuItem(
+            enabled: false,
+            child: Text('Long press a budget to move it'),
+          ),
+        ],
       ],
     );
   }

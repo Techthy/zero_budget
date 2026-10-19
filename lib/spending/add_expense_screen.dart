@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../budget_order.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../money.dart';
+import '../settings/settings_providers.dart';
 import '../welcome/welcome_providers.dart';
 import '../widgets/amount_field.dart';
+import '../widgets/budget_order_button.dart';
 import '../widgets/leaf_background.dart';
 import 'spending_providers.dart';
 
@@ -48,6 +51,12 @@ class AddExpenseScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final budgets = ref.watch(currentBudgetsProvider);
     final expenses = ref.watch(currentExpensesProvider);
+    // Listed like everywhere else, to find the budget quickly.
+    final order =
+        ref.watch(
+          settingsProvider.select((settings) => settings.value?.budgetOrder),
+        ) ??
+        BudgetOrder.category;
 
     return Scaffold(
       appBar: AppBar(
@@ -58,7 +67,7 @@ class AddExpenseScreen extends ConsumerWidget {
           (AsyncData(value: final budgets), AsyncData(value: final expenses)) =>
             _ExpenseForm(
               // Fixed budgets are spent in full when the plan is locked in.
-              budgets: budgets.where((b) => !b.isFixed).toList(),
+              budgets: sortBudgets(budgets.where((b) => !b.isFixed), order),
               // What's left in each budget, as if the expense being changed
               // wasn't there.
               spent: spentByBudget(
@@ -218,28 +227,40 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
                 child: ListView(
                   padding: const EdgeInsets.all(24),
                   children: [
+                    // The amount first: it's what's on the receipt.
+                    AmountField(
+                      controller: _amount,
+                      style: textTheme.headlineMedium,
+                      autofocus: true,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 8),
                     TextFormField(
                       controller: _title,
-                      autofocus: true,
                       decoration: const InputDecoration(
                         labelText: 'Expense title',
                         hintText: 'e.g. Weekly groceries',
                       ),
                       textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.next,
                       maxLength: 100,
                       validator: (value) => (value ?? '').trim().isEmpty
                           ? 'Say what this was for'
                           : null,
-                    ),
-                    AmountField(
-                      controller: _amount,
-                      style: textTheme.headlineMedium,
-                      onSubmitted: (_) => _submit(),
+                      onFieldSubmitted: (_) => _submit(),
                     ),
                     const SizedBox(height: 24),
-                    Text('Spent from', style: textTheme.titleMedium),
-                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Spent from',
+                            style: textTheme.titleMedium,
+                          ),
+                        ),
+                        // Budgets are moved on the plan or while tracking.
+                        const BudgetOrderButton(showMoveHint: false),
+                      ],
+                    ),
                     _BudgetPicker(
                       budgets: widget.budgets,
                       spent: widget.spent,
