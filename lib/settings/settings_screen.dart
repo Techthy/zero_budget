@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database.dart';
@@ -127,9 +128,62 @@ class _SettingsList extends ConsumerWidget {
                 },
               ),
             ],
+            const _SectionHeader('About'),
+            const _About(),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// What the app is, who wrote it, and where to report issues.
+class _About extends StatelessWidget {
+  const _About();
+
+  static const issuesUrl = 'https://github.com/Techthy/zero_budget/issues';
+  static const email = 'zero-budget@chammann.dev';
+
+  /// The app can't open links, so a tap copies them instead.
+  void _copy(BuildContext context, String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('Copied $text')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(
+            'Zero Budget helps you plan every euro of your month before you '
+            "spend it, instead of tracking where your money went after it's "
+            'gone.\n\n'
+            'Written by C. Hammann. The app is highly vibe coded, so expect a '
+            'rough edge here and there, and please report anything that '
+            "doesn't work as it should.",
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.bug_report_outlined),
+          title: const Text('Report an issue on GitHub'),
+          subtitle: const Text(issuesUrl),
+          trailing: const Icon(Icons.copy_outlined),
+          onTap: () => _copy(context, issuesUrl),
+        ),
+        ListTile(
+          leading: const Icon(Icons.mail_outline),
+          title: const Text('Or send an email'),
+          subtitle: const Text(email),
+          trailing: const Icon(Icons.copy_outlined),
+          onTap: () => _copy(context, email),
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
