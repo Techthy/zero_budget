@@ -765,6 +765,56 @@ void main() {
     ));
   });
 
+  test('hasMonthBefore is true once an earlier month exists', () async {
+    final september = await db.getOrCreateMonth(2026, 9);
+    expect(await db.hasMonthBefore(september.id), isFalse);
+
+    final october = await db.getOrCreateMonth(2026, 10);
+    expect(await db.hasMonthBefore(october.id), isTrue);
+    expect(await db.hasMonthBefore(september.id), isFalse);
+  });
+
+  test('setBudgetByName adds, updates and removes a budget by name',
+      () async {
+    final month = await db.getOrCreateMonth(2026, 9);
+    Future<List<(String, int, bool)>> budgets() async => [
+          for (final b in await db.watchBudgets(month.id).first)
+            (b.name, b.amountCents, b.isFixed),
+        ];
+
+    await db.setBudgetByName(month.id, 'Giving', 0);
+    expect(await budgets(), isEmpty);
+
+    await db.setBudgetByName(month.id, 'Giving', 5000, isFixed: true);
+    await db.setBudgetByName(month.id, 'Rent', 90000, isFixed: true);
+    expect(await budgets(), [('Giving', 5000, true), ('Rent', 90000, true)]);
+
+    // Matched ignoring case, keeping its name and kind.
+    await db.updateBudget(
+      (await db.watchBudgets(month.id).first).first.id,
+      name: 'giving',
+      amountCents: 5000,
+      isFixed: false,
+    );
+    await db.setBudgetByName(month.id, 'Giving', 7000, isFixed: true);
+    expect(await budgets(), [('giving', 7000, false), ('Rent', 90000, true)]);
+
+    await db.setBudgetByName(month.id, 'Giving', 0);
+    expect(await budgets(), [('Rent', 90000, true)]);
+  });
+
+  test('setBudgetByName keeps a budget with tracked expenses at 0', () async {
+    final month = await db.getOrCreateMonth(2026, 9);
+    final groceries = await db.addBudget(month.id, 'Groceries', 40000);
+    await db.addExpense(groceries, 2500, title: 'Market');
+
+    await db.setBudgetByName(month.id, 'Groceries', 0);
+
+    final budgets = await db.watchBudgets(month.id).first;
+    expect(budgets.map((b) => (b.name, b.amountCents)), [('Groceries', 0)]);
+    expect(await db.watchExpenses(month.id).first, hasLength(1));
+  });
+
   group('monthsToChooseFrom', () {
     test('offers the next month three days before it starts', () {
       const october = (year: 2026, month: 10);

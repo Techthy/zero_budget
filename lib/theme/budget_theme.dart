@@ -21,6 +21,7 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
     required this.surface,
     required this.surfaceRaised,
     required this.surfaceSunken,
+    required this.progressTrack,
     required this.border,
     required this.ink,
     required this.inkMuted,
@@ -48,6 +49,9 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
 
   /// Inputs, wells, the amount field behind a number being edited.
   final Color surfaceSunken;
+
+  /// Neutral gray behind a progress bar's fill.
+  final Color progressTrack;
 
   /// Hairlines between rows and around cards.
   final Color border;
@@ -104,6 +108,7 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
     surface: Color(0xFFF8F7F2),
     surfaceRaised: Color(0xFFFFFFFF),
     surfaceSunken: Color(0xFFEFEDE4),
+    progressTrack: Color(0xFFE3E3E3),
     border: Color(0xFFDEDBD0),
     ink: Color(0xFF1E2B24),
     inkMuted: Color(0xFF5B6A61),
@@ -127,6 +132,7 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
     surface: Color(0xFF14201A),
     surfaceRaised: Color(0xFF1C2B23),
     surfaceSunken: Color(0xFF0F1813),
+    progressTrack: Color(0xFF3D4140),
     border: Color(0xFF2C3D33),
     ink: Color(0xFFEEF1EA),
     inkMuted: Color(0xFFA3B3A9),
@@ -151,6 +157,7 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
     Color? surface,
     Color? surfaceRaised,
     Color? surfaceSunken,
+    Color? progressTrack,
     Color? border,
     Color? ink,
     Color? inkMuted,
@@ -173,6 +180,7 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
       surface: surface ?? this.surface,
       surfaceRaised: surfaceRaised ?? this.surfaceRaised,
       surfaceSunken: surfaceSunken ?? this.surfaceSunken,
+      progressTrack: progressTrack ?? this.progressTrack,
       border: border ?? this.border,
       ink: ink ?? this.ink,
       inkMuted: inkMuted ?? this.inkMuted,
@@ -200,6 +208,7 @@ class BudgetColors extends ThemeExtension<BudgetColors> {
       surface: Color.lerp(surface, other.surface, t)!,
       surfaceRaised: Color.lerp(surfaceRaised, other.surfaceRaised, t)!,
       surfaceSunken: Color.lerp(surfaceSunken, other.surfaceSunken, t)!,
+      progressTrack: Color.lerp(progressTrack, other.progressTrack, t)!,
       border: Color.lerp(border, other.border, t)!,
       ink: Color.lerp(ink, other.ink, t)!,
       inkMuted: Color.lerp(inkMuted, other.inkMuted, t)!,
@@ -433,6 +442,9 @@ class BudgetRadius {
 
   /// Sheets, the Ready to Assign banner.
   static const BorderRadius lg = BorderRadius.all(Radius.circular(20.0));
+
+  /// Fully rounded ends: progress bars.
+  static const BorderRadius pill = BorderRadius.all(Radius.circular(999.0));
 }
 
 /// Text styles. Colours come from the theme; apply with `.copyWith(color: ...)` if needed.
@@ -531,6 +543,12 @@ ThemeData budgetTheme(Brightness brightness) {
         shape: const RoundedRectangleBorder(borderRadius: BudgetRadius.md),
         textStyle: BudgetText.heading,
       ),
+    ),
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: c.sproutStrong,
+      linearTrackColor: c.progressTrack,
+      linearMinHeight: 8,
+      borderRadius: BudgetRadius.pill,
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: c.forest,

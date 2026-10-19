@@ -9,6 +9,7 @@ import '../money.dart';
 import '../settings/buffer_dialog.dart';
 import '../welcome/welcome_providers.dart';
 import '../widgets/budget_sankey.dart';
+import '../widgets/leaf_background.dart';
 import 'spending_providers.dart';
 import 'spending_widgets.dart';
 
@@ -24,31 +25,33 @@ class SpendingScreen extends ConsumerWidget {
     final expenses = ref.watch(currentExpensesProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: switch ((month, incomes, budgets, expenses)) {
-          (
-            AsyncData(value: final month),
-            AsyncData(value: final incomes),
-            AsyncData(value: final budgets),
-            AsyncData(value: final expenses),
-          ) =>
-            _SpendingOverview(
-              month: month,
-              incomes: incomes,
-              budgets: budgets,
-              expenses: expenses,
-            ),
-          (AsyncError(:final error), _, _, _) ||
-          (_, AsyncError(:final error), _, _) ||
-          (_, _, AsyncError(:final error), _) ||
-          (
-            _,
-            _,
-            _,
-            AsyncError(:final error),
-          ) => Center(child: Text('Something went wrong: $error')),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
+      body: LeafBackground(
+        child: SafeArea(
+          child: switch ((month, incomes, budgets, expenses)) {
+            (
+              AsyncData(value: final month),
+              AsyncData(value: final incomes),
+              AsyncData(value: final budgets),
+              AsyncData(value: final expenses),
+            ) =>
+              _SpendingOverview(
+                month: month,
+                incomes: incomes,
+                budgets: budgets,
+                expenses: expenses,
+              ),
+            (AsyncError(:final error), _, _, _) ||
+            (_, AsyncError(:final error), _, _) ||
+            (_, _, AsyncError(:final error), _) ||
+            (
+              _,
+              _,
+              _,
+              AsyncError(:final error),
+            ) => Center(child: Text('Something went wrong: $error')),
+            _ => const Center(child: CircularProgressIndicator()),
+          },
+        ),
       ),
     );
   }

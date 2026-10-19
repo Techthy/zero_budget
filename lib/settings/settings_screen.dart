@@ -6,6 +6,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../money.dart';
 import '../welcome/welcome_providers.dart';
+import '../widgets/leaf_background.dart';
 import 'buffer_dialog.dart';
 import 'settings_providers.dart';
 
@@ -34,12 +35,14 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: switch (settings) {
-        AsyncData(value: final settings) => _SettingsList(settings: settings),
-        AsyncError(:final error) =>
-          Center(child: Text('Something went wrong: $error')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: LeafBackground(
+        child: switch (settings) {
+          AsyncData(value: final settings) => _SettingsList(settings: settings),
+          AsyncError(:final error) =>
+            Center(child: Text('Something went wrong: $error')),
+          _ => const Center(child: CircularProgressIndicator()),
+        },
+      ),
     );
   }
 }

@@ -151,8 +151,6 @@ class SpentVsPlanned extends StatelessWidget {
               ? (spentCents > 0 ? 1 : 0)
               : (spentCents / plannedCents).clamp(0.0, 1.0),
           color: overspent ? colors.error : null,
-          minHeight: 8,
-          borderRadius: BorderRadius.circular(4),
         ),
       ],
     );

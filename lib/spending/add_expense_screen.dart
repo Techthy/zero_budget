@@ -6,6 +6,7 @@ import '../data/database_provider.dart';
 import '../money.dart';
 import '../welcome/welcome_providers.dart';
 import '../widgets/amount_field.dart';
+import '../widgets/leaf_background.dart';
 import 'spending_providers.dart';
 
 /// Notes down an expense quickly: what it was, the amount, a tap on its
@@ -20,18 +21,20 @@ class AddExpenseScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('New expense')),
-      body: switch ((budgets, expenses)) {
-        (AsyncData(value: final budgets), AsyncData(value: final expenses)) =>
-          _ExpenseForm(
-            // Fixed budgets are spent in full when the plan is locked in.
-            budgets: budgets.where((b) => !b.isFixed).toList(),
-            spent: spentByBudget(expenses),
-          ),
-        (AsyncError(:final error), _) ||
-        (_, AsyncError(:final error)) =>
-          Center(child: Text('Something went wrong: $error')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: LeafBackground(
+        child: switch ((budgets, expenses)) {
+          (AsyncData(value: final budgets), AsyncData(value: final expenses)) =>
+            _ExpenseForm(
+              // Fixed budgets are spent in full when the plan is locked in.
+              budgets: budgets.where((b) => !b.isFixed).toList(),
+              spent: spentByBudget(expenses),
+            ),
+          (AsyncError(:final error), _) ||
+          (_, AsyncError(:final error)) =>
+            Center(child: Text('Something went wrong: $error')),
+          _ => const Center(child: CircularProgressIndicator()),
+        },
+      ),
     );
   }
 }

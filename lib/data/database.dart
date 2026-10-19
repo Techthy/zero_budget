@@ -325,6 +325,14 @@ class AppDatabase extends _$AppDatabase {
         return true;
       });
 
+  /// Whether there's a month before the month [monthId], which it carries
+  /// money over from.
+  Future<bool> hasMonthBefore(int monthId) async {
+    final month = await (select(months)..where((m) => m.id.equals(monthId)))
+        .getSingle();
+    return await _monthBefore(month.year, month.month) != null;
+  }
+
   /// The latest month before [year]/[month], if any.
   Future<Month?> _monthBefore(int year, int month) => (select(months)
         ..where((m) =>
@@ -697,6 +705,47 @@ class AppDatabase extends _$AppDatabase {
       return id;
     });
   }
+
+  /// Sets the month's first budget called [name], ignoring case, to
+  /// [amountCents]. It keeps its name and kind; if there's none yet, it's
+  /// added as a new budget, fixed or not by [isFixed].
+  ///
+  /// An amount of 0 removes the budget instead, unless expenses were tracked
+  /// against it or it holds savings: then it's kept at 0.
+  Future<void> setBudgetByName(
+    int monthId,
+    String name,
+    int amountCents, {
+    bool isFixed = false,
+  }) =>
+      transaction(() async {
+        final existing = await (select(budgets)
+              ..where((b) =>
+                  b.monthId.equals(monthId) &
+                  b.name.lower().equals(name.toLowerCase()))
+              ..orderBy([(b) => OrderingTerm.asc(b.id)])
+              ..limit(1))
+            .getSingleOrNull();
+        if (existing == null) {
+          if (amountCents == 0) return;
+          await addBudget(monthId, name, amountCents, isFixed: isFixed);
+          return;
+        }
+        if (amountCents == 0 && existing.savedCents == 0) {
+          final tracked = await (select(expenses)
+                ..where((e) =>
+                    e.budgetId.equals(existing.id) & e.isFixed.equals(false))
+                ..limit(1))
+              .getSingleOrNull();
+          if (tracked == null) {
+            await deleteBudget(existing.id);
+            return;
+          }
+        }
+        await (update(budgets)..where((b) => b.id.equals(existing.id)))
+            .write(BudgetsCompanion(amountCents: Value(amountCents)));
+        await _syncCarryOvers();
+      });
 
   /// Updates the budget. Turning a sinking fund into a regular budget releases
   /// its savings back into the month.

@@ -6,6 +6,7 @@ import '../dates.dart';
 import '../money.dart';
 import '../spending/spending_widgets.dart';
 import '../widgets/budget_sankey.dart';
+import '../widgets/leaf_background.dart';
 import 'history_providers.dart';
 
 /// A read-only look back at one month's plan and spending.
@@ -28,30 +29,32 @@ class MonthHistoryScreen extends ConsumerWidget {
           _ => 'History',
         }),
       ),
-      body: switch ((month, incomes, budgets, expenses)) {
-        (
-          AsyncData(value: final month),
-          AsyncData(value: final incomes),
-          AsyncData(value: final budgets),
-          AsyncData(value: final expenses),
-        ) =>
-          _MonthReview(
-            month: month,
-            incomes: incomes,
-            budgets: budgets,
-            expenses: expenses,
-          ),
-        (AsyncError(:final error), _, _, _) ||
-        (_, AsyncError(:final error), _, _) ||
-        (_, _, AsyncError(:final error), _) ||
-        (
-          _,
-          _,
-          _,
-          AsyncError(:final error),
-        ) => Center(child: Text('Something went wrong: $error')),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      body: LeafBackground(
+        child: switch ((month, incomes, budgets, expenses)) {
+          (
+            AsyncData(value: final month),
+            AsyncData(value: final incomes),
+            AsyncData(value: final budgets),
+            AsyncData(value: final expenses),
+          ) =>
+            _MonthReview(
+              month: month,
+              incomes: incomes,
+              budgets: budgets,
+              expenses: expenses,
+            ),
+          (AsyncError(:final error), _, _, _) ||
+          (_, AsyncError(:final error), _, _) ||
+          (_, _, AsyncError(:final error), _) ||
+          (
+            _,
+            _,
+            _,
+            AsyncError(:final error),
+          ) => Center(child: Text('Something went wrong: $error')),
+          _ => const Center(child: CircularProgressIndicator()),
+        },
+      ),
     );
   }
 }

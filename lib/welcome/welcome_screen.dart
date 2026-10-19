@@ -7,20 +7,15 @@ import '../dates.dart';
 import '../history/history_screen.dart';
 import '../money.dart';
 import '../spending/spending_providers.dart';
+import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
 import '../widgets/budget_sankey.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/fixed_badge.dart';
+import '../widgets/leaf_background.dart';
+import 'guided_planning_screen.dart';
+import 'plan_editing.dart';
 import 'welcome_providers.dart';
-
-typedef _IncomeInput = ({String name, int amountCents});
-typedef _BudgetInput = ({
-  String name,
-  int amountCents,
-  bool isFixed,
-  bool isSinkingFund,
-  bool isSavings,
-});
 
 class WelcomeScreen extends ConsumerWidget {
   const WelcomeScreen({super.key});
@@ -33,32 +28,34 @@ class WelcomeScreen extends ConsumerWidget {
     final expenses = ref.watch(currentExpensesProvider);
 
     return Scaffold(
-      body: SafeArea(
-        child: switch ((month, incomes, budgets, expenses)) {
-          (
-            AsyncData(value: final month),
-            AsyncData(value: final incomes),
-            AsyncData(value: final budgets),
-            AsyncData(value: final expenses),
-          ) =>
-            _BudgetPlan(
-              month: month,
-              incomes: incomes,
-              budgets: budgets,
-              expenses: expenses,
-            ),
-          (AsyncError(:final error), _, _, _) ||
-          (_, AsyncError(:final error), _, _) ||
-          (_, _, AsyncError(:final error), _) ||
-          (
-            _,
-            _,
-            _,
-            AsyncError(:final error),
-          ) =>
-            Center(child: Text('Something went wrong: $error')),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
+      body: LeafBackground(
+        child: SafeArea(
+          child: switch ((month, incomes, budgets, expenses)) {
+            (
+              AsyncData(value: final month),
+              AsyncData(value: final incomes),
+              AsyncData(value: final budgets),
+              AsyncData(value: final expenses),
+            ) =>
+              _BudgetPlan(
+                month: month,
+                incomes: incomes,
+                budgets: budgets,
+                expenses: expenses,
+              ),
+            (AsyncError(:final error), _, _, _) ||
+            (_, AsyncError(:final error), _, _) ||
+            (_, _, AsyncError(:final error), _) ||
+            (
+              _,
+              _,
+              _,
+              AsyncError(:final error),
+            ) =>
+              Center(child: Text('Something went wrong: $error')),
+            _ => const Center(child: CircularProgressIndicator()),
+          },
+        ),
       ),
     );
   }
@@ -78,74 +75,6 @@ class _BudgetPlan extends ConsumerWidget {
 
   /// Spending tracked so far, if the plan was locked in before.
   final List<Expense> expenses;
-
-  Future<void> _addIncome(BuildContext context, WidgetRef ref) async {
-    final income = await showDialog<_IncomeInput>(
-      context: context,
-      builder: (_) => const _IncomeDialog(),
-    );
-    if (income != null) {
-      await ref
-          .read(appDatabaseProvider)
-          .addIncome(month.id, income.name, income.amountCents);
-    }
-  }
-
-  Future<void> _editIncome(
-    BuildContext context,
-    WidgetRef ref,
-    Income income,
-  ) async {
-    final edited = await showDialog<_IncomeInput>(
-      context: context,
-      builder: (_) => _IncomeDialog(income: income),
-    );
-    if (edited != null) {
-      await ref.read(appDatabaseProvider).updateIncome(
-            income.id,
-            name: edited.name,
-            amountCents: edited.amountCents,
-          );
-    }
-  }
-
-  Future<void> _editBudget(
-    BuildContext context,
-    WidgetRef ref,
-    Budget budget,
-  ) async {
-    final edited = await showDialog<_BudgetInput>(
-      context: context,
-      builder: (_) => _BudgetDialog(budget: budget),
-    );
-    if (edited != null) {
-      await ref.read(appDatabaseProvider).updateBudget(
-            budget.id,
-            name: edited.name,
-            amountCents: edited.amountCents,
-            isFixed: edited.isFixed,
-            isSinkingFund: edited.isSinkingFund,
-            isSavings: edited.isSavings,
-          );
-    }
-  }
-
-  Future<void> _addBudget(BuildContext context, WidgetRef ref) async {
-    final budget = await showDialog<_BudgetInput>(
-      context: context,
-      builder: (_) => const _BudgetDialog(),
-    );
-    if (budget != null) {
-      await ref.read(appDatabaseProvider).addBudget(
-            month.id,
-            budget.name,
-            budget.amountCents,
-            isFixed: budget.isFixed,
-            isSinkingFund: budget.isSinkingFund,
-            isSavings: budget.isSavings,
-          );
-    }
-  }
 
   Future<void> _editNotes(BuildContext context, WidgetRef ref) async {
     final notes = await showDialog<String>(
@@ -213,33 +142,6 @@ class _BudgetPlan extends ConsumerWidget {
     }
   }
 
-  Future<void> _deleteBudget(
-    BuildContext context,
-    WidgetRef ref,
-    Budget budget,
-  ) async {
-    final tracked = expenses.where((e) => e.budgetId == budget.id).toList();
-    if (tracked.isNotEmpty || budget.savedCents != 0) {
-      final spentCents = tracked.fold(0, (sum, e) => sum + e.amountCents);
-      final confirmed = await showConfirmDialog(
-        context,
-        title: 'Delete ${budget.name}?',
-        message: [
-          if (tracked.isNotEmpty)
-            'This also deletes its ${tracked.length} tracked '
-                '${tracked.length == 1 ? 'expense' : 'expenses'} '
-                '(${formatCents(spentCents)} spent).',
-          if (budget.savedCents != 0)
-            'Its ${formatCents(budget.savedCents)} saved goes back into '
-                'this month.',
-        ].join(' '),
-        confirmLabel: 'Delete',
-      );
-      if (!confirmed) return;
-    }
-    await ref.read(appDatabaseProvider).deleteBudget(budget.id);
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
@@ -249,13 +151,19 @@ class _BudgetPlan extends ConsumerWidget {
     final monthName = formatMonth(month.year, month.month);
     // A locked in plan is read only until it's unlocked for editing.
     final isLocked = month.lockedAt != null;
-    final carryOverText = [
-      '${formatSignedCents(month.carryOverCents)} carried over from last '
-          'month',
-      if (month.carryOverAdjustmentCents != 0)
-        '(incl. ${formatSignedCents(month.carryOverAdjustmentCents)} '
-            'correction)',
-    ].join(' ');
+    // Nothing left from last month, like in the first month: what's there
+    // was entered as the balance to start from.
+    final isStartingBalance = month.carryOverAdjustmentCents != 0 &&
+        month.carryOverCents == month.carryOverAdjustmentCents;
+    final carryOverText = isStartingBalance
+        ? '${formatSignedCents(month.carryOverCents)} starting balance'
+        : [
+            '${formatSignedCents(month.carryOverCents)} carried over from '
+                'last month',
+            if (month.carryOverAdjustmentCents != 0)
+              '(incl. ${formatSignedCents(month.carryOverAdjustmentCents)} '
+                  'correction)',
+          ].join(' ');
     // Tracked expenses mean the plan was locked in before and is being edited.
     final isEditing = expenses.isNotEmpty;
     final (title, intro) = switch ((isLocked, isEditing)) {
@@ -310,6 +218,7 @@ class _BudgetPlan extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(intro, style: textTheme.bodyLarge),
             const SizedBox(height: 24),
+            if (!isLocked) const _GuidedPlanningCard(),
             // Notes stay editable once locked in, for reminders that come up
             // during the month.
             _NotesCard(
@@ -362,7 +271,8 @@ class _BudgetPlan extends ConsumerWidget {
                         ),
                         if (!isLocked)
                           FilledButton.tonal(
-                            onPressed: () => _addIncome(context, ref),
+                            onPressed: () =>
+                                promptAddIncome(context, ref, month.id),
                             child: const Text('Add income'),
                           ),
                       ],
@@ -377,7 +287,7 @@ class _BudgetPlan extends ConsumerWidget {
                         subtitle: Text(formatCents(income.amountCents)),
                         onTap: isLocked
                             ? null
-                            : () => _editIncome(context, ref, income),
+                            : () => promptEditIncome(context, ref, income),
                         trailing: isLocked
                             ? null
                             : Row(
@@ -387,7 +297,7 @@ class _BudgetPlan extends ConsumerWidget {
                                     tooltip: 'Edit ${income.name}',
                                     icon: const Icon(Icons.edit_outlined),
                                     onPressed: () =>
-                                        _editIncome(context, ref, income),
+                                        promptEditIncome(context, ref, income),
                                   ),
                                   IconButton(
                                     tooltip: 'Delete ${income.name}',
@@ -428,7 +338,7 @@ class _BudgetPlan extends ConsumerWidget {
                 Expanded(child: Text('Budgets', style: textTheme.titleLarge)),
                 if (!isLocked)
                   FilledButton.icon(
-                    onPressed: () => _addBudget(context, ref),
+                    onPressed: () => promptAddBudget(context, ref, month.id),
                     icon: const Icon(Icons.add),
                     label: const Text('Add budget'),
                   ),
@@ -481,7 +391,7 @@ class _BudgetPlan extends ConsumerWidget {
                     ),
                     onTap: isLocked
                         ? null
-                        : () => _editBudget(context, ref, budget),
+                        : () => promptEditBudget(context, ref, budget),
                     trailing: isLocked
                         ? null
                         : Row(
@@ -491,13 +401,18 @@ class _BudgetPlan extends ConsumerWidget {
                                 tooltip: 'Edit ${budget.name}',
                                 icon: const Icon(Icons.edit_outlined),
                                 onPressed: () =>
-                                    _editBudget(context, ref, budget),
+                                    promptEditBudget(context, ref, budget),
                               ),
                               IconButton(
                                 tooltip: 'Delete ${budget.name}',
                                 icon: const Icon(Icons.delete_outline),
                                 onPressed: () =>
-                                    _deleteBudget(context, ref, budget),
+                                    confirmDeleteBudget(
+                                      context,
+                                      ref,
+                                      budget,
+                                      expenses,
+                                    ),
                               ),
                             ],
                           ),
@@ -524,6 +439,55 @@ class _BudgetPlan extends ConsumerWidget {
                 textAlign: TextAlign.center,
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Invites the user to plan the month step by step.
+class _GuidedPlanningCard extends StatelessWidget {
+  const _GuidedPlanningCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.budgetColors;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      color: c.sproutTint,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.route_outlined, color: c.onSproutTint),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Plan step by step',
+                    style: textTheme.titleMedium?.copyWith(
+                      color: c.onSproutTint,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Go through your income, giving, the essentials and everything '
+              'else, one step at a time.',
+              style: textTheme.bodyMedium?.copyWith(color: c.onSproutTint),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => startGuidedPlanning(context),
+              icon: const Icon(Icons.arrow_forward),
+              label: const Text('Start planning'),
+            ),
           ],
         ),
       ),
@@ -763,212 +727,6 @@ class _CarryOverDialogState extends State<_CarryOverDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(onPressed: _submit, child: const Text('Save')),
-      ],
-    );
-  }
-}
-
-/// Adds a new income, or edits [income] when one is given.
-class _IncomeDialog extends StatefulWidget {
-  const _IncomeDialog({this.income});
-
-  final Income? income;
-
-  @override
-  State<_IncomeDialog> createState() => _IncomeDialogState();
-}
-
-class _IncomeDialogState extends State<_IncomeDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final _name = TextEditingController(text: widget.income?.name);
-  late final _amount = TextEditingController(
-    text: switch (widget.income) {
-      final income? => formatAmount(income.amountCents),
-      null => '',
-    },
-  );
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _amount.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    final _IncomeInput income = (
-      name: _name.text.trim(),
-      amountCents: parseAmountToCents(_amount.text)!,
-    );
-    Navigator.of(context).pop(income);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isNew = widget.income == null;
-
-    return AlertDialog(
-      title: Text(isNew ? 'New income' : 'Edit income'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _name,
-              autofocus: isNew,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Salary',
-              ),
-              textCapitalization: TextCapitalization.sentences,
-              textInputAction: TextInputAction.next,
-              maxLength: 100,
-              validator: (value) => (value ?? '').trim().isEmpty
-                  ? 'Give this income a name'
-                  : null,
-            ),
-            AmountField(controller: _amount, onSubmitted: (_) => _submit()),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: Text(isNew ? 'Add' : 'Save')),
-      ],
-    );
-  }
-}
-
-/// Adds a new budget, or edits [budget] when one is given.
-class _BudgetDialog extends StatefulWidget {
-  const _BudgetDialog({this.budget});
-
-  final Budget? budget;
-
-  @override
-  State<_BudgetDialog> createState() => _BudgetDialogState();
-}
-
-class _BudgetDialogState extends State<_BudgetDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final _name = TextEditingController(text: widget.budget?.name);
-  late final _amount = TextEditingController(
-    text: switch (widget.budget) {
-      final budget? => formatAmount(budget.amountCents),
-      null => '',
-    },
-  );
-  late var _isFixed = widget.budget?.isFixed ?? false;
-  late var _isSinkingFund = widget.budget?.isSinkingFund ?? false;
-  late var _isSavings = widget.budget?.isSavings ?? false;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _amount.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    final _BudgetInput budget = (
-      name: _name.text.trim(),
-      amountCents: parseAmountToCents(_amount.text)!,
-      isFixed: _isFixed,
-      isSinkingFund: _isSinkingFund,
-      isSavings: _isSavings,
-    );
-    Navigator.of(context).pop(budget);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isNew = widget.budget == null;
-    final savedCents = widget.budget?.savedCents ?? 0;
-
-    return AlertDialog(
-      scrollable: true,
-      title: Text(isNew ? 'New budget' : 'Edit budget'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _name,
-              autofocus: isNew,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. Rent',
-              ),
-              textCapitalization: TextCapitalization.sentences,
-              textInputAction: TextInputAction.next,
-              maxLength: 100,
-              validator: (value) => (value ?? '').trim().isEmpty
-                  ? 'Give this budget a name'
-                  : null,
-            ),
-            AmountField(controller: _amount, onSubmitted: (_) => _submit()),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Fixed cost'),
-              subtitle: const Text(
-                'Always spent in full, like rent or a phone plan.',
-              ),
-              value: _isFixed,
-              onChanged: (value) => setState(() {
-                _isFixed = value;
-                if (value) _isSinkingFund = false;
-              }),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Sinking fund'),
-              subtitle: Text(switch (savedCents) {
-                != 0 when !_isSinkingFund =>
-                  'Its ${formatCents(savedCents)} saved goes back into this '
-                      'month.',
-                _ => 'Saves up for costs that don\'t come every month, like '
-                    'a yearly insurance fee. What you don\'t spend carries '
-                    'over.',
-              }),
-              value: _isSinkingFund,
-              onChanged: (value) => setState(() {
-                _isSinkingFund = value;
-                if (value) {
-                  _isFixed = false;
-                  _isSavings = false;
-                }
-              }),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Savings'),
-              subtitle: const Text(
-                'Counts towards your savings goal, like a transfer to your '
-                'savings account. Make it fixed to count it in full.',
-              ),
-              value: _isSavings,
-              onChanged: (value) => setState(() {
-                _isSavings = value;
-                if (value) _isSinkingFund = false;
-              }),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: Text(isNew ? 'Add' : 'Save')),
       ],
     );
   }

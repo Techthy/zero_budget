@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
 import 'package:zero_budget/data/database_provider.dart';
+import 'package:zero_budget/theme/budget_theme.dart';
 import 'package:zero_budget/welcome/welcome_screen.dart';
 
 void main() {
@@ -17,7 +18,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [appDatabaseProvider.overrideWithValue(db)],
-        child: const MaterialApp(home: WelcomeScreen()),
+        child: MaterialApp(
+          theme: budgetTheme(Brightness.light),
+          home: const WelcomeScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();
