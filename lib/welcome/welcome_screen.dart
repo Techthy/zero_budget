@@ -15,6 +15,7 @@ import '../widgets/budget_sankey.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/fixed_badge.dart';
 import '../widgets/leaf_background.dart';
+import '../widgets/reorderable_budgets.dart';
 import 'guided_planning_help.dart';
 import 'guided_planning_screen.dart';
 import 'month_overview_card.dart';
@@ -169,68 +170,82 @@ class _BudgetPlan extends ConsumerWidget {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            _TitleRow(
-              title: title,
-              isLocked: isLocked,
-              onCopyPlan: () => _copyPlanFromMonthBefore(context, ref),
-              // Tracking pauses while the plan is unlocked; expenses are
-              // kept.
-              onLockToggle: isLocked
-                  ? () => ref.read(appDatabaseProvider).unlockMonth(month.id)
-                  : () => _lock(context, ref, lockBlocker),
-            ),
-            const SizedBox(height: 24),
-            if (!isLocked) const _GuidedPlanningCard(),
-            MonthOverviewCard(
-              month: month,
-              incomes: incomes,
-              budgets: budgets,
-              onEditCarryOver: () => _editCarryOver(context, ref),
-            ),
-            if (budgets.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Text('Where your money goes', style: textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: BudgetSankey(
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              sliver: SliverList.list(
+                children: [
+                  _TitleRow(
+                    title: title,
+                    isLocked: isLocked,
+                    onCopyPlan: () => _copyPlanFromMonthBefore(context, ref),
+                    // Tracking pauses while the plan is unlocked; expenses are
+                    // kept.
+                    onLockToggle: isLocked
+                        ? () => ref
+                              .read(appDatabaseProvider)
+                              .unlockMonth(month.id)
+                        : () => _lock(context, ref, lockBlocker),
+                  ),
+                  const SizedBox(height: 24),
+                  if (!isLocked) const _GuidedPlanningCard(),
+                  MonthOverviewCard(
+                    month: month,
                     incomes: incomes,
-                    carryOverCents: month.carryOverCents,
                     budgets: budgets,
+                    onEditCarryOver: () => _editCarryOver(context, ref),
                   ),
-                ),
+                  if (budgets.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text('Where your money goes', style: textTheme.titleLarge),
+                    const SizedBox(height: 8),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: BudgetSankey(
+                          incomes: incomes,
+                          carryOverCents: month.carryOverCents,
+                          budgets: budgets,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('Budgets', style: textTheme.titleLarge),
+                      ),
+                      const BudgetOrderButton(),
+                      if (!isLocked)
+                        FilledButton.icon(
+                          onPressed: () =>
+                              promptAddBudget(context, ref, month.id),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add budget'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (budgets.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Text(
+                        'No budgets yet. Add one for everything your income '
+                        'needs to cover, like rent, groceries or savings.',
+                        style: textTheme.bodyMedium,
+                      ),
+                    ),
+                ],
               ),
-            ],
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(child: Text('Budgets', style: textTheme.titleLarge)),
-                const BudgetOrderButton(),
-                if (!isLocked)
-                  FilledButton.icon(
-                    onPressed: () => promptAddBudget(context, ref, month.id),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add budget'),
-                  ),
-              ],
             ),
-            const SizedBox(height: 8),
-            if (budgets.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  'No budgets yet. Add one for everything your income needs '
-                  'to cover, like rent, groceries or savings.',
-                  style: textTheme.bodyMedium,
-                ),
-              )
-            else
-              for (final budget in sortBudgets(budgets, budgetOrder))
-                Card(
+            // Long press a budget to move it.
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: ReorderableBudgetsSliver(
+                budgets: sortBudgets(budgets, budgetOrder),
+                itemBuilder: (context, budget) => Card(
                   child: ListTile(
                     title: Row(
                       children: [
@@ -291,27 +306,41 @@ class _BudgetPlan extends ConsumerWidget {
                           ),
                   ),
                 ),
-            if (!isLocked) ...[
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: lockBlocker == null
-                    ? () => ref.read(appDatabaseProvider).lockMonth(month.id)
-                    : null,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                icon: const Icon(Icons.lock_outline),
-                label: Text(isEditing ? 'Lock in changes' : 'Lock in budget'),
               ),
-              const SizedBox(height: 8),
-              Text(
-                lockBlocker ??
-                    'Once locked in, fixed budgets count as spent in full and '
-                        'you track the rest of your spending for the month.',
-                style: textTheme.bodyMedium,
-                textAlign: TextAlign.center,
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              sliver: SliverList.list(
+                children: [
+                  if (!isLocked) ...[
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: lockBlocker == null
+                          ? () => ref
+                                .read(appDatabaseProvider)
+                                .lockMonth(month.id)
+                          : null,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                      icon: const Icon(Icons.lock_outline),
+                      label: Text(
+                        isEditing ? 'Lock in changes' : 'Lock in budget',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      lockBlocker ??
+                          'Once locked in, fixed budgets count as spent in '
+                              'full and you track the rest of your spending '
+                              'for the month.',
+                      style: textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),

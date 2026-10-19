@@ -73,6 +73,10 @@ class Budgets extends Table {
   /// the savings goal with what's spent from them. They can be fixed, but
   /// never a sinking fund.
   BoolColumn get isSavings => boolean().withDefault(const Constant(false))();
+
+  /// Where the budget goes among the month's budgets in the custom order,
+  /// lowest first; see [BudgetOrder.custom]. New budgets go last.
+  IntColumn get position => integer().withDefault(const Constant(0))();
 }
 
 /// Money actually spent, entered manually against one of the month's budgets.
@@ -147,6 +151,9 @@ enum BudgetOrder {
 
   /// All from A to Z.
   alphabetical,
+
+  /// In the order the user dragged them into, see [Budgets.position].
+  custom,
 }
 
 const settingsRowId = 1;
@@ -226,7 +233,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'zero_budget'));
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -271,6 +278,11 @@ class AppDatabase extends _$AppDatabase {
           // Added out of order, as syncing the carryovers below reads whole
           // budgets.
           if (from < 14) await m.addColumn(budgets, budgets.isSavings);
+          if (from < 17) {
+            await m.addColumn(budgets, budgets.position);
+            // Keeps the order they were added in.
+            await customStatement('UPDATE budgets SET position = id');
+          }
           if (from < 12) {
             await m.addColumn(months, months.carryOverAdjustmentCents);
             // Carryovers were only worked out when a month was created, and
@@ -395,6 +407,7 @@ class AppDatabase extends _$AppDatabase {
           isFixed: Value(budget.isFixed),
           isSinkingFund: Value(budget.isSinkingFund),
           isSavings: Value(budget.isSavings),
+          position: Value(budget.position),
           savedCents: Value(budget.isSinkingFund
               ? fundBalanceCents(budget, templateSpent[budget.id] ?? 0)
               : 0),
@@ -712,6 +725,12 @@ class AppDatabase extends _$AppDatabase {
     assert(!(isFixed && isSinkingFund), 'A sinking fund is never fixed');
     assert(!(isSavings && isSinkingFund), 'A sinking fund is never savings');
     return transaction(() async {
+      final last = budgets.position.max();
+      final lastPosition = await (selectOnly(budgets)
+            ..where(budgets.monthId.equals(monthId))
+            ..addColumns([last]))
+          .map((row) => row.read(last))
+          .getSingle();
       final id = await into(budgets).insert(
         BudgetsCompanion.insert(
           monthId: monthId,
@@ -720,6 +739,7 @@ class AppDatabase extends _$AppDatabase {
           isFixed: Value(isFixed),
           isSinkingFund: Value(isSinkingFund),
           isSavings: Value(isSavings),
+          position: Value(lastPosition == null ? 0 : lastPosition + 1),
         ),
       );
       await _syncCarryOvers();
@@ -781,6 +801,17 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
         await _syncCarryOvers();
+      });
+
+  /// Puts the budgets [budgetIds] in that order and lists budgets in the
+  /// custom order from now on.
+  Future<void> setCustomBudgetOrder(List<int> budgetIds) =>
+      transaction(() async {
+        for (final (position, id) in budgetIds.indexed) {
+          await (update(budgets)..where((b) => b.id.equals(id)))
+              .write(BudgetsCompanion(position: Value(position)));
+        }
+        await setBudgetOrder(BudgetOrder.custom);
       });
 
   /// Updates the budget. Turning a sinking fund into a regular budget releases

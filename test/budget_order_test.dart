@@ -2,7 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/budget_order.dart';
 import 'package:zero_budget/data/database.dart';
 
-Budget _budget(int id, String name, {bool isSavings = false}) => Budget(
+Budget _budget(
+  int id,
+  String name, {
+  bool isSavings = false,
+  int position = 0,
+}) => Budget(
   id: id,
   monthId: 1,
   name: name,
@@ -11,6 +16,7 @@ Budget _budget(int id, String name, {bool isSavings = false}) => Budget(
   isSinkingFund: false,
   savedCents: 0,
   isSavings: isSavings,
+  position: position,
 );
 
 void main() {
@@ -55,6 +61,21 @@ void main() {
       'phone#1',
       'Rent#4',
       'Utilities#8',
+    ]);
+  });
+
+  test('custom follows the positions, then the order they were added', () {
+    final custom = [
+      _budget(1, 'Rent', position: 2),
+      _budget(2, 'Fun', position: 0),
+      _budget(3, 'Giving', position: 1),
+      _budget(4, 'Car', position: 1),
+    ];
+    expect(namesOf(sortBudgets(custom, BudgetOrder.custom)), [
+      'Fun#2',
+      'Giving#3',
+      'Car#4',
+      'Rent#1',
     ]);
   });
 }

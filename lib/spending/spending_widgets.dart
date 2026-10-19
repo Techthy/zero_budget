@@ -8,6 +8,7 @@ import '../money.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/fixed_badge.dart';
+import '../widgets/reorderable_budgets.dart';
 
 /// Everything spent against everything planned across [budgets].
 class SpendingTotalWidget extends StatelessWidget {
@@ -103,6 +104,49 @@ class BudgetSpendingList extends ConsumerWidget {
             onAddExpense: onAddExpense,
           ),
       ],
+    );
+  }
+}
+
+/// Like [BudgetSpendingList], as a sliver whose budgets can be moved by long
+/// pressing one and dragging it, see [ReorderableBudgetsSliver].
+class ReorderableBudgetSpendingList extends ConsumerWidget {
+  const ReorderableBudgetSpendingList({
+    super.key,
+    required this.budgets,
+    required this.expenses,
+    this.onDeleteExpense,
+    this.onEditExpense,
+    this.onAddExpense,
+  });
+
+  final List<Budget> budgets;
+  final List<Expense> expenses;
+  final ValueChanged<Expense>? onDeleteExpense;
+  final ValueChanged<Expense>? onEditExpense;
+  final ValueChanged<Budget>? onAddExpense;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final order =
+        ref.watch(
+          settingsProvider.select((settings) => settings.value?.budgetOrder),
+        ) ??
+        BudgetOrder.category;
+    final expensesByBudget = <int, List<Expense>>{};
+    for (final expense in expenses) {
+      (expensesByBudget[expense.budgetId] ??= []).add(expense);
+    }
+
+    return ReorderableBudgetsSliver(
+      budgets: sortBudgets(budgets, order),
+      itemBuilder: (context, budget) => _BudgetSpendingCard(
+        budget: budget,
+        expenses: expensesByBudget[budget.id] ?? const [],
+        onDeleteExpense: onDeleteExpense,
+        onEditExpense: onEditExpense,
+        onAddExpense: onAddExpense,
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -224,6 +225,53 @@ void main() {
     expect(find.text('Income + carried over − budgets = 0'), findsOneWidget);
     await closeSheet(tester);
     expect(find.text('Every euro gets a job'), findsNothing);
+    await unmount(tester);
+  });
+
+  testWidgets('long pressing a budget on the plan moves it', (tester) async {
+    await tester.runAsync(() async {
+      final month = await db.getOrCreateMonth(2026, 10);
+      await db.addIncome(month.id, 'Job', 250000);
+      await db.addBudget(month.id, 'Rent', 90000, isFixed: true);
+      await db.addBudget(month.id, 'Fun', 10000);
+      await db.addBudget(month.id, 'Giving', 5000);
+    });
+    await pumpScreen(tester);
+    // Tall enough to show every budget at once.
+    tester.view.physicalSize = const Size(360, 3000);
+    await tester.pumpAndSettle();
+
+    List<String> listed() {
+      final names = ['Rent', 'Fun', 'Giving'];
+      return names..sort(
+        (a, b) => tester
+            .getTopLeft(find.text(a).last)
+            .dy
+            .compareTo(tester.getTopLeft(find.text(b).last).dy),
+      );
+    }
+
+    expect(listed(), ['Giving', 'Rent', 'Fun']);
+
+    // Fun goes to the top.
+    final start = tester.getCenter(find.text('Fun').last);
+    final top = tester.getTopLeft(find.text('Giving').last).dy - 40;
+    final gesture = await tester.startGesture(start);
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+    for (var i = 1; i <= 10; i++) {
+      await gesture.moveTo(
+        Offset(start.dx, start.dy + (top - start.dy) * i / 10),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(listed(), ['Fun', 'Giving', 'Rent']);
+    // Moving it didn't open it for editing.
+    expect(find.byType(AlertDialog), findsNothing);
+    final settings = (await tester.runAsync(() => db.watchSettings().first))!;
+    expect(settings.budgetOrder, BudgetOrder.custom);
     await unmount(tester);
   });
 }

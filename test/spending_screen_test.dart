@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,31 +19,35 @@ void main() {
 
   /// Opens the tracking screen for a locked in October 2026, on a narrow
   /// phone, with long names and large amounts to catch overflows.
-  Future<void> pumpScreen(WidgetTester tester) async {
+  ///
+  /// Without [setUp], the app opens again on what's there already.
+  Future<void> pumpScreen(WidgetTester tester, {bool setUp = true}) async {
     tester.view.physicalSize = const Size(320, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
     // Drift needs real time to run its queries outside the app.
-    await tester.runAsync(() async {
-      const october = (year: 2026, month: 10);
-      await db.selectMonth(october, calendar: october);
-      final month = await db.getOrCreateMonth(2026, 10);
-      await db.addIncome(month.id, 'Salary', 123456789);
-      await db.addBudget(month.id, 'Rent', 9876543, isFixed: true);
-      groceriesId = await db.addBudget(month.id, 'Groceries', 40000);
-      final long = await db.addBudget(
-        month.id,
-        'A budget with a really very long name that goes on',
-        99999999,
-        isSavings: true,
-      );
-      await db.addBudget(month.id, 'Holiday', 10000, isSinkingFund: true);
-      await db.lockMonth(month.id);
-      await db.setSavingsGoal(500000, SavingsPeriod.year);
-      await db.addExpense(long, 12345678, title: 'Transfer');
-      await db.addExpense(groceriesId, 50000, title: 'Too many snacks');
-    });
+    if (setUp) {
+      await tester.runAsync(() async {
+        const october = (year: 2026, month: 10);
+        await db.selectMonth(october, calendar: october);
+        final month = await db.getOrCreateMonth(2026, 10);
+        await db.addIncome(month.id, 'Salary', 123456789);
+        await db.addBudget(month.id, 'Rent', 9876543, isFixed: true);
+        groceriesId = await db.addBudget(month.id, 'Groceries', 40000);
+        final long = await db.addBudget(
+          month.id,
+          'A budget with a really very long name that goes on',
+          99999999,
+          isSavings: true,
+        );
+        await db.addBudget(month.id, 'Holiday', 10000, isSinkingFund: true);
+        await db.lockMonth(month.id);
+        await db.setSavingsGoal(500000, SavingsPeriod.year);
+        await db.addExpense(long, 12345678, title: 'Transfer');
+        await db.addExpense(groceriesId, 50000, title: 'Too many snacks');
+      });
+    }
 
     await tester.pumpWidget(
       ProviderScope(
@@ -238,6 +243,54 @@ void main() {
     expect(listed(), [long, 'Groceries', 'Holiday', 'Rent']);
     final settings = (await tester.runAsync(() => db.watchSettings().first))!;
     expect(settings.budgetOrder, BudgetOrder.alphabetical);
+    await unmount(tester);
+  });
+
+  testWidgets('long pressing a budget moves it into a custom order', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+    // Tall enough to show every budget at once.
+    tester.view.physicalSize = const Size(320, 3000);
+    await tester.pumpAndSettle();
+
+    const long = 'A budget with a really very long name that goes on';
+    List<String> listed() {
+      final names = ['Rent', 'Groceries', long, 'Holiday'];
+      return names..sort(
+        (a, b) => tester
+            .getTopLeft(find.text(a).last)
+            .dy
+            .compareTo(tester.getTopLeft(find.text(b).last).dy),
+      );
+    }
+
+    expect(listed(), ['Rent', 'Groceries', long, 'Holiday']);
+
+    // Holiday goes to the top.
+    final start = tester.getCenter(find.text('Holiday').last);
+    final top = tester.getTopLeft(find.text('Rent').last).dy - 40;
+    final gesture = await tester.startGesture(start);
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+    for (var i = 1; i <= 10; i++) {
+      await gesture.moveTo(
+        Offset(start.dx, start.dy + (top - start.dy) * i / 10),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(listed(), ['Holiday', 'Rent', 'Groceries', long]);
+    final settings = (await tester.runAsync(() => db.watchSettings().first))!;
+    expect(settings.budgetOrder, BudgetOrder.custom);
+
+    // Saved, not just shown: it's the same after starting over.
+    await unmount(tester);
+    await pumpScreen(tester, setUp: false);
+    tester.view.physicalSize = const Size(320, 3000);
+    await tester.pumpAndSettle();
+    expect(listed(), ['Holiday', 'Rent', 'Groceries', long]);
     await unmount(tester);
   });
 }

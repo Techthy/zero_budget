@@ -189,6 +189,9 @@ void main() {
 
     final old = AppDatabase(NativeDatabase(file));
     await seed(old);
+    if (version < 17) {
+      await old.customStatement('ALTER TABLE budgets DROP COLUMN position');
+    }
     if (version >= 10 && version < 16) {
       await old
           .customStatement('ALTER TABLE settings DROP COLUMN budget_order');
@@ -252,7 +255,7 @@ void main() {
     return upgraded;
   }
 
-  for (final version in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]) {
+  for (final version in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]) {
     test('upgrading from schema $version keeps the plan', () async {
       late int monthId;
       late int rent;
@@ -855,6 +858,43 @@ void main() {
       (fun, 7000, 'Cinema', null),
     );
     expect((await db.watchMonth(october.id).first).carryOverCents, 93000);
+  });
+
+  test('a custom order is kept, new budgets go last, new months copy it',
+      () async {
+    final september = await db.getOrCreateMonth(2026, 9);
+    final rent = await db.addBudget(september.id, 'Rent', 90000);
+    final food = await db.addBudget(september.id, 'Food', 40000);
+    final fun = await db.addBudget(september.id, 'Fun', 10000);
+
+    await db.setCustomBudgetOrder([fun, rent, food]);
+    final car = await db.addBudget(september.id, 'Car', 5000);
+
+    expect((await db.watchSettings().first).budgetOrder, BudgetOrder.custom);
+    final ordered = (await db.watchBudgets(september.id).first).toList()
+      ..sort((a, b) => a.position.compareTo(b.position));
+    expect(ordered.map((b) => b.id), [fun, rent, food, car]);
+
+    final october = await db.getOrCreateMonth(2026, 10);
+    final copied = (await db.watchBudgets(october.id).first).toList()
+      ..sort((a, b) => a.position.compareTo(b.position));
+    expect(copied.map((b) => b.name), ['Fun', 'Rent', 'Food', 'Car']);
+  });
+
+  test('upgrading keeps the order budgets were added in', () async {
+    late int monthId;
+    final upgraded = await openUpgradedFrom(16, (old) async {
+      monthId = (await old.getOrCreateMonth(2026, 9)).id;
+      await old.addBudget(monthId, 'Rent', 90000);
+      await old.addBudget(monthId, 'Food', 40000);
+    });
+
+    final budgets = await upgraded.watchBudgets(monthId).first;
+    expect(budgets.map((b) => (b.name, b.position)), [
+      ('Rent', budgets.first.id),
+      ('Food', budgets.last.id),
+    ]);
+    expect(budgets.first.position, lessThan(budgets.last.position));
   });
 
   group('monthsToChooseFrom', () {

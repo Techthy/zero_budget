@@ -31,6 +31,16 @@ class BudgetOrderButton extends ConsumerWidget {
           checked: order == BudgetOrder.alphabetical,
           child: const Text('A to Z'),
         ),
+        CheckedPopupMenuItem(
+          value: BudgetOrder.custom,
+          checked: order == BudgetOrder.custom,
+          child: const Text('Custom'),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          enabled: false,
+          child: Text('Long press a budget to move it'),
+        ),
       ],
     );
   }

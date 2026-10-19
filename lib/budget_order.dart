@@ -32,6 +32,11 @@ List<Budget> sortBudgets(Iterable<Budget> budgets, BudgetOrder order) {
 
   return switch (order) {
     BudgetOrder.alphabetical => budgets.toList()..sort(byName),
+    BudgetOrder.custom =>
+      budgets.toList()..sort((a, b) {
+        final positions = a.position.compareTo(b.position);
+        return positions != 0 ? positions : a.id.compareTo(b.id);
+      }),
     BudgetOrder.category =>
       budgets.toList()..sort((a, b) {
         final groups = _categoryRank(a).compareTo(_categoryRank(b));

@@ -27,6 +27,7 @@ Budget _budget(
   isSinkingFund: isSinkingFund,
   savedCents: savedCents,
   isSavings: isSavings,
+  position: id,
 );
 
 Expense _expense(int budgetId, int amountCents) => Expense(

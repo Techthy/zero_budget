@@ -77,56 +77,70 @@ class _SpendingOverview extends ConsumerWidget {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 600),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Text('Your Budget Overview', style: textTheme.titleLarge),
-            const SizedBox(height: 8),
-            if (month.lockedAt == null) ...[
-              const SizedBox(height: 16),
-              Card(
-                color: colors.secondaryContainer,
-                child: ListTile(
-                  leading: Icon(
-                    Icons.lock_open_outlined,
-                    color: colors.onSecondaryContainer,
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              sliver: SliverList.list(
+                children: [
+                  Text('Your Budget Overview', style: textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  if (month.lockedAt == null) ...[
+                    const SizedBox(height: 16),
+                    Card(
+                      color: colors.secondaryContainer,
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.lock_open_outlined,
+                          color: colors.onSecondaryContainer,
+                        ),
+                        title: Text(
+                          'Tracking is paused while you edit your plan. Lock '
+                          'it in on the Plan tab to keep tracking.',
+                          style: TextStyle(color: colors.onSecondaryContainer),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                  MonthStatsCard(
+                    month: month,
+                    budgets: budgets,
+                    expenses: expenses,
                   ),
-                  title: Text(
-                    'Tracking is paused while you edit your plan. Lock it in '
-                    'on the Plan tab to keep tracking.',
-                    style: TextStyle(color: colors.onSecondaryContainer),
+                  if (budgets.isNotEmpty)
+                    _SankeyCard(
+                      month: month,
+                      incomes: incomes,
+                      budgets: budgets,
+                      expenses: expenses,
+                    ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text('Budgets', style: textTheme.titleLarge),
+                      ),
+                      const BudgetOrderButton(),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  if (budgets.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Text(
+                        'No budgets yet. Plan your budgets first, then track '
+                        'what you actually spend here.',
+                        style: textTheme.bodyMedium,
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 24),
-            ],
-            MonthStatsCard(month: month, budgets: budgets, expenses: expenses),
-            if (budgets.isNotEmpty)
-              _SankeyCard(
-                month: month,
-                incomes: incomes,
-                budgets: budgets,
-                expenses: expenses,
-              ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(child: Text('Budgets', style: textTheme.titleLarge)),
-                const BudgetOrderButton(),
-              ],
             ),
-            const SizedBox(height: 8),
-            if (budgets.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  'No budgets yet. Plan your budgets first, then track what '
-                  'you actually spend here.',
-                  style: textTheme.bodyMedium,
-                ),
-              )
-            else
-              BudgetSpendingList(
+            // Long press a budget to move it.
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              sliver: ReorderableBudgetSpendingList(
                 budgets: budgets,
                 expenses: expenses,
                 onDeleteExpense: (expense) =>
@@ -137,6 +151,7 @@ class _SpendingOverview extends ConsumerWidget {
                     ? null
                     : (budget) => openAddExpense(context, budgetId: budget.id),
               ),
+            ),
           ],
         ),
       ),

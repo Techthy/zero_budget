@@ -957,6 +957,18 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -967,6 +979,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
     isSinkingFund,
     savedCents,
     isSavings,
+    position,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1037,6 +1050,12 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         isSavings.isAcceptableOrUnknown(data['is_savings']!, _isSavingsMeta),
       );
     }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    }
     return context;
   }
 
@@ -1078,6 +1097,10 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, Budget> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_savings'],
       )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
     );
   }
 
@@ -1109,6 +1132,10 @@ class Budget extends DataClass implements Insertable<Budget> {
   /// the savings goal with what's spent from them. They can be fixed, but
   /// never a sinking fund.
   final bool isSavings;
+
+  /// Where the budget goes among the month's budgets in the custom order,
+  /// lowest first; see [BudgetOrder.custom]. New budgets go last.
+  final int position;
   const Budget({
     required this.id,
     required this.monthId,
@@ -1118,6 +1145,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     required this.isSinkingFund,
     required this.savedCents,
     required this.isSavings,
+    required this.position,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1130,6 +1158,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     map['is_sinking_fund'] = Variable<bool>(isSinkingFund);
     map['saved_cents'] = Variable<int>(savedCents);
     map['is_savings'] = Variable<bool>(isSavings);
+    map['position'] = Variable<int>(position);
     return map;
   }
 
@@ -1143,6 +1172,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       isSinkingFund: Value(isSinkingFund),
       savedCents: Value(savedCents),
       isSavings: Value(isSavings),
+      position: Value(position),
     );
   }
 
@@ -1160,6 +1190,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       isSinkingFund: serializer.fromJson<bool>(json['isSinkingFund']),
       savedCents: serializer.fromJson<int>(json['savedCents']),
       isSavings: serializer.fromJson<bool>(json['isSavings']),
+      position: serializer.fromJson<int>(json['position']),
     );
   }
   @override
@@ -1174,6 +1205,7 @@ class Budget extends DataClass implements Insertable<Budget> {
       'isSinkingFund': serializer.toJson<bool>(isSinkingFund),
       'savedCents': serializer.toJson<int>(savedCents),
       'isSavings': serializer.toJson<bool>(isSavings),
+      'position': serializer.toJson<int>(position),
     };
   }
 
@@ -1186,6 +1218,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     bool? isSinkingFund,
     int? savedCents,
     bool? isSavings,
+    int? position,
   }) => Budget(
     id: id ?? this.id,
     monthId: monthId ?? this.monthId,
@@ -1195,6 +1228,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     isSinkingFund: isSinkingFund ?? this.isSinkingFund,
     savedCents: savedCents ?? this.savedCents,
     isSavings: isSavings ?? this.isSavings,
+    position: position ?? this.position,
   );
   Budget copyWithCompanion(BudgetsCompanion data) {
     return Budget(
@@ -1212,6 +1246,7 @@ class Budget extends DataClass implements Insertable<Budget> {
           ? data.savedCents.value
           : this.savedCents,
       isSavings: data.isSavings.present ? data.isSavings.value : this.isSavings,
+      position: data.position.present ? data.position.value : this.position,
     );
   }
 
@@ -1225,7 +1260,8 @@ class Budget extends DataClass implements Insertable<Budget> {
           ..write('isFixed: $isFixed, ')
           ..write('isSinkingFund: $isSinkingFund, ')
           ..write('savedCents: $savedCents, ')
-          ..write('isSavings: $isSavings')
+          ..write('isSavings: $isSavings, ')
+          ..write('position: $position')
           ..write(')'))
         .toString();
   }
@@ -1240,6 +1276,7 @@ class Budget extends DataClass implements Insertable<Budget> {
     isSinkingFund,
     savedCents,
     isSavings,
+    position,
   );
   @override
   bool operator ==(Object other) =>
@@ -1252,7 +1289,8 @@ class Budget extends DataClass implements Insertable<Budget> {
           other.isFixed == this.isFixed &&
           other.isSinkingFund == this.isSinkingFund &&
           other.savedCents == this.savedCents &&
-          other.isSavings == this.isSavings);
+          other.isSavings == this.isSavings &&
+          other.position == this.position);
 }
 
 class BudgetsCompanion extends UpdateCompanion<Budget> {
@@ -1264,6 +1302,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
   final Value<bool> isSinkingFund;
   final Value<int> savedCents;
   final Value<bool> isSavings;
+  final Value<int> position;
   const BudgetsCompanion({
     this.id = const Value.absent(),
     this.monthId = const Value.absent(),
@@ -1273,6 +1312,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.isSinkingFund = const Value.absent(),
     this.savedCents = const Value.absent(),
     this.isSavings = const Value.absent(),
+    this.position = const Value.absent(),
   });
   BudgetsCompanion.insert({
     this.id = const Value.absent(),
@@ -1283,6 +1323,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     this.isSinkingFund = const Value.absent(),
     this.savedCents = const Value.absent(),
     this.isSavings = const Value.absent(),
+    this.position = const Value.absent(),
   }) : monthId = Value(monthId),
        name = Value(name),
        amountCents = Value(amountCents);
@@ -1295,6 +1336,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Expression<bool>? isSinkingFund,
     Expression<int>? savedCents,
     Expression<bool>? isSavings,
+    Expression<int>? position,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1305,6 +1347,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       if (isSinkingFund != null) 'is_sinking_fund': isSinkingFund,
       if (savedCents != null) 'saved_cents': savedCents,
       if (isSavings != null) 'is_savings': isSavings,
+      if (position != null) 'position': position,
     });
   }
 
@@ -1317,6 +1360,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     Value<bool>? isSinkingFund,
     Value<int>? savedCents,
     Value<bool>? isSavings,
+    Value<int>? position,
   }) {
     return BudgetsCompanion(
       id: id ?? this.id,
@@ -1327,6 +1371,7 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
       isSinkingFund: isSinkingFund ?? this.isSinkingFund,
       savedCents: savedCents ?? this.savedCents,
       isSavings: isSavings ?? this.isSavings,
+      position: position ?? this.position,
     );
   }
 
@@ -1357,6 +1402,9 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
     if (isSavings.present) {
       map['is_savings'] = Variable<bool>(isSavings.value);
     }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
     return map;
   }
 
@@ -1370,7 +1418,8 @@ class BudgetsCompanion extends UpdateCompanion<Budget> {
           ..write('isFixed: $isFixed, ')
           ..write('isSinkingFund: $isSinkingFund, ')
           ..write('savedCents: $savedCents, ')
-          ..write('isSavings: $isSavings')
+          ..write('isSavings: $isSavings, ')
+          ..write('position: $position')
           ..write(')'))
         .toString();
   }
@@ -3233,6 +3282,7 @@ typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   Value<bool> isSinkingFund,
   Value<int> savedCents,
   Value<bool> isSavings,
+  Value<int> position,
 });
 typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<int> id,
@@ -3243,6 +3293,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<bool> isSinkingFund,
   Value<int> savedCents,
   Value<bool> isSavings,
+  Value<int> position,
 });
 
 final class $$BudgetsTableReferences
@@ -3327,6 +3378,11 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<bool> get isSavings => $composableBuilder(
     column: $table.isSavings,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3423,6 +3479,11 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$MonthsTableOrderingComposer get monthId {
     final $$MonthsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3482,6 +3543,9 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<bool> get isSavings =>
       $composableBuilder(column: $table.isSavings, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
 
   $$MonthsTableAnnotationComposer get monthId {
     final $$MonthsTableAnnotationComposer composer = $composerBuilder(
@@ -3568,6 +3632,7 @@ class $$BudgetsTableTableManager
                 Value<bool> isSinkingFund = const Value.absent(),
                 Value<int> savedCents = const Value.absent(),
                 Value<bool> isSavings = const Value.absent(),
+                Value<int> position = const Value.absent(),
               }) => BudgetsCompanion(
                 id: id,
                 monthId: monthId,
@@ -3577,6 +3642,7 @@ class $$BudgetsTableTableManager
                 isSinkingFund: isSinkingFund,
                 savedCents: savedCents,
                 isSavings: isSavings,
+                position: position,
               ),
           createCompanionCallback:
               ({
@@ -3588,6 +3654,7 @@ class $$BudgetsTableTableManager
                 Value<bool> isSinkingFund = const Value.absent(),
                 Value<int> savedCents = const Value.absent(),
                 Value<bool> isSavings = const Value.absent(),
+                Value<int> position = const Value.absent(),
               }) => BudgetsCompanion.insert(
                 id: id,
                 monthId: monthId,
@@ -3597,6 +3664,7 @@ class $$BudgetsTableTableManager
                 isSinkingFund: isSinkingFund,
                 savedCents: savedCents,
                 isSavings: isSavings,
+                position: position,
               ),
           withReferenceMapper: (p0) => p0
               .map(
