@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       signed: ${{ steps.signing.outputs.signed }}
+      version: ${{ steps.version.outputs.name }}
     steps:
       - uses: actions/checkout@v5
 
@@ -149,11 +150,14 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.build.outputs.version }}
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: zero-budget-apk
 
+      # The tag and file name stay the same, so links to the nightly keep
+      # working; the title tells the builds apart.
       - name: Replace the nightly pre-release
         run: |
           mv app-release.apk zero-budget-nightly.apk
@@ -162,8 +166,8 @@ jobs:
             --prerelease \
             --latest=false \
             --target "$GITHUB_SHA" \
-            --title "Nightly" \
-            --notes "The newest build from \`${GITHUB_REF_NAME}\`, made from ${GITHUB_SHA::7} on $(date -u '+%Y-%m-%d %H:%M UTC'). It may have bugs; for everyday use, the latest release is safer. It installs as an update of the app, keeping your data."
+            --title "Nightly $VERSION" \
+            --notes "Version $VERSION, the newest build from \`${GITHUB_REF_NAME}\`, made from ${GITHUB_SHA::7} on $(date -u '+%Y-%m-%d %H:%M UTC'). It may have bugs; for everyday use, the latest release is safer. It installs as an update of the app, keeping your data."
 
   release:
     needs: build

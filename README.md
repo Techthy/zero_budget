@@ -169,6 +169,8 @@ an older one.
 
 The workflow checks that the tag matches the version in `pubspec.yaml`.
 Nightlies are named after the next release, for example `1.2.0-nightly.57`.
+The nightly pre-release shows that version in its title, and the app shows
+its own version under **Settings → About**.
 
 ### Setting up the release key (once)
 
