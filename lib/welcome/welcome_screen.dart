@@ -14,6 +14,7 @@ import '../widgets/confirm_dialog.dart';
 import '../widgets/fixed_badge.dart';
 import '../widgets/leaf_background.dart';
 import 'guided_planning_screen.dart';
+import 'month_overview_card.dart';
 import 'plan_editing.dart';
 import 'welcome_providers.dart';
 
@@ -75,16 +76,6 @@ class _BudgetPlan extends ConsumerWidget {
 
   /// Spending tracked so far, if the plan was locked in before.
   final List<Expense> expenses;
-
-  Future<void> _editNotes(BuildContext context, WidgetRef ref) async {
-    final notes = await showDialog<String>(
-      context: context,
-      builder: (_) => _NotesDialog(notes: month.notes),
-    );
-    if (notes != null) {
-      await ref.read(appDatabaseProvider).updateMonthNotes(month.id, notes);
-    }
-  }
 
   Future<void> _copyPlanFromMonthBefore(
     BuildContext context,
@@ -151,19 +142,6 @@ class _BudgetPlan extends ConsumerWidget {
     final monthName = formatMonth(month.year, month.month);
     // A locked in plan is read only until it's unlocked for editing.
     final isLocked = month.lockedAt != null;
-    // Nothing left from last month, like in the first month: what's there
-    // was entered as the balance to start from.
-    final isStartingBalance = month.carryOverAdjustmentCents != 0 &&
-        month.carryOverCents == month.carryOverAdjustmentCents;
-    final carryOverText = isStartingBalance
-        ? '${formatSignedCents(month.carryOverCents)} starting balance'
-        : [
-            '${formatSignedCents(month.carryOverCents)} carried over from '
-                'last month',
-            if (month.carryOverAdjustmentCents != 0)
-              '(incl. ${formatSignedCents(month.carryOverAdjustmentCents)} '
-                  'correction)',
-          ].join(' ');
     // Tracked expenses mean the plan was locked in before and is being edited.
     final isEditing = expenses.isNotEmpty;
     final (title, intro) = switch ((isLocked, isEditing)) {
@@ -219,103 +197,11 @@ class _BudgetPlan extends ConsumerWidget {
             Text(intro, style: textTheme.bodyLarge),
             const SizedBox(height: 24),
             if (!isLocked) const _GuidedPlanningCard(),
-            // Notes stay editable once locked in, for reminders that come up
-            // during the month.
-            _NotesCard(
-              notes: month.notes,
-              onEdit: () => _editNotes(context, ref),
-            ),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Income this month',
-                                style: textTheme.labelLarge,
-                              ),
-                              Text(
-                                formatCents(month.incomeCents),
-                                style: textTheme.headlineSmall,
-                              ),
-                              // Shown while editing even when it's 0, so it can
-                              // be corrected.
-                              if (month.carryOverCents != 0 || !isLocked)
-                                Row(
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        carryOverText,
-                                        style: textTheme.bodyMedium,
-                                      ),
-                                    ),
-                                    if (!isLocked)
-                                      IconButton(
-                                        tooltip: 'Correct carryover',
-                                        visualDensity: VisualDensity.compact,
-                                        iconSize: 18,
-                                        icon: const Icon(Icons.edit_outlined),
-                                        onPressed: () =>
-                                            _editCarryOver(context, ref),
-                                      ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ),
-                        if (!isLocked)
-                          FilledButton.tonal(
-                            onPressed: () =>
-                                promptAddIncome(context, ref, month.id),
-                            child: const Text('Add income'),
-                          ),
-                      ],
-                    ),
-                    for (final income in incomes)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          income.name,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(formatCents(income.amountCents)),
-                        onTap: isLocked
-                            ? null
-                            : () => promptEditIncome(context, ref, income),
-                        trailing: isLocked
-                            ? null
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    tooltip: 'Edit ${income.name}',
-                                    icon: const Icon(Icons.edit_outlined),
-                                    onPressed: () =>
-                                        promptEditIncome(context, ref, income),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Delete ${income.name}',
-                                    icon: const Icon(Icons.delete_outline),
-                                    onPressed: () => ref
-                                        .read(appDatabaseProvider)
-                                        .deleteIncome(income.id),
-                                  ),
-                                ],
-                              ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            _LeftToAssignCard(
-              availableCents: availableCents,
-              leftCents: leftCents,
+            MonthOverviewCard(
+              month: month,
+              incomes: incomes,
+              budgets: budgets,
+              onEditCarryOver: () => _editCarryOver(context, ref),
             ),
             if (budgets.isNotEmpty) ...[
               const SizedBox(height: 24),
@@ -491,152 +377,6 @@ class _GuidedPlanningCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _LeftToAssignCard extends StatelessWidget {
-  const _LeftToAssignCard({
-    required this.availableCents,
-    required this.leftCents,
-  });
-
-  /// Income plus whatever was carried over from last month.
-  final int availableCents;
-  final int leftCents;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    final (background, foreground, message) = switch (leftCents) {
-      0 when availableCents == 0 => (
-          colors.surfaceContainerHighest,
-          colors.onSurfaceVariant,
-          'Start by adding your income for this month.',
-        ),
-      0 => (
-          colors.primaryContainer,
-          colors.onPrimaryContainer,
-          'Every bit of your income has a job.',
-        ),
-      > 0 => (
-          colors.secondaryContainer,
-          colors.onSecondaryContainer,
-          'Give this money a job by adding budgets.',
-        ),
-      _ => (
-          colors.errorContainer,
-          colors.onErrorContainer,
-          "You've budgeted more than you earn this month.",
-        ),
-    };
-
-    return Card(
-      color: background,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: DefaultTextStyle.merge(
-          style: TextStyle(color: foreground),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Left to assign',
-                style: textTheme.labelLarge?.copyWith(color: foreground),
-              ),
-              Text(
-                formatCents(leftCents),
-                style: textTheme.headlineSmall?.copyWith(color: foreground),
-              ),
-              const SizedBox(height: 4),
-              Text(message),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The month's notes, or a prompt to add some.
-class _NotesCard extends StatelessWidget {
-  const _NotesCard({required this.notes, required this.onEdit});
-
-  final String? notes;
-  final VoidCallback onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final notes = this.notes;
-
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.sticky_note_2_outlined),
-        title: Text(notes == null ? 'Add notes' : 'Notes'),
-        subtitle: Text(
-          notes ?? 'Goals for this month, or things to take care of.',
-        ),
-        onTap: onEdit,
-        trailing: IconButton(
-          tooltip: notes == null ? 'Add notes' : 'Edit notes',
-          icon: const Icon(Icons.edit_outlined),
-          onPressed: onEdit,
-        ),
-      ),
-    );
-  }
-}
-
-/// Edits the month's [notes], returning the new text.
-class _NotesDialog extends StatefulWidget {
-  const _NotesDialog({this.notes});
-
-  final String? notes;
-
-  @override
-  State<_NotesDialog> createState() => _NotesDialogState();
-}
-
-class _NotesDialogState extends State<_NotesDialog> {
-  late final _notes = TextEditingController(text: widget.notes);
-
-  @override
-  void dispose() {
-    _notes.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Notes'),
-      content: SizedBox(
-        width: 400,
-        child: TextField(
-          controller: _notes,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'e.g. Save for the holiday, cancel the gym membership',
-            border: OutlineInputBorder(),
-          ),
-          textCapitalization: TextCapitalization.sentences,
-          keyboardType: TextInputType.multiline,
-          minLines: 4,
-          maxLines: 10,
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_notes.text),
-          child: const Text('Save'),
-        ),
-      ],
     );
   }
 }
