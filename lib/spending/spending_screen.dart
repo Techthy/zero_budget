@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../welcome/welcome_providers.dart';
+import '../widgets/budget_order_button.dart';
 import '../widgets/budget_sankey.dart';
 import '../widgets/leaf_background.dart';
 import 'add_expense_screen.dart';
@@ -108,7 +109,12 @@ class _SpendingOverview extends ConsumerWidget {
                 expenses: expenses,
               ),
             const SizedBox(height: 24),
-            Text('Budgets', style: textTheme.titleLarge),
+            Row(
+              children: [
+                Expanded(child: Text('Budgets', style: textTheme.titleLarge)),
+                const BudgetOrderButton(),
+              ],
+            ),
             const SizedBox(height: 8),
             if (budgets.isEmpty)
               Padding(

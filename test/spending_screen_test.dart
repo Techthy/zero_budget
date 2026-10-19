@@ -59,6 +59,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
+    await tester.tap(finder);
+    await tester.pumpAndSettle();
+  }
+
   /// Unmounts the app while the test still runs, so the database streams it
   /// closes can finish.
   Future<void> unmount(WidgetTester tester) async {
@@ -205,6 +210,34 @@ void main() {
     final snacks = expenses.singleWhere((e) => e.budgetId == groceriesId);
     expect((snacks.title, snacks.amountCents), ('Snacks', 4500));
     expect(find.text('Snacks'), findsOneWidget);
+    await unmount(tester);
+  });
+
+  testWidgets('budgets are listed by category or from A to Z', (tester) async {
+    await pumpScreen(tester);
+    // Tall enough to show every budget at once.
+    tester.view.physicalSize = const Size(320, 3000);
+    await tester.pumpAndSettle();
+
+    const long = 'A budget with a really very long name that goes on';
+    List<String> listed() {
+      final names = ['Rent', 'Groceries', long, 'Holiday'];
+      return names..sort(
+        (a, b) => tester
+            .getTopLeft(find.text(a).last)
+            .dy
+            .compareTo(tester.getTopLeft(find.text(b).last).dy),
+      );
+    }
+
+    // The rent is an essential, the long one is savings.
+    expect(listed(), ['Rent', 'Groceries', long, 'Holiday']);
+
+    await tapAndSettle(tester, find.byTooltip('Sort budgets'));
+    await tapAndSettle(tester, find.text('A to Z'));
+    expect(listed(), [long, 'Groceries', 'Holiday', 'Rent']);
+    final settings = (await tester.runAsync(() => db.watchSettings().first))!;
+    expect(settings.budgetOrder, BudgetOrder.alphabetical);
     await unmount(tester);
   });
 }

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../budget_order.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../money.dart';
+import '../settings/settings_providers.dart';
 import '../spending/spending_providers.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
+import '../widgets/budget_order_button.dart';
 import '../widgets/budget_sankey.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/fixed_badge.dart';
@@ -146,6 +149,11 @@ class _BudgetPlan extends ConsumerWidget {
       (false, false) => 'Welcome!',
     };
     final spent = spentByBudget(expenses);
+    final budgetOrder =
+        ref.watch(
+          settingsProvider.select((settings) => settings.value?.budgetOrder),
+        ) ??
+        BudgetOrder.category;
     final lockBlocker = switch (leftCents) {
       _ when availableCents == 0 || budgets.isEmpty =>
         'Add your income and budgets before locking in.',
@@ -200,6 +208,7 @@ class _BudgetPlan extends ConsumerWidget {
             Row(
               children: [
                 Expanded(child: Text('Budgets', style: textTheme.titleLarge)),
+                const BudgetOrderButton(),
                 if (!isLocked)
                   FilledButton.icon(
                     onPressed: () => promptAddBudget(context, ref, month.id),
@@ -219,7 +228,7 @@ class _BudgetPlan extends ConsumerWidget {
                 ),
               )
             else
-              for (final budget in budgets)
+              for (final budget in sortBudgets(budgets, budgetOrder))
                 Card(
                   child: ListTile(
                     title: Row(

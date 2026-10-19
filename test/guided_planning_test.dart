@@ -112,7 +112,7 @@ void main() {
     expect(month.incomeCents, 250000);
     expect(settings.bufferCents, 100000);
     expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed)), [
-      ('Giving', 10000, true),
+      ('Giving', 10000, false),
       ('Rent', 90000, true),
       ('Utilities', 20000, true),
       ('Groceries', 40000, false),

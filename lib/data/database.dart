@@ -125,6 +125,10 @@ class Settings extends Table {
   TextColumn get appearance => textEnum<Appearance>()
       .withDefault(Constant(Appearance.system.name))();
 
+  /// How budgets are listed on the plan and while tracking.
+  TextColumn get budgetOrder => textEnum<BudgetOrder>()
+      .withDefault(Constant(BudgetOrder.category.name))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -134,6 +138,16 @@ enum SavingsPeriod { quarter, year }
 
 /// Light or dark colours for the app, see [Settings.appearance].
 enum Appearance { system, light, dark }
+
+/// How budgets are listed, see [Settings.budgetOrder].
+enum BudgetOrder {
+  /// Giving, the essentials and savings first, like in the guided planning,
+  /// then the rest from A to Z.
+  category,
+
+  /// All from A to Z.
+  alphabetical,
+}
 
 const settingsRowId = 1;
 const defaultBufferCents = 100000;
@@ -212,7 +226,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'zero_budget'));
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -273,6 +287,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from >= 10 && from < 15) {
             await m.addColumn(settings, settings.appearance);
+          }
+          if (from >= 10 && from < 16) {
+            await m.addColumn(settings, settings.budgetOrder);
           }
         },
         beforeOpen: (details) async {
@@ -571,6 +588,7 @@ class AppDatabase extends _$AppDatabase {
                   showDebugBar: true,
                   savingsGoalPeriod: SavingsPeriod.year,
                   appearance: Appearance.system,
+                  budgetOrder: BudgetOrder.category,
                 ),
           );
 
@@ -588,6 +606,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setAppearance(Appearance appearance) =>
       _updateSettings(SettingsCompanion(appearance: Value(appearance)));
+
+  Future<void> setBudgetOrder(BudgetOrder order) =>
+      _updateSettings(SettingsCompanion(budgetOrder: Value(order)));
 
   Future<void> setShowDebugBar(bool show) =>
       _updateSettings(SettingsCompanion(showDebugBar: Value(show)));

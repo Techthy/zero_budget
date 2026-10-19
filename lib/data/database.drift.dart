@@ -1931,6 +1931,16 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         defaultValue: Constant(Appearance.system.name),
       ).withConverter<Appearance>($SettingsTable.$converterappearance);
   @override
+  late final GeneratedColumnWithTypeConverter<BudgetOrder, String> budgetOrder =
+      GeneratedColumn<String>(
+        'budget_order',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(BudgetOrder.category.name),
+      ).withConverter<BudgetOrder>($SettingsTable.$converterbudgetOrder);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     bufferCents,
@@ -1940,6 +1950,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     savingsGoalCents,
     savingsGoalPeriod,
     appearance,
+    budgetOrder,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2046,6 +2057,12 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
           data['${effectivePrefix}appearance'],
         )!,
       ),
+      budgetOrder: $SettingsTable.$converterbudgetOrder.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}budget_order'],
+        )!,
+      ),
     );
   }
 
@@ -2060,6 +2077,8 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   );
   static JsonTypeConverter2<Appearance, String, String> $converterappearance =
       const EnumNameConverter<Appearance>(Appearance.values);
+  static JsonTypeConverter2<BudgetOrder, String, String> $converterbudgetOrder =
+      const EnumNameConverter<BudgetOrder>(BudgetOrder.values);
 }
 
 class Setting extends DataClass implements Insertable<Setting> {
@@ -2087,6 +2106,9 @@ class Setting extends DataClass implements Insertable<Setting> {
 
   /// Whether the app is shown light, dark, or following the system.
   final Appearance appearance;
+
+  /// How budgets are listed on the plan and while tracking.
+  final BudgetOrder budgetOrder;
   const Setting({
     required this.id,
     required this.bufferCents,
@@ -2096,6 +2118,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.savingsGoalCents,
     required this.savingsGoalPeriod,
     required this.appearance,
+    required this.budgetOrder,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2122,6 +2145,11 @@ class Setting extends DataClass implements Insertable<Setting> {
         $SettingsTable.$converterappearance.toSql(appearance),
       );
     }
+    {
+      map['budget_order'] = Variable<String>(
+        $SettingsTable.$converterbudgetOrder.toSql(budgetOrder),
+      );
+    }
     return map;
   }
 
@@ -2141,6 +2169,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           : Value(savingsGoalCents),
       savingsGoalPeriod: Value(savingsGoalPeriod),
       appearance: Value(appearance),
+      budgetOrder: Value(budgetOrder),
     );
   }
 
@@ -2162,6 +2191,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       appearance: $SettingsTable.$converterappearance.fromJson(
         serializer.fromJson<String>(json['appearance']),
       ),
+      budgetOrder: $SettingsTable.$converterbudgetOrder.fromJson(
+        serializer.fromJson<String>(json['budgetOrder']),
+      ),
     );
   }
   @override
@@ -2180,6 +2212,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       'appearance': serializer.toJson<String>(
         $SettingsTable.$converterappearance.toJson(appearance),
       ),
+      'budgetOrder': serializer.toJson<String>(
+        $SettingsTable.$converterbudgetOrder.toJson(budgetOrder),
+      ),
     };
   }
 
@@ -2192,6 +2227,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<int?> savingsGoalCents = const Value.absent(),
     SavingsPeriod? savingsGoalPeriod,
     Appearance? appearance,
+    BudgetOrder? budgetOrder,
   }) => Setting(
     id: id ?? this.id,
     bufferCents: bufferCents ?? this.bufferCents,
@@ -2207,6 +2243,7 @@ class Setting extends DataClass implements Insertable<Setting> {
         : this.savingsGoalCents,
     savingsGoalPeriod: savingsGoalPeriod ?? this.savingsGoalPeriod,
     appearance: appearance ?? this.appearance,
+    budgetOrder: budgetOrder ?? this.budgetOrder,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -2232,6 +2269,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       appearance: data.appearance.present
           ? data.appearance.value
           : this.appearance,
+      budgetOrder: data.budgetOrder.present
+          ? data.budgetOrder.value
+          : this.budgetOrder,
     );
   }
 
@@ -2245,7 +2285,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('showDebugBar: $showDebugBar, ')
           ..write('savingsGoalCents: $savingsGoalCents, ')
           ..write('savingsGoalPeriod: $savingsGoalPeriod, ')
-          ..write('appearance: $appearance')
+          ..write('appearance: $appearance, ')
+          ..write('budgetOrder: $budgetOrder')
           ..write(')'))
         .toString();
   }
@@ -2260,6 +2301,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     savingsGoalCents,
     savingsGoalPeriod,
     appearance,
+    budgetOrder,
   );
   @override
   bool operator ==(Object other) =>
@@ -2272,7 +2314,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.showDebugBar == this.showDebugBar &&
           other.savingsGoalCents == this.savingsGoalCents &&
           other.savingsGoalPeriod == this.savingsGoalPeriod &&
-          other.appearance == this.appearance);
+          other.appearance == this.appearance &&
+          other.budgetOrder == this.budgetOrder);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -2284,6 +2327,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<int?> savingsGoalCents;
   final Value<SavingsPeriod> savingsGoalPeriod;
   final Value<Appearance> appearance;
+  final Value<BudgetOrder> budgetOrder;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.bufferCents = const Value.absent(),
@@ -2293,6 +2337,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.savingsGoalCents = const Value.absent(),
     this.savingsGoalPeriod = const Value.absent(),
     this.appearance = const Value.absent(),
+    this.budgetOrder = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2303,6 +2348,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.savingsGoalCents = const Value.absent(),
     this.savingsGoalPeriod = const Value.absent(),
     this.appearance = const Value.absent(),
+    this.budgetOrder = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -2313,6 +2359,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<int>? savingsGoalCents,
     Expression<String>? savingsGoalPeriod,
     Expression<String>? appearance,
+    Expression<String>? budgetOrder,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2323,6 +2370,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (savingsGoalCents != null) 'savings_goal_cents': savingsGoalCents,
       if (savingsGoalPeriod != null) 'savings_goal_period': savingsGoalPeriod,
       if (appearance != null) 'appearance': appearance,
+      if (budgetOrder != null) 'budget_order': budgetOrder,
     });
   }
 
@@ -2335,6 +2383,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<int?>? savingsGoalCents,
     Value<SavingsPeriod>? savingsGoalPeriod,
     Value<Appearance>? appearance,
+    Value<BudgetOrder>? budgetOrder,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -2345,6 +2394,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       savingsGoalCents: savingsGoalCents ?? this.savingsGoalCents,
       savingsGoalPeriod: savingsGoalPeriod ?? this.savingsGoalPeriod,
       appearance: appearance ?? this.appearance,
+      budgetOrder: budgetOrder ?? this.budgetOrder,
     );
   }
 
@@ -2381,6 +2431,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         $SettingsTable.$converterappearance.toSql(appearance.value),
       );
     }
+    if (budgetOrder.present) {
+      map['budget_order'] = Variable<String>(
+        $SettingsTable.$converterbudgetOrder.toSql(budgetOrder.value),
+      );
+    }
     return map;
   }
 
@@ -2394,7 +2449,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('showDebugBar: $showDebugBar, ')
           ..write('savingsGoalCents: $savingsGoalCents, ')
           ..write('savingsGoalPeriod: $savingsGoalPeriod, ')
-          ..write('appearance: $appearance')
+          ..write('appearance: $appearance, ')
+          ..write('budgetOrder: $budgetOrder')
           ..write(')'))
         .toString();
   }
@@ -3976,6 +4032,7 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   Value<int?> savingsGoalCents,
   Value<SavingsPeriod> savingsGoalPeriod,
   Value<Appearance> appearance,
+  Value<BudgetOrder> budgetOrder,
 });
 typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<int> id,
@@ -3986,6 +4043,7 @@ typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<int?> savingsGoalCents,
   Value<SavingsPeriod> savingsGoalPeriod,
   Value<Appearance> appearance,
+  Value<BudgetOrder> budgetOrder,
 });
 
 class $$SettingsTableFilterComposer
@@ -4038,6 +4096,12 @@ class $$SettingsTableFilterComposer
     column: $table.appearance,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<BudgetOrder, BudgetOrder, String>
+  get budgetOrder => $composableBuilder(
+    column: $table.budgetOrder,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 }
 
 class $$SettingsTableOrderingComposer
@@ -4086,6 +4150,11 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<String> get appearance => $composableBuilder(
     column: $table.appearance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get budgetOrder => $composableBuilder(
+    column: $table.budgetOrder,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -4138,6 +4207,12 @@ class $$SettingsTableAnnotationComposer
         column: $table.appearance,
         builder: (column) => column,
       );
+
+  GeneratedColumnWithTypeConverter<BudgetOrder, String> get budgetOrder =>
+      $composableBuilder(
+        column: $table.budgetOrder,
+        builder: (column) => column,
+      );
 }
 
 class $$SettingsTableTableManager
@@ -4176,6 +4251,7 @@ class $$SettingsTableTableManager
                 Value<int?> savingsGoalCents = const Value.absent(),
                 Value<SavingsPeriod> savingsGoalPeriod = const Value.absent(),
                 Value<Appearance> appearance = const Value.absent(),
+                Value<BudgetOrder> budgetOrder = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 bufferCents: bufferCents,
@@ -4185,6 +4261,7 @@ class $$SettingsTableTableManager
                 savingsGoalCents: savingsGoalCents,
                 savingsGoalPeriod: savingsGoalPeriod,
                 appearance: appearance,
+                budgetOrder: budgetOrder,
               ),
           createCompanionCallback:
               ({
@@ -4196,6 +4273,7 @@ class $$SettingsTableTableManager
                 Value<int?> savingsGoalCents = const Value.absent(),
                 Value<SavingsPeriod> savingsGoalPeriod = const Value.absent(),
                 Value<Appearance> appearance = const Value.absent(),
+                Value<BudgetOrder> budgetOrder = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 bufferCents: bufferCents,
@@ -4205,6 +4283,7 @@ class $$SettingsTableTableManager
                 savingsGoalCents: savingsGoalCents,
                 savingsGoalPeriod: savingsGoalPeriod,
                 appearance: appearance,
+                budgetOrder: budgetOrder,
               ),
           withReferenceMapper: (p0) => p0
               .map(

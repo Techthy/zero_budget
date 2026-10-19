@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../budget_order.dart';
 import '../data/database.dart';
 import '../dates.dart';
 import '../money.dart';
+import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/fixed_badge.dart';
 
@@ -53,13 +56,14 @@ class SpendingTotalWidget extends StatelessWidget {
 }
 
 /// A card per budget showing what was spent from it, which opens up to list
-/// its expenses.
+/// its expenses. Budgets are listed in the order picked in the settings, see
+/// [BudgetOrder].
 ///
 /// Expenses get an edit button when [onEditExpense] is set and a delete
 /// button when [onDeleteExpense] is set, and budgets that take expenses get a
 /// button to add one when [onAddExpense] is set. Fixed expenses follow their
 /// budget, so they get neither.
-class BudgetSpendingList extends StatelessWidget {
+class BudgetSpendingList extends ConsumerWidget {
   const BudgetSpendingList({
     super.key,
     required this.budgets,
@@ -76,7 +80,12 @@ class BudgetSpendingList extends StatelessWidget {
   final ValueChanged<Budget>? onAddExpense;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final order =
+        ref.watch(
+          settingsProvider.select((settings) => settings.value?.budgetOrder),
+        ) ??
+        BudgetOrder.category;
     final expensesByBudget = <int, List<Expense>>{};
     for (final expense in expenses) {
       (expensesByBudget[expense.budgetId] ??= []).add(expense);
@@ -84,7 +93,7 @@ class BudgetSpendingList extends StatelessWidget {
 
     return Column(
       children: [
-        for (final budget in budgets)
+        for (final budget in sortBudgets(budgets, order))
           _BudgetSpendingCard(
             key: ValueKey(budget.id),
             budget: budget,

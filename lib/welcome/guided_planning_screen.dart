@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../budget_order.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
@@ -93,33 +94,33 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
   final _buffer = TextEditingController();
 
   final _giving = _NamedBudget(
-    'Giving',
-    isFixed: true,
+    givingBudgetName,
+    isFixed: false,
     helperText: 'Leave empty to skip.',
   );
   final _rent = _NamedBudget(
-    'Rent',
+    rentBudgetName,
     isFixed: true,
     helperText: 'Rent or mortgage payment.',
   );
   final _utilities = _NamedBudget(
-    'Utilities',
+    utilitiesBudgetName,
     isFixed: true,
     helperText: 'Electricity, heating, water and internet.',
   );
   final _groceries = _NamedBudget(
-    'Groceries',
+    groceriesBudgetName,
     isFixed: false,
     helperText: 'Food and other daily needs.',
   );
   final _transportation = _NamedBudget(
-    'Transportation',
+    transportationBudgetName,
     isFixed: false,
     helperText: 'A transit pass, fuel or other costs of getting to work.',
   );
   var _needsTransportation = false;
   final _savings = _NamedBudget(
-    'Savings',
+    savingsBudgetName,
     isFixed: true,
     isSavings: true,
     helperText:
