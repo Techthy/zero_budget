@@ -708,7 +708,8 @@ class AppDatabase extends _$AppDatabase {
 
   /// Sets the month's first budget called [name], ignoring case, to
   /// [amountCents]. It keeps its name and kind; if there's none yet, it's
-  /// added as a new budget, fixed or not by [isFixed].
+  /// added as a new budget, fixed or not by [isFixed]. With [isSavings], it
+  /// counts towards the savings goal either way, unless it's a sinking fund.
   ///
   /// An amount of 0 removes the budget instead, unless expenses were tracked
   /// against it or it holds savings: then it's kept at 0.
@@ -717,6 +718,7 @@ class AppDatabase extends _$AppDatabase {
     String name,
     int amountCents, {
     bool isFixed = false,
+    bool isSavings = false,
   }) =>
       transaction(() async {
         final existing = await (select(budgets)
@@ -728,7 +730,13 @@ class AppDatabase extends _$AppDatabase {
             .getSingleOrNull();
         if (existing == null) {
           if (amountCents == 0) return;
-          await addBudget(monthId, name, amountCents, isFixed: isFixed);
+          await addBudget(
+            monthId,
+            name,
+            amountCents,
+            isFixed: isFixed,
+            isSavings: isSavings,
+          );
           return;
         }
         if (amountCents == 0 && existing.savedCents == 0) {
@@ -743,7 +751,14 @@ class AppDatabase extends _$AppDatabase {
           }
         }
         await (update(budgets)..where((b) => b.id.equals(existing.id)))
-            .write(BudgetsCompanion(amountCents: Value(amountCents)));
+            .write(
+          BudgetsCompanion(
+            amountCents: Value(amountCents),
+            isSavings: Value(
+              existing.isSavings || (isSavings && !existing.isSinkingFund),
+            ),
+          ),
+        );
         await _syncCarryOvers();
       });
 

@@ -5,6 +5,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../money.dart';
+import '../savings/savings_providers.dart';
 import '../settings/settings_providers.dart';
 import '../spending/spending_providers.dart';
 import '../theme/budget_theme.dart';
@@ -23,19 +24,29 @@ Future<void> startGuidedPlanning(BuildContext context) =>
       ),
     );
 
-enum _Step { balance, income, giving, essentials, everythingElse }
+enum _Step { balance, income, giving, essentials, savings, everythingElse }
 
-/// A budget the guided planning asks for by name: giving and the essentials.
+/// A budget the guided planning asks for by name: giving, the essentials
+/// and savings.
 ///
 /// It's matched to the month's first budget with the same name, ignoring case,
-/// see [AppDatabase.setBudgetByName].
+/// see [AppDatabase.setBudgetByName]. Savings match the first savings budget
+/// first, whatever it's called.
 class _NamedBudget {
-  _NamedBudget(this.name, {required this.isFixed, required this.helperText});
+  _NamedBudget(
+    this.name, {
+    required this.isFixed,
+    required this.helperText,
+    this.isSavings = false,
+  });
 
   final String name;
 
   /// Whether it's added as a fixed budget, when it's new.
   final bool isFixed;
+
+  /// Whether it counts towards the savings goal.
+  final bool isSavings;
 
   final String helperText;
   final controller = TextEditingController();
@@ -43,6 +54,11 @@ class _NamedBudget {
   int get cents => parseAmountToCents(controller.text) ?? 0;
 
   Budget? matchIn(List<Budget> budgets) {
+    if (isSavings) {
+      for (final budget in budgets) {
+        if (budget.isSavings) return budget;
+      }
+    }
     final lower = name.toLowerCase();
     for (final budget in budgets) {
       if (budget.name.toLowerCase() == lower) return budget;
@@ -53,7 +69,7 @@ class _NamedBudget {
 
 /// Walks through planning the current month one step at a time: the starting
 /// balance (only before there's a month to carry money over from), income,
-/// giving, the essentials, and everything else.
+/// giving, the essentials, savings, and everything else.
 ///
 /// Each step is saved to the month's plan when moving on, so leaving halfway
 /// keeps what was entered so far.
@@ -102,6 +118,14 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
     helperText: 'A transit pass, fuel or other costs of getting to work.',
   );
   var _needsTransportation = false;
+  final _savings = _NamedBudget(
+    'Savings',
+    isFixed: true,
+    isSavings: true,
+    helperText:
+        'Fixed, so it counts towards your savings goal in full once you lock '
+        'your plan in. Leave empty to skip.',
+  );
 
   List<_NamedBudget> get _named => [
     _giving,
@@ -109,6 +133,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
     _utilities,
     _groceries,
     _transportation,
+    _savings,
   ];
 
   @override
@@ -155,6 +180,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
         _Step.income,
         _Step.giving,
         _Step.essentials,
+        _Step.savings,
         _Step.everythingElse,
       ];
     });
@@ -189,6 +215,16 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
         await db.setCarryOverCents(month.id, balanceCents - bufferCents);
       case _Step.giving:
         await _saveNamed(month, [_giving]);
+      case _Step.savings:
+        // Keeps the name of a savings budget there already.
+        final budgets = await ref.read(currentBudgetsProvider.future);
+        await db.setBudgetByName(
+          month.id,
+          _savings.matchIn(budgets)?.name ?? _savings.name,
+          _savings.cents,
+          isFixed: _savings.isFixed,
+          isSavings: true,
+        );
       case _Step.essentials:
         await _saveNamed(month, [_rent, _utilities, _groceries]);
         await db.setBudgetByName(
@@ -215,8 +251,8 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
     }
   }
 
-  /// What's left to assign, counting giving and the essentials as they're
-  /// entered, before they're saved.
+  /// What's left to assign, counting giving, the essentials and savings as
+  /// they're entered, before they're saved.
   int _leftCents(Month month, List<Budget> budgets) {
     var assignedCents = 0;
     final matched = <int>{};
@@ -232,7 +268,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
     return month.incomeCents + month.carryOverCents - assignedCents;
   }
 
-  /// The budgets that aren't giving or one of the essentials.
+  /// The budgets that aren't giving, one of the essentials or savings.
   List<Budget> _otherBudgets(List<Budget> budgets) {
     final matched = {for (final named in _named) named.matchIn(budgets)?.id};
     return [
@@ -309,10 +345,15 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
         'Cover what you need to live and work before anything else. Leave '
             "any that don't apply empty.",
       ),
+      _Step.savings => (
+        'Pay yourself',
+        'What do you want to put aside this month? It counts towards your '
+            'savings goal.',
+      ),
       _Step.everythingElse => (
         'Everything else',
         'Give the rest of your money a job: insurance, your phone, '
-            'subscriptions, savings, or money for fun.',
+            'subscriptions, or money for fun.',
       ),
     };
 
@@ -331,6 +372,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
         ),
       ],
       _Step.essentials => _essentialsStep(month),
+      _Step.savings => _savingsStep(month),
       _Step.everythingElse => _everythingElseStep(month, budgets, expenses),
     };
 
@@ -466,6 +508,90 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
           label: const Text('Add income'),
         ),
       ),
+    ];
+  }
+
+  List<Widget> _savingsStep(Month month) {
+    final c = context.budgetColors;
+    final textTheme = Theme.of(context).textTheme;
+    final progress = ref.watch(savingsProgressProvider).value;
+    final goalCents = progress?.goalCents;
+
+    final Widget goal;
+    if (progress == null) {
+      goal = const SizedBox.shrink();
+    } else if (goalCents == null) {
+      goal = Text(
+        'Set a savings goal with the plant at the top of the app to see how '
+        'each month gets you there.',
+        style: textTheme.bodyMedium?.copyWith(color: c.inkMuted),
+      );
+    } else {
+      final thisMonth = (year: month.year, month: month.month);
+      // This month's savings are what's being planned here.
+      final savedBeforeCents = progress.months
+          .where((m) => m.month != thisMonth)
+          .fold(0, (sum, m) => sum + m.savedCents);
+      final period = savingsPeriodOf(thisMonth, progress.period);
+      final monthsLeft = period.last.month - month.month + 1;
+      final neededCents = goalCents - savedBeforeCents;
+      // Rounded up to whole euros, so the goal is met.
+      final monthsLeftText = monthsLeft == 1
+          ? 'the last month'
+          : 'the $monthsLeft months left';
+      final perMonthCents = neededCents <= 0
+          ? 0
+          : (neededCents / monthsLeft / 100).ceil() * 100;
+
+      goal = Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: c.sproutTint,
+          borderRadius: BudgetRadius.md,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your goal for ${progress.periodName}: ${formatCents(goalCents)}',
+              style: textTheme.titleMedium?.copyWith(color: c.onSproutTint),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              neededCents <= 0
+                  ? "You've reached it already. Anything you save now is a "
+                        'bonus.'
+                  : '${formatCents(savedBeforeCents)} saved so far. To reach '
+                        'it, put aside about ${formatCents(perMonthCents)} a '
+                        'month for $monthsLeftText.',
+              style: textTheme.bodyMedium?.copyWith(color: c.onSproutTint),
+            ),
+            if (perMonthCents > 0 && _savings.cents != perMonthCents) ...[
+              const SizedBox(height: 8),
+              FilledButton.tonal(
+                onPressed: () => setState(
+                  () => _savings.controller.text = formatAmount(perMonthCents),
+                ),
+                child: Text('Use ${formatCents(perMonthCents)}'),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return [
+      AmountField(
+        controller: _savings.controller,
+        labelText: _savings.name,
+        helperText: _savings.helperText,
+        isRequired: false,
+        autofocus: true,
+        onChanged: (_) => setState(() {}),
+        onSubmitted: (_) => _next(month),
+      ),
+      const SizedBox(height: 24),
+      goal,
     ];
   }
 

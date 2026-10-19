@@ -803,6 +803,19 @@ void main() {
     expect(await budgets(), [('Rent', 90000, true)]);
   });
 
+  test('setBudgetByName can make a budget count towards savings', () async {
+    final month = await db.getOrCreateMonth(2026, 9);
+    await db.addBudget(month.id, 'Nest egg', 10000);
+
+    await db.setBudgetByName(month.id, 'Savings', 20000,
+        isFixed: true, isSavings: true);
+    await db.setBudgetByName(month.id, 'Nest egg', 15000, isSavings: true);
+
+    final budgets = await db.watchBudgets(month.id).first;
+    expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed, b.isSavings)),
+        [('Nest egg', 15000, false, true), ('Savings', 20000, true, true)]);
+  });
+
   test('setBudgetByName keeps a budget with tracked expenses at 0', () async {
     final month = await db.getOrCreateMonth(2026, 9);
     final groceries = await db.addBudget(month.id, 'Groceries', 40000);

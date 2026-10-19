@@ -54,7 +54,7 @@ void main() {
   ) async {
     await pumpScreen(tester);
 
-    expect(find.text('Step 1 of 5'), findsOneWidget);
+    expect(find.text('Step 1 of 6'), findsOneWidget);
     expect(find.text('Where you start'), findsOneWidget);
     await enterAmount(tester, 'Account balance', '1500');
     await enterAmount(tester, 'Buffer', '1000');
@@ -83,6 +83,13 @@ void main() {
     expect(find.text('1320,00€'), findsOneWidget);
     await tapAndSettle(tester, find.text('Next'));
 
+    expect(find.text('Pay yourself'), findsOneWidget);
+    expect(find.textContaining('Set a savings goal'), findsOneWidget);
+    await enterAmount(tester, 'Savings', '300');
+    await tester.pump();
+    expect(find.text('1020,00€'), findsOneWidget);
+    await tapAndSettle(tester, find.text('Next'));
+
     expect(find.text('Everything else'), findsOneWidget);
     expect(find.text('No other budgets yet.'), findsOneWidget);
     await tapAndSettle(tester, find.text('Add budget'));
@@ -90,7 +97,7 @@ void main() {
     await enterAmount(tester, 'Amount', '20');
     await tapAndSettle(tester, find.text('Add'));
     expect(find.text('Phone'), findsOneWidget);
-    expect(find.text('1300,00€'), findsOneWidget);
+    expect(find.text('1000,00€'), findsOneWidget);
     await tapAndSettle(tester, find.text('Finish'));
 
     final (month, settings, budgets) = (await tester.runAsync(() async {
@@ -110,8 +117,10 @@ void main() {
       ('Utilities', 20000, true),
       ('Groceries', 40000, false),
       ('Transportation', 8000, false),
+      ('Savings', 30000, true),
       ('Phone', 2000, false),
     ]);
+    expect(budgets.where((b) => b.isSavings).map((b) => b.name), ['Savings']);
   });
 
   testWidgets('a later month skips the balance and starts from its plan', (
@@ -122,11 +131,19 @@ void main() {
       await db.addIncome(september.id, 'Job', 250000);
       await db.addBudget(september.id, 'Rent', 90000, isFixed: true);
       await db.addBudget(september.id, 'Gym', 3000);
+      await db.addBudget(
+        september.id,
+        'ETF',
+        20000,
+        isFixed: true,
+        isSavings: true,
+      );
+      await db.setSavingsGoal(600000, SavingsPeriod.year);
     });
 
     await pumpScreen(tester);
 
-    expect(find.text('Step 1 of 4'), findsOneWidget);
+    expect(find.text('Step 1 of 5'), findsOneWidget);
     expect(find.text('Your income'), findsOneWidget);
     expect(find.text('Job'), findsOneWidget);
     await tapAndSettle(tester, find.text('Next'));
@@ -143,18 +160,29 @@ void main() {
     await enterAmount(tester, 'Rent', '950');
     await tapAndSettle(tester, find.text('Next'));
 
-    // Rent is an essential, so only the gym is left here.
+    // The savings budget there already, whatever it's called.
+    final savings = find.widgetWithText(TextFormField, 'Savings');
+    expect(tester.widget<TextFormField>(savings).controller!.text, '200.00');
+    // Nothing saved yet this year, and three months left to reach 6000€.
+    expect(find.text('Your goal for 2026: 6000,00€'), findsOneWidget);
+    await tapAndSettle(tester, find.text('Use 2000,00€'));
+    expect(tester.widget<TextFormField>(savings).controller!.text, '2000.00');
+    await tapAndSettle(tester, find.text('Next'));
+
+    // Rent is an essential and the ETF is savings, so only the gym is left.
     expect(find.text('Gym'), findsOneWidget);
     expect(find.text('Rent'), findsNothing);
+    expect(find.text('ETF'), findsNothing);
     await tapAndSettle(tester, find.text('Finish'));
 
     final budgets = (await tester.runAsync(() async {
       final october = await db.getOrCreateMonth(2026, 10);
       return db.watchBudgets(october.id).first;
     }))!;
-    expect(budgets.map((b) => (b.name, b.amountCents)), [
-      ('Rent', 95000),
-      ('Gym', 3000),
+    expect(budgets.map((b) => (b.name, b.amountCents, b.isSavings)), [
+      ('Rent', 95000, false),
+      ('Gym', 3000, false),
+      ('ETF', 200000, true),
     ]);
   });
 }
