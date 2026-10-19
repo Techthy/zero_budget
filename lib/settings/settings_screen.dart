@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database.dart';
 import '../data/database_provider.dart';
+import '../history/history_screen.dart';
 import '../money.dart';
 import '../welcome/welcome_providers.dart';
 import '../widgets/leaf_background.dart';
@@ -96,6 +97,18 @@ class _SettingsList extends ConsumerWidget {
                 'bank account on top of your plan',
               ),
               onTap: () => editBuffer(context, ref, settings.bufferCents),
+            ),
+            const _SectionHeader('History'),
+            ListTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Past months'),
+              subtitle: const Text(
+                'Look back at what you planned and spent in earlier months',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
+              ),
             ),
             if (kDebugMode) ...[
               const _SectionHeader('Debug'),

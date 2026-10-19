@@ -8,22 +8,7 @@ import '../widgets/leaf_background.dart';
 import 'history_providers.dart';
 import 'month_history_screen.dart';
 
-/// Opens the [HistoryScreen].
-class HistoryButton extends StatelessWidget {
-  const HistoryButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: 'History',
-      icon: const Icon(Icons.history),
-      onPressed: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
-      ),
-    );
-  }
-}
-
+/// Past months, to look back at what was planned and spent.
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
 

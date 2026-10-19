@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
-import '../history/history_screen.dart';
 import '../money.dart';
 import '../spending/spending_providers.dart';
 import '../theme/budget_theme.dart';
@@ -52,8 +51,7 @@ class WelcomeScreen extends ConsumerWidget {
               _,
               _,
               AsyncError(:final error),
-            ) =>
-              Center(child: Text('Something went wrong: $error')),
+            ) => Center(child: Text('Something went wrong: $error')),
             _ => const Center(child: CircularProgressIndicator()),
           },
         ),
@@ -96,8 +94,9 @@ class _BudgetPlan extends ConsumerWidget {
       confirmLabel: 'Replace plan',
     );
     if (!confirmed) return;
-    final copied =
-        await ref.read(appDatabaseProvider).copyPlanFromMonthBefore(month.id);
+    final copied = await ref
+        .read(appDatabaseProvider)
+        .copyPlanFromMonthBefore(month.id);
     if (!copied && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('There is no earlier month to copy.')),
@@ -120,17 +119,15 @@ class _BudgetPlan extends ConsumerWidget {
     }
   }
 
-  Future<void> _editPlan(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Edit your plan?',
-      message: 'Tracking pauses while you edit. Your expenses are kept, and '
-          "you lock the plan in again when you're done.",
-      confirmLabel: 'Edit plan',
-    );
-    if (confirmed) {
-      await ref.read(appDatabaseProvider).unlockMonth(month.id);
+  /// Locks the plan in, or says what's in the way when [blocker] is set.
+  void _lock(BuildContext context, WidgetRef ref, String? blocker) {
+    if (blocker != null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(blocker)));
+      return;
     }
+    ref.read(appDatabaseProvider).lockMonth(month.id);
   }
 
   @override
@@ -139,22 +136,14 @@ class _BudgetPlan extends ConsumerWidget {
     final assignedCents = budgets.fold(0, (sum, b) => sum + b.amountCents);
     final availableCents = month.incomeCents + month.carryOverCents;
     final leftCents = availableCents - assignedCents;
-    final monthName = formatMonth(month.year, month.month);
     // A locked in plan is read only until it's unlocked for editing.
     final isLocked = month.lockedAt != null;
     // Tracked expenses mean the plan was locked in before and is being edited.
     final isEditing = expenses.isNotEmpty;
-    final (title, intro) = switch ((isLocked, isEditing)) {
-      (true, _) => (
-          'Your plan',
-          '$monthName is locked in. Unlock it to make changes.',
-        ),
-      (false, true) => (
-          'Edit your plan',
-          'Make your changes, then lock $monthName in again to keep '
-              'tracking.',
-        ),
-      (false, false) => ('Welcome!', "Let's plan $monthName."),
+    final title = switch ((isLocked, isEditing)) {
+      (true, _) => 'Planned Budget',
+      (false, true) => 'Edit your plan',
+      (false, false) => 'Welcome!',
     };
     final spent = spentByBudget(expenses);
     final lockBlocker = switch (leftCents) {
@@ -162,8 +151,9 @@ class _BudgetPlan extends ConsumerWidget {
         'Add your income and budgets before locking in.',
       > 0 =>
         'Assign the remaining ${formatCents(leftCents)} before locking in.',
-      < 0 => 'Take ${formatCents(-leftCents)} off your budgets before locking '
-          'in.',
+      < 0 =>
+        'Take ${formatCents(-leftCents)} off your budgets before locking '
+            'in.',
       _ => null,
     };
 
@@ -173,28 +163,16 @@ class _BudgetPlan extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(title, style: textTheme.headlineMedium),
-                ),
-                const HistoryButton(),
-                if (!isLocked)
-                  IconButton(
-                    tooltip: "Copy last month's plan",
-                    icon: const Icon(Icons.content_copy_outlined),
-                    onPressed: () => _copyPlanFromMonthBefore(context, ref),
-                  ),
-                if (isLocked)
-                  OutlinedButton.icon(
-                    onPressed: () => _editPlan(context, ref),
-                    icon: const Icon(Icons.lock_open_outlined),
-                    label: const Text('Edit plan'),
-                  ),
-              ],
+            _TitleRow(
+              title: title,
+              isLocked: isLocked,
+              onCopyPlan: () => _copyPlanFromMonthBefore(context, ref),
+              // Tracking pauses while the plan is unlocked; expenses are
+              // kept.
+              onLockToggle: isLocked
+                  ? () => ref.read(appDatabaseProvider).unlockMonth(month.id)
+                  : () => _lock(context, ref, lockBlocker),
             ),
-            const SizedBox(height: 4),
-            Text(intro, style: textTheme.bodyLarge),
             const SizedBox(height: 24),
             if (!isLocked) const _GuidedPlanningCard(),
             MonthOverviewCard(
@@ -292,13 +270,12 @@ class _BudgetPlan extends ConsumerWidget {
                               IconButton(
                                 tooltip: 'Delete ${budget.name}',
                                 icon: const Icon(Icons.delete_outline),
-                                onPressed: () =>
-                                    confirmDeleteBudget(
-                                      context,
-                                      ref,
-                                      budget,
-                                      expenses,
-                                    ),
+                                onPressed: () => confirmDeleteBudget(
+                                  context,
+                                  ref,
+                                  budget,
+                                  expenses,
+                                ),
                               ),
                             ],
                           ),
@@ -328,6 +305,92 @@ class _BudgetPlan extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The title on the left and the plan's actions on the right, as far apart
+/// as they go. When the title and the labeled lock button don't fit on one
+/// line, the button shrinks to just its lock.
+class _TitleRow extends StatelessWidget {
+  const _TitleRow({
+    required this.title,
+    required this.isLocked,
+    required this.onCopyPlan,
+    required this.onLockToggle,
+  });
+
+  final String title;
+  final bool isLocked;
+  final VoidCallback onCopyPlan;
+
+  /// Locks the plan in, or unlocks it when [isLocked].
+  final VoidCallback onLockToggle;
+
+  /// Room an icon button takes.
+  static const _iconButtonWidth = 48.0;
+
+  /// What an outlined button with an icon adds around its label: padding,
+  /// the icon and the gap after it.
+  static const _labeledButtonChrome = 16.0 + 18 + 8 + 24;
+
+  /// Space kept between the title and the buttons.
+  static const _gap = 16.0;
+
+  double _widthOf(BuildContext context, String text, TextStyle? style) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final (label, icon) = isLocked
+        ? ('Edit plan', Icons.lock_open_outlined)
+        : ('Lock', Icons.lock_outline);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fullWidth =
+            _widthOf(context, title, textTheme.headlineMedium) +
+            _gap +
+            (isLocked ? 0 : _iconButtonWidth) +
+            _widthOf(context, label, textTheme.labelLarge) +
+            _labeledButtonChrome;
+        final collapsed = fullWidth > constraints.maxWidth;
+
+        return Row(
+          children: [
+            Expanded(child: Text(title, style: textTheme.headlineMedium)),
+            const SizedBox(width: _gap),
+            if (!isLocked)
+              IconButton(
+                tooltip: "Copy last month's plan",
+                icon: const Icon(Icons.content_copy_outlined),
+                onPressed: onCopyPlan,
+              ),
+            if (collapsed)
+              IconButton.outlined(
+                tooltip: label,
+                icon: Icon(icon),
+                onPressed: onLockToggle,
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: onLockToggle,
+                icon: Icon(icon),
+                label: Text(label),
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -419,9 +482,9 @@ class _CarryOverDialogState extends State<_CarryOverDialog> {
   }
 
   void _useLeftCents() => setState(() {
-        _amount.text = formatAmount(widget.leftCents.abs());
-        _isOverspent = widget.leftCents < 0;
-      });
+    _amount.text = formatAmount(widget.leftCents.abs());
+    _isOverspent = widget.leftCents < 0;
+  });
 
   @override
   Widget build(BuildContext context) {

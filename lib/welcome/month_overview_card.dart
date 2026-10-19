@@ -342,7 +342,8 @@ class _IncomeSheet extends ConsumerWidget {
   }
 }
 
-/// Edits the month's [notes], returning the new text.
+/// Shows the month's [notes], with a pen to edit them; returns the new text
+/// once saved. Without notes yet, it starts out editing.
 class _NotesSheet extends StatefulWidget {
   const _NotesSheet({this.notes});
 
@@ -354,6 +355,7 @@ class _NotesSheet extends StatefulWidget {
 
 class _NotesSheetState extends State<_NotesSheet> {
   late final _notes = TextEditingController(text: widget.notes);
+  late var _editing = widget.notes == null;
 
   @override
   void dispose() {
@@ -361,9 +363,21 @@ class _NotesSheetState extends State<_NotesSheet> {
     super.dispose();
   }
 
+  void _cancel() {
+    if (widget.notes == null) {
+      Navigator.of(context).pop();
+      return;
+    }
+    setState(() {
+      _notes.text = widget.notes!;
+      _editing = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final notes = widget.notes;
 
     return SafeArea(
       child: Padding(
@@ -378,41 +392,57 @@ class _NotesSheetState extends State<_NotesSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Notes', style: textTheme.titleLarge),
+            Row(
+              children: [
+                Expanded(child: Text('Notes', style: textTheme.titleLarge)),
+                if (!_editing)
+                  IconButton(
+                    tooltip: 'Edit notes',
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => setState(() => _editing = true),
+                  ),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(
               'Goals for this month, or things to take care of.',
               style: textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _notes,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText:
-                    'e.g. Save for the holiday, cancel the gym membership',
-                border: OutlineInputBorder(),
+            if (!_editing && notes != null)
+              // Long notes scroll within the sheet.
+              Flexible(
+                child: SingleChildScrollView(
+                  child: SelectableText(notes, style: textTheme.bodyLarge),
+                ),
+              )
+            else ...[
+              TextField(
+                controller: _notes,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText:
+                      'e.g. Save for the holiday, cancel the gym membership',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                keyboardType: TextInputType.multiline,
+                minLines: 4,
+                maxLines: 10,
               ),
-              textCapitalization: TextCapitalization.sentences,
-              keyboardType: TextInputType.multiline,
-              minLines: 4,
-              maxLines: 10,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(_notes.text),
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(onPressed: _cancel, child: const Text('Cancel')),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(_notes.text),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

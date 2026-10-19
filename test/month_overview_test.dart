@@ -54,6 +54,14 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// The button that locks or unlocks the plan, labeled or, when the title
+  /// leaves no room, just a lock with [label] as its tooltip.
+  Finder lockButton(String label) => find.byWidgetPredicate(
+    (widget) =>
+        (widget is Text && widget.data == label) ||
+        (widget is Tooltip && widget.message == label),
+  );
+
   /// Closes a bottom sheet by tapping above it.
   Future<void> closeSheet(WidgetTester tester) async {
     await tester.tapAt(const Offset(180, 20));
@@ -105,6 +113,19 @@ void main() {
     expect(find.text('Cancel the gym'), findsOneWidget);
     final month = (await tester.runAsync(() => db.getOrCreateMonth(2026, 10)))!;
     expect(month.notes, 'Cancel the gym');
+
+    // Once there are notes, they open to read; the pen edits them.
+    await tapAndSettle(tester, find.text('Cancel the gym'));
+    expect(find.byType(TextField), findsNothing);
+    await tapAndSettle(tester, find.byTooltip('Edit notes'));
+    await tester.enterText(find.byType(TextField), 'Cancel the gym today');
+    // Cancelling goes back to reading the notes as they were.
+    await tapAndSettle(tester, find.text('Cancel'));
+    expect(find.byType(TextField), findsNothing);
+    await tapAndSettle(tester, find.byTooltip('Edit notes'));
+    await tester.enterText(find.byType(TextField), 'Cancel the gym today');
+    await tapAndSettle(tester, find.text('Save'));
+    expect(find.text('Cancel the gym today'), findsOneWidget);
     await unmount(tester);
   });
 
@@ -125,6 +146,50 @@ void main() {
     expect(find.text('Add income'), findsNothing);
     expect(find.byTooltip('Delete Job'), findsNothing);
     await closeSheet(tester);
+    await unmount(tester);
+  });
+
+  testWidgets('locking in from the top says what is in the way', (
+    tester,
+  ) async {
+    await pumpScreen(tester);
+
+    await tapAndSettle(tester, lockButton('Lock'));
+    expect(
+      find.descendant(
+        of: find.byType(SnackBar),
+        matching: find.text('Add your income and budgets before locking in.'),
+      ),
+      findsOneWidget,
+    );
+    final month = (await tester.runAsync(() => db.getOrCreateMonth(2026, 10)))!;
+    expect(month.lockedAt, isNull);
+    await unmount(tester);
+  });
+
+  testWidgets('the plan locks and unlocks from the top without asking', (
+    tester,
+  ) async {
+    // Drift needs real time to run its queries outside the app, and writes
+    // from here would wait on the app's streams, so set up first.
+    await tester.runAsync(() async {
+      final month = await db.getOrCreateMonth(2026, 10);
+      await db.addIncome(month.id, 'Job', 250000);
+      await db.addBudget(month.id, 'Rent', 250000, isFixed: true);
+    });
+    await pumpScreen(tester);
+
+    await tapAndSettle(tester, lockButton('Lock'));
+    expect(lockButton('Edit plan'), findsOneWidget);
+    // The long title leaves no room on a narrow phone: just the lock shows.
+    expect(find.text('Edit plan'), findsNothing);
+    expect(lockButton('Lock'), findsNothing);
+
+    await tapAndSettle(tester, lockButton('Edit plan'));
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(lockButton('Lock'), findsOneWidget);
+    final month = (await tester.runAsync(() => db.getOrCreateMonth(2026, 10)))!;
+    expect(month.lockedAt, isNull);
     await unmount(tester);
   });
 }
