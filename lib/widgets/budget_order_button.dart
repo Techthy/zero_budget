@@ -30,7 +30,7 @@ class BudgetOrderButton extends ConsumerWidget {
         CheckedPopupMenuItem(
           value: BudgetOrder.category,
           checked: order == BudgetOrder.category,
-          child: const Text('By category'),
+          child: const Text('Recommended'),
         ),
         CheckedPopupMenuItem(
           value: BudgetOrder.alphabetical,

@@ -146,7 +146,7 @@ enum Appearance { system, light, dark }
 /// How budgets are listed, see [Settings.budgetOrder].
 enum BudgetOrder {
   /// Giving, the essentials and savings first, like in the guided planning,
-  /// then the rest from A to Z.
+  /// then the rest from A to Z. Shown as "Recommended".
   category,
 
   /// All from A to Z.
