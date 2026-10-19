@@ -33,13 +33,22 @@ a quick way to get the app I wanted, without writing every line by hand.
 - **Monthly plan:** add your incomes and assign all of it to budgets. The
   plan can only be locked in once every euro has a job. Whatever is left at
   the end of a month carries over to the next one.
+- **Step-by-step planning:** a guided walk through your income, giving, the
+  essentials (rent, utilities, groceries and transportation), savings and
+  everything else.
 - **Budget types:**
   - **Everyday budgets**, like groceries or fun, are tracked as you spend.
-  - **Fixed costs**, like rent or a phone plan, count as spent in full
-    once the plan is locked in.
+  - **Fixed costs**, like rent, count as spent in full once the plan is
+    locked in.
   - **Sinking funds** save up over several months for costs that don't come
     every month, like a yearly insurance fee.
-  - **Savings budgets** count towards your savings goal.
+- **Categories:** each budget is for giving, an essential, savings or
+  something else, and shows it as a tag. Savings budgets count towards your
+  savings goal. Budgets are listed by category, from A to Z, or in an order
+  you drag them into.
+- **New months:** a few days before a month starts, the app offers to plan
+  it. The new month starts as a copy of the last one: you pick which budgets
+  to keep, then plan step by step or adjust the plan directly.
 - **Tracking:** add expenses with one tap. You can see what's left to spend
   overall and in each budget, and a diagram shows where your money goes.
 - **Savings goal:** set a goal per quarter or per year, and watch a plant
@@ -48,6 +57,8 @@ a quick way to get the app I wanted, without writing every line by hand.
   or things to take care of.
 - **Bank balance check:** shows what should be in your bank account right
   now, including a safety buffer you choose.
+- **Currency:** amounts are in euro by default. You can switch to US
+  dollars, British pounds or Swiss francs in the settings.
 
 All data stays on your device, in a local SQLite database.
 
@@ -148,7 +159,7 @@ three levels:
 | Trigger                   | What happens                                                                                     |
 | ------------------------- | ------------------------------------------------------------------------------------------------ |
 | Pull request              | Analyze, test and build. The APK is attached to the run under **Artifacts**.                     |
-| Push to `main`            | The same checks, then the **Nightly** pre-release is replaced with the new build.                |
+| Push to `master`          | The same checks, then the **Nightly** pre-release is replaced with the new build.                |
 | Version tag like `v1.2.0` | The same checks, then a **stable release** with release notes is published and marked as latest. |
 
 Nightly and stable builds are the same app, signed with the same key. They
@@ -259,13 +270,20 @@ tests too.
 
 ```text
 lib/
+  *.dart      the app, its home screen, and helpers for money, dates and
+              sorting budgets
   data/       database tables, queries and migrations (drift)
-  welcome/    the Plan tab: incomes, budgets, locking the plan in
+  welcome/    the Plan tab: incomes, budgets, step-by-step planning,
+              setting up a new month, locking the plan in
   spending/   the Track tab and adding expenses
   savings/    the savings goal and its growing plant
   history/    past months
-  settings/   settings, like the bank buffer
-  widgets/    shared widgets, like the money flow diagram
+  settings/   settings, like the buffer and the currency, and the about
+              section
+  widgets/    shared widgets, like the money flow diagram and the new month
+              card
+  theme/      colours, text styles and shapes of the design system
+  debug/      the debug bar for moving through days and months
 assets/icon/  the app icon and logo
 ```
 

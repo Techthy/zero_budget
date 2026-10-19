@@ -49,7 +49,14 @@ android {
         }
     }
 
+    // With the release key set up, debug builds are signed with it too, so
+    // they install over published releases and the other way round.
     buildTypes {
+        debug {
+            signingConfig = keystorePropertiesFile.exists()
+                    ? signingConfigs.release
+                    : signingConfigs.debug
+        }
         release {
             signingConfig = keystorePropertiesFile.exists()
                     ? signingConfigs.release
