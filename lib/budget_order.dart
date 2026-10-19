@@ -21,9 +21,9 @@ const savingsBudgetName = 'Savings';
 
 /// Sorts [budgets] for listing them, see [BudgetOrder].
 ///
-/// By category, giving and the essentials are recognized by their names, like
-/// in the guided planning, and savings by being savings budgets. Names are
-/// compared ignoring case.
+/// By category, the essentials the guided planning asks for come in its
+/// order, recognized by their names, before any others. Names are compared
+/// ignoring case.
 List<Budget> sortBudgets(Iterable<Budget> budgets, BudgetOrder order) {
   int byName(Budget a, Budget b) {
     final names = a.name.toLowerCase().compareTo(b.name.toLowerCase());
@@ -39,21 +39,21 @@ List<Budget> sortBudgets(Iterable<Budget> budgets, BudgetOrder order) {
       }),
     BudgetOrder.category =>
       budgets.toList()..sort((a, b) {
-        final groups = _categoryRank(a).compareTo(_categoryRank(b));
-        return groups != 0 ? groups : byName(a, b);
+        final categories = a.category.index.compareTo(b.category.index);
+        if (categories != 0) return categories;
+        final essentials = _essentialRank(a).compareTo(_essentialRank(b));
+        return essentials != 0 ? essentials : byName(a, b);
       }),
   };
 }
 
-/// Where a budget goes by category: giving, then each essential, then
-/// savings, then the rest.
-int _categoryRank(Budget budget) {
+/// Where an essential goes among the essentials: the ones the guided planning
+/// asks for in its order, then the rest.
+int _essentialRank(Budget budget) {
+  if (budget.category != BudgetCategory.essential) return 0;
   final name = budget.name.toLowerCase();
-  if (name == givingBudgetName.toLowerCase()) return 0;
-  final essential = essentialBudgetNames.indexWhere(
+  final index = essentialBudgetNames.indexWhere(
     (essential) => essential.toLowerCase() == name,
   );
-  if (essential >= 0) return 1 + essential;
-  if (budget.isSavings) return 1 + essentialBudgetNames.length;
-  return 2 + essentialBudgetNames.length;
+  return index >= 0 ? index : essentialBudgetNames.length;
 }

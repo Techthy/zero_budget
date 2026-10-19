@@ -247,26 +247,21 @@ class _BudgetPlan extends ConsumerWidget {
                 budgets: sortBudgets(budgets, budgetOrder),
                 itemBuilder: (context, budget) => Card(
                   child: ListTile(
-                    title: Row(
+                    // Badges go on the next line when they don't fit.
+                    title: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Flexible(
-                          child: Text(
-                            budget.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                        Text(
+                          budget.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (budget.isFixed) ...[
-                          const SizedBox(width: 8),
-                          const FixedBadge(),
-                        ],
-                        if (budget.isSinkingFund) ...[
-                          const SizedBox(width: 8),
-                          const SinkingFundBadge(),
-                        ],
-                        if (budget.isSavings) ...[
-                          const SizedBox(width: 8),
-                          const SavingsBadge(),
-                        ],
+                        if (budget.isFixed) const FixedBadge(),
+                        if (budget.isSinkingFund) const SinkingFundBadge(),
+                        if (budget.category != BudgetCategory.other)
+                          CategoryBadge(budget.category),
                       ],
                     ),
                     subtitle: Text(

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
 import 'package:zero_budget/data/database_provider.dart';
+import 'package:zero_budget/settings/settings_providers.dart';
 import 'package:zero_budget/settings/settings_screen.dart';
 import 'package:zero_budget/theme/budget_theme.dart';
 
@@ -26,7 +27,10 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          appVersionProvider.overrideWith((ref) async => '1.2.0-nightly.57'),
+        ],
         child: MaterialApp(
           theme: budgetTheme(Brightness.light),
           home: const SettingsScreen(),
@@ -35,8 +39,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final version = find.text('1.2.0-nightly.57');
+    await tester.scrollUntilVisible(version, 200);
+    await tester.ensureVisible(version);
+    await tester.pumpAndSettle();
+    await tester.tap(version);
+    await tester.pumpAndSettle();
+    expect(copied, '1.2.0-nightly.57');
+
     final email = find.text('zero-budget@chammann.dev');
-    await tester.scrollUntilVisible(email, 200);
+    await tester.scrollUntilVisible(email, -200);
     await tester.ensureVisible(email);
     await tester.pumpAndSettle();
     expect(find.textContaining('Written by C. Hammann'), findsOneWidget);

@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../money.dart';
+import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
 import '../widgets/confirm_dialog.dart';
+import '../widgets/fixed_badge.dart';
 
 // Adding and changing the incomes and budgets of a month's plan, shared by
 // the plan screen and the guided planning.
@@ -16,7 +18,7 @@ typedef _BudgetInput = ({
   int amountCents,
   bool isFixed,
   bool isSinkingFund,
-  bool isSavings,
+  BudgetCategory category,
 });
 
 /// Asks for a new income and adds it to the month [monthId].
@@ -76,7 +78,7 @@ Future<void> promptAddBudget(
           budget.amountCents,
           isFixed: budget.isFixed,
           isSinkingFund: budget.isSinkingFund,
-          isSavings: budget.isSavings,
+          category: budget.category,
         );
   }
 }
@@ -100,7 +102,7 @@ Future<void> promptEditBudget(
           amountCents: edited.amountCents,
           isFixed: edited.isFixed,
           isSinkingFund: edited.isSinkingFund,
-          isSavings: edited.isSavings,
+          category: edited.category,
         );
   }
 }
@@ -232,7 +234,7 @@ class _BudgetDialogState extends State<_BudgetDialog> {
   );
   late var _isFixed = widget.budget?.isFixed ?? false;
   late var _isSinkingFund = widget.budget?.isSinkingFund ?? false;
-  late var _isSavings = widget.budget?.isSavings ?? false;
+  late var _category = widget.budget?.category ?? BudgetCategory.other;
 
   @override
   void dispose() {
@@ -248,13 +250,15 @@ class _BudgetDialogState extends State<_BudgetDialog> {
       amountCents: parseAmountToCents(_amount.text)!,
       isFixed: _isFixed,
       isSinkingFund: _isSinkingFund,
-      isSavings: _isSavings,
+      category: _category,
     );
     Navigator.of(context).pop(budget);
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = context.budgetColors;
+    final textTheme = Theme.of(context).textTheme;
     final isNew = widget.budget == null;
     final savedCents = widget.budget?.savedCents ?? 0;
 
@@ -281,6 +285,50 @@ class _BudgetDialogState extends State<_BudgetDialog> {
                   : null,
             ),
             AmountField(controller: _amount, onSubmitted: (_) => _submit()),
+            const SizedBox(height: 16),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text('Category', style: textTheme.titleSmall),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final category in BudgetCategory.values)
+                    ChoiceChip(
+                      label: Text(categoryLabel(category)),
+                      selected: _category == category,
+                      onSelected: (_) => setState(() {
+                        _category = category;
+                        if (category == BudgetCategory.savings) {
+                          _isSinkingFund = false;
+                        }
+                      }),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              switch (_category) {
+                BudgetCategory.giving =>
+                  'Given away, like to a charity or your church. Comes first '
+                      'in your plan.',
+                BudgetCategory.essential =>
+                  'Needed to live and work, like rent, groceries or getting '
+                      'to work.',
+                BudgetCategory.savings =>
+                  'Counts towards your savings goal, like a transfer to your '
+                      'savings account. Make it fixed to count it in full.',
+                BudgetCategory.other =>
+                  'Everything else, like insurance, subscriptions or money '
+                      'for fun.',
+              },
+              style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
+            ),
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -311,21 +359,10 @@ class _BudgetDialogState extends State<_BudgetDialog> {
                 _isSinkingFund = value;
                 if (value) {
                   _isFixed = false;
-                  _isSavings = false;
+                  if (_category == BudgetCategory.savings) {
+                    _category = BudgetCategory.other;
+                  }
                 }
-              }),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Savings'),
-              subtitle: const Text(
-                'Counts towards your savings goal, like a transfer to your '
-                'savings account. Make it fixed to count it in full.',
-              ),
-              value: _isSavings,
-              onChanged: (value) => setState(() {
-                _isSavings = value;
-                if (value) _isSinkingFund = false;
               }),
             ),
           ],

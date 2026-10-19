@@ -290,7 +290,8 @@ class _BudgetSpendingCardState extends State<_BudgetSpendingCard> {
                         ),
                         if (budget.isFixed) const FixedBadge(),
                         if (budget.isSinkingFund) const SinkingFundBadge(),
-                        if (budget.isSavings) const SavingsBadge(),
+                        if (budget.category != BudgetCategory.other)
+                          CategoryBadge(budget.category),
                       ],
                     ),
                   ),

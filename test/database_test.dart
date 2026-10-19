@@ -189,6 +189,16 @@ void main() {
 
     final old = AppDatabase(NativeDatabase(file));
     await seed(old);
+    if (version >= 14 && version < 18) {
+      await old.customStatement(
+          'ALTER TABLE budgets ADD COLUMN is_savings INTEGER NOT NULL '
+          'DEFAULT 0 CHECK (is_savings IN (0, 1))');
+      await old.customStatement(
+          "UPDATE budgets SET is_savings = category = 'savings'");
+    }
+    if (version < 18) {
+      await old.customStatement('ALTER TABLE budgets DROP COLUMN category');
+    }
     if (version < 17) {
       await old.customStatement('ALTER TABLE budgets DROP COLUMN position');
     }
@@ -198,9 +208,6 @@ void main() {
     }
     if (version >= 10 && version < 15) {
       await old.customStatement('ALTER TABLE settings DROP COLUMN appearance');
-    }
-    if (version < 14) {
-      await old.customStatement('ALTER TABLE budgets DROP COLUMN is_savings');
     }
     if (version >= 10 && version < 14) {
       await old.customStatement(
@@ -255,7 +262,9 @@ void main() {
     return upgraded;
   }
 
-  for (final version in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]) {
+  for (final version in [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, //
+  ]) {
     test('upgrading from schema $version keeps the plan', () async {
       late int monthId;
       late int rent;
@@ -277,8 +286,9 @@ void main() {
       expect(await upgraded.watchSelectedYearMonth().first,
           (year: 2026, month: 9));
       expect((await upgraded.watchSettings().first).showDebugBar, isTrue);
-      expect((await upgraded.watchBudgets(monthId).first).single.isSavings,
-          isFalse);
+      // Recognized as an essential by its name.
+      expect((await upgraded.watchBudgets(monthId).first).single.category,
+          BudgetCategory.essential);
       await upgraded.setSavingsGoal(100000, SavingsPeriod.quarter);
       expect((await upgraded.watchSettings().first).savingsGoalCents, 100000);
       expect((await upgraded.watchSettings().first).appearance,
@@ -686,9 +696,9 @@ void main() {
     final september = await db.getOrCreateMonth(2026, 9);
     await db.addIncome(september.id, 'Salary', 300000);
     await db.addBudget(september.id, 'ETF', 20000,
-        isFixed: true, isSavings: true);
+        isFixed: true, category: BudgetCategory.savings);
     final savings = await db.addBudget(september.id, 'Savings', 30000,
-        isSavings: true);
+        category: BudgetCategory.savings);
     final food = await db.addBudget(september.id, 'Food', 40000);
     await db.addBudget(september.id, 'Holiday', 10000, isSinkingFund: true);
     Future<List<MonthSavings>> savedIn(int from, int to) =>
@@ -704,10 +714,13 @@ void main() {
       (month: (year: 2026, month: 9), savedCents: 30000),
     ]);
 
-    // New months keep their budgets' savings flag.
+    // New months keep their budgets' categories.
     final october = await db.getOrCreateMonth(2026, 10);
     final octoberBudgets = await db.watchBudgets(october.id).first;
-    expect(octoberBudgets.where((b) => b.isSavings).map((b) => b.name),
+    expect(
+        octoberBudgets
+            .where((b) => b.category == BudgetCategory.savings)
+            .map((b) => b.name),
         ['ETF', 'Savings']);
     await db.lockMonth(october.id);
     expect((await savedIn(1, 12)).map((m) => m.savedCents), [30000, 20000]);
@@ -738,7 +751,7 @@ void main() {
         calendar: (year: 2026, month: 11));
     final august = await db.getOrCreateMonth(2026, 8);
     await db.addBudget(august.id, 'Savings', 50000,
-        isFixed: true, isSavings: true);
+        isFixed: true, category: BudgetCategory.savings);
     await db.lockMonth(august.id);
     final november = await db.getOrCreateMonth(2026, 11);
     await db.lockMonth(november.id);
@@ -815,17 +828,30 @@ void main() {
     expect(await budgets(), [('Rent', 90000, true)]);
   });
 
-  test('setBudgetByName can make a budget count towards savings', () async {
+  test('setBudgetByName gives a budget without a category one', () async {
     final month = await db.getOrCreateMonth(2026, 9);
     await db.addBudget(month.id, 'Nest egg', 10000);
+    await db.addBudget(month.id, 'Rent', 90000,
+        category: BudgetCategory.giving);
+    await db.addBudget(month.id, 'Fund', 5000, isSinkingFund: true);
 
     await db.setBudgetByName(month.id, 'Savings', 20000,
-        isFixed: true, isSavings: true);
-    await db.setBudgetByName(month.id, 'Nest egg', 15000, isSavings: true);
+        isFixed: true, category: BudgetCategory.savings);
+    await db.setBudgetByName(month.id, 'Nest egg', 15000,
+        category: BudgetCategory.savings);
+    // Keeps the category it has, and a sinking fund is never savings.
+    await db.setBudgetByName(month.id, 'Rent', 95000,
+        category: BudgetCategory.essential);
+    await db.setBudgetByName(month.id, 'Fund', 6000,
+        category: BudgetCategory.savings);
 
     final budgets = await db.watchBudgets(month.id).first;
-    expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed, b.isSavings)),
-        [('Nest egg', 15000, false, true), ('Savings', 20000, true, true)]);
+    expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed, b.category)), [
+      ('Nest egg', 15000, false, BudgetCategory.savings),
+      ('Rent', 95000, false, BudgetCategory.giving),
+      ('Fund', 6000, false, BudgetCategory.other),
+      ('Savings', 20000, true, BudgetCategory.savings),
+    ]);
   });
 
   test('setBudgetByName keeps a budget with tracked expenses at 0', () async {
@@ -879,6 +905,33 @@ void main() {
     final copied = (await db.watchBudgets(october.id).first).toList()
       ..sort((a, b) => a.position.compareTo(b.position));
     expect(copied.map((b) => b.name), ['Fun', 'Rent', 'Food', 'Car']);
+  });
+
+  test('upgrading turns savings and the guided budgets into categories',
+      () async {
+    late int monthId;
+    final upgraded = await openUpgradedFrom(17, (old) async {
+      monthId = (await old.getOrCreateMonth(2026, 9)).id;
+      await old.addBudget(monthId, 'giving', 5000);
+      await old.addBudget(monthId, 'Groceries', 40000);
+      await old.addBudget(monthId, 'Transportation', 8000);
+      await old.addBudget(monthId, 'Fun', 10000);
+      await old.addBudget(monthId, 'ETF', 20000,
+          category: BudgetCategory.savings);
+      // Savings first, whatever it's called.
+      await old.addBudget(monthId, 'Rent', 1000,
+          category: BudgetCategory.savings);
+    });
+
+    final budgets = await upgraded.watchBudgets(monthId).first;
+    expect(budgets.map((b) => (b.name, b.category)), [
+      ('giving', BudgetCategory.giving),
+      ('Groceries', BudgetCategory.essential),
+      ('Transportation', BudgetCategory.essential),
+      ('Fun', BudgetCategory.other),
+      ('ETF', BudgetCategory.savings),
+      ('Rent', BudgetCategory.savings),
+    ]);
   });
 
   test('upgrading keeps the order budgets were added in', () async {

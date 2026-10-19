@@ -49,11 +49,10 @@ const List<_HelpStep> _steps = [
   (
     title: 'The essentials',
     text:
-        '$rentBudgetName and $utilitiesBudgetName are fixed costs: once you '
-        'lock your plan in, they count as spent in full. $groceriesBudgetName '
-        'are flexible: you track what you spend on them. '
-        '$transportationBudgetName is only asked for if you need it to get '
-        'to work, and is flexible too.',
+        '$rentBudgetName is a fixed cost: once you lock your plan in, it '
+        'counts as spent in full. $utilitiesBudgetName, $groceriesBudgetName '
+        'and $transportationBudgetName are flexible: you track what you spend '
+        'on them. Leave any you don\'t need empty.',
   ),
   (
     title: 'Pay yourself',
@@ -66,9 +65,10 @@ const List<_HelpStep> _steps = [
   (
     title: 'Everything else',
     text:
-        'Add the rest, like insurance, your phone, subscriptions or money for '
-        'fun. Each budget can be fixed, a sinking fund that saves up for '
-        "costs that don't come every month, or savings.",
+        'Add the rest, like insurance, subscriptions or money for fun. Each '
+        'budget can be fixed or a sinking fund that saves up for '
+        "costs that don't come every month, and has a category: giving, "
+        'essential, savings or other.',
   ),
 ];
 

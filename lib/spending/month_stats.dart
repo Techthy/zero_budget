@@ -43,7 +43,8 @@ class MonthStats {
       final leftCents = availableCents(budget) - spentCents;
       plannedCents += availableCents(budget);
       if (leftCents < 0) overspentCount++;
-      if (budget.isSavings) {
+      final isSavings = budget.category == BudgetCategory.savings;
+      if (isSavings) {
         hasSavings = true;
         savingsPlannedCents += budget.amountCents;
         savedCents += spentCents;
@@ -52,7 +53,7 @@ class MonthStats {
         hasFunds = true;
         fundsCents += fundBalanceCents(budget, spentCents);
       }
-      if (!budget.isFixed && !budget.isSinkingFund && !budget.isSavings) {
+      if (!budget.isFixed && !budget.isSinkingFund && !isSavings) {
         hasEverydayBudgets = true;
         // An overspent budget doesn't take from the others.
         if (leftCents > 0) everydayLeftCents += leftCents;

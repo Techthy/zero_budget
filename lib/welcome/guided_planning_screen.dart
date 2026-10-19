@@ -31,23 +31,21 @@ enum _Step { balance, income, giving, essentials, savings, everythingElse }
 /// and savings.
 ///
 /// It's matched to the month's first budget with the same name, ignoring case,
-/// see [AppDatabase.setBudgetByName]. Savings match the first savings budget
-/// first, whatever it's called.
+/// see [AppDatabase.setBudgetByName]. Giving and savings match the first
+/// budget of their category first, whatever it's called.
 class _NamedBudget {
   _NamedBudget(
     this.name, {
+    required this.category,
     required this.isFixed,
     required this.helperText,
-    this.isSavings = false,
   });
 
   final String name;
+  final BudgetCategory category;
 
   /// Whether it's added as a fixed budget, when it's new.
   final bool isFixed;
-
-  /// Whether it counts towards the savings goal.
-  final bool isSavings;
 
   final String helperText;
   final controller = TextEditingController();
@@ -55,9 +53,11 @@ class _NamedBudget {
   int get cents => parseAmountToCents(controller.text) ?? 0;
 
   Budget? matchIn(List<Budget> budgets) {
-    if (isSavings) {
+    // There's one of each essential, but one budget can stand for all giving
+    // or savings.
+    if (category != BudgetCategory.essential) {
       for (final budget in budgets) {
-        if (budget.isSavings) return budget;
+        if (budget.category == category) return budget;
       }
     }
     final lower = name.toLowerCase();
@@ -95,34 +95,40 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
 
   final _giving = _NamedBudget(
     givingBudgetName,
+    category: BudgetCategory.giving,
     isFixed: false,
     helperText: 'Leave empty to skip.',
   );
   final _rent = _NamedBudget(
     rentBudgetName,
+    category: BudgetCategory.essential,
     isFixed: true,
     helperText: 'Rent or mortgage payment.',
   );
   final _utilities = _NamedBudget(
     utilitiesBudgetName,
-    isFixed: true,
-    helperText: 'Electricity, heating, water and internet.',
+    category: BudgetCategory.essential,
+    isFixed: false,
+    helperText: 'Electricity, heating, water, internet and your phone plan.',
   );
   final _groceries = _NamedBudget(
     groceriesBudgetName,
+    category: BudgetCategory.essential,
     isFixed: false,
     helperText: 'Food and other daily needs.',
   );
   final _transportation = _NamedBudget(
     transportationBudgetName,
+    category: BudgetCategory.essential,
     isFixed: false,
-    helperText: 'A transit pass, fuel or other costs of getting to work.',
+    helperText:
+        'A transit pass, fuel or other costs of getting to work. Leave empty '
+        "if you don't need any.",
   );
-  var _needsTransportation = false;
   final _savings = _NamedBudget(
     savingsBudgetName,
+    category: BudgetCategory.savings,
     isFixed: true,
-    isSavings: true,
     helperText:
         'Fixed, so it counts towards your savings goal in full once you lock '
         'your plan in. Leave empty to skip.',
@@ -175,7 +181,6 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
           named.controller.text = formatAmount(budget.amountCents);
         }
       }
-      _needsTransportation = _transportation.cents > 0;
       _steps = [
         if (!hasMonthBefore) _Step.balance,
         _Step.income,
@@ -216,24 +221,15 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
         await db.setCarryOverCents(month.id, balanceCents - bufferCents);
       case _Step.giving:
         await _saveNamed(month, [_giving]);
-      case _Step.savings:
-        // Keeps the name of a savings budget there already.
-        final budgets = await ref.read(currentBudgetsProvider.future);
-        await db.setBudgetByName(
-          month.id,
-          _savings.matchIn(budgets)?.name ?? _savings.name,
-          _savings.cents,
-          isFixed: _savings.isFixed,
-          isSavings: true,
-        );
       case _Step.essentials:
-        await _saveNamed(month, [_rent, _utilities, _groceries]);
-        await db.setBudgetByName(
-          month.id,
-          _transportation.name,
-          _needsTransportation ? _transportation.cents : 0,
-          isFixed: _transportation.isFixed,
-        );
+        await _saveNamed(month, [
+          _rent,
+          _utilities,
+          _groceries,
+          _transportation,
+        ]);
+      case _Step.savings:
+        await _saveNamed(month, [_savings]);
       case _Step.income || _Step.everythingElse:
         // Saved as they're changed.
         break;
@@ -242,12 +238,15 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
 
   Future<void> _saveNamed(Month month, List<_NamedBudget> named) async {
     final db = ref.read(appDatabaseProvider);
+    final budgets = await ref.read(currentBudgetsProvider.future);
     for (final budget in named) {
+      // Keeps the name of a budget matched by its category.
       await db.setBudgetByName(
         month.id,
-        budget.name,
+        budget.matchIn(budgets)?.name ?? budget.name,
         budget.cents,
         isFixed: budget.isFixed,
+        category: budget.category,
       );
     }
   }
@@ -259,9 +258,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
     final matched = <int>{};
     for (final named in _named) {
       if (named.matchIn(budgets) case final budget?) matched.add(budget.id);
-      if (named != _transportation || _needsTransportation) {
-        assignedCents += named.cents;
-      }
+      assignedCents += named.cents;
     }
     for (final budget in budgets) {
       if (!matched.contains(budget.id)) assignedCents += budget.amountCents;
@@ -353,8 +350,8 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
       ),
       _Step.everythingElse => (
         'Everything else',
-        'Give the rest of your money a job: insurance, your phone, '
-            'subscriptions, or money for fun.',
+        'Give the rest of your money a job: insurance, subscriptions, or '
+            'money for fun.',
       ),
     };
 
@@ -615,18 +612,11 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
       const SizedBox(height: 16),
       field(_groceries),
       const SizedBox(height: 16),
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: const Text('I need transportation for work'),
-        subtitle: const Text('Getting to work costs money each month.'),
-        value: _needsTransportation,
-        onChanged: (value) => setState(() => _needsTransportation = value),
-      ),
-      if (_needsTransportation) field(_transportation),
+      field(_transportation),
       const SizedBox(height: 16),
       Text(
-        'Rent and utilities are fixed costs: once you lock your plan in, '
-        'they count as spent in full.',
+        'Rent is a fixed cost: once you lock your plan in, it counts as '
+        'spent in full. The others are flexible: you track what you spend.',
         style: Theme.of(context).textTheme.bodyMedium
             ?.copyWith(color: context.budgetColors.inkMuted),
       ),
@@ -648,23 +638,21 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
       for (final budget in others)
         Card(
           child: ListTile(
-            title: Row(
+            // Badges go on the next line when they don't fit.
+            title: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Flexible(
-                  child: Text(budget.name, overflow: TextOverflow.ellipsis),
+                Text(
+                  budget.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (budget.isFixed) ...[
-                  const SizedBox(width: 8),
-                  const FixedBadge(),
-                ],
-                if (budget.isSinkingFund) ...[
-                  const SizedBox(width: 8),
-                  const SinkingFundBadge(),
-                ],
-                if (budget.isSavings) ...[
-                  const SizedBox(width: 8),
-                  const SavingsBadge(),
-                ],
+                if (budget.isFixed) const FixedBadge(),
+                if (budget.isSinkingFund) const SinkingFundBadge(),
+                if (budget.category != BudgetCategory.other)
+                  CategoryBadge(budget.category),
               ],
             ),
             subtitle: Text(formatCents(budget.amountCents)),

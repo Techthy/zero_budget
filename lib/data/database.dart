@@ -69,10 +69,10 @@ class Budgets extends Table {
   /// budgets.
   IntColumn get savedCents => integer().withDefault(const Constant(0))();
 
-  /// Savings budgets, like a transfer to a savings account, count towards
-  /// the savings goal with what's spent from them. They can be fixed, but
-  /// never a sinking fund.
-  BoolColumn get isSavings => boolean().withDefault(const Constant(false))();
+  /// What the budget is for. Savings budgets count towards the savings goal,
+  /// see [BudgetCategory.savings].
+  TextColumn get category => textEnum<BudgetCategory>()
+      .withDefault(Constant(BudgetCategory.other.name))();
 
   /// Where the budget goes among the month's budgets in the custom order,
   /// lowest first; see [BudgetOrder.custom]. New budgets go last.
@@ -140,13 +140,32 @@ class Settings extends Table {
 /// How long the savings goal runs before it starts over.
 enum SavingsPeriod { quarter, year }
 
+/// What a budget is for, see [Budgets.category]. [BudgetOrder.category]
+/// lists budgets in this order.
+enum BudgetCategory {
+  /// Given away, like to a charity or a church. Comes first in the plan.
+  giving,
+
+  /// Needed to live and work, like rent, utilities, groceries and
+  /// transportation.
+  essential,
+
+  /// Counts towards the savings goal with what's spent from it, like a
+  /// transfer to a savings account. It can be fixed, but never a sinking
+  /// fund.
+  savings,
+
+  /// Everything else.
+  other,
+}
+
 /// Light or dark colours for the app, see [Settings.appearance].
 enum Appearance { system, light, dark }
 
 /// How budgets are listed, see [Settings.budgetOrder].
 enum BudgetOrder {
-  /// Giving, the essentials and savings first, like in the guided planning,
-  /// then the rest from A to Z. Shown as "Recommended".
+  /// By [BudgetCategory], like in the guided planning.
+  /// Shown as "Recommended".
   category,
 
   /// All from A to Z.
@@ -233,7 +252,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'zero_budget'));
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -277,7 +296,24 @@ class AppDatabase extends _$AppDatabase {
           }
           // Added out of order, as syncing the carryovers below reads whole
           // budgets.
-          if (from < 14) await m.addColumn(budgets, budgets.isSavings);
+          if (from < 18) {
+            await m.addColumn(budgets, budgets.category);
+            // Savings were a flag from version 14 on.
+            if (from >= 14) {
+              await customStatement(
+                "UPDATE budgets SET category = 'savings' WHERE is_savings",
+              );
+              await m.dropColumn(budgets, 'is_savings');
+            }
+            // Giving and the essentials were recognized by their names, the
+            // ones the guided planning gives them.
+            await customStatement(
+              "UPDATE budgets SET category = CASE lower(name) "
+              "WHEN 'giving' THEN 'giving' ELSE 'essential' END "
+              "WHERE category = 'other' AND lower(name) IN "
+              "('giving', 'rent', 'utilities', 'groceries', 'transportation')",
+            );
+          }
           if (from < 17) {
             await m.addColumn(budgets, budgets.position);
             // Keeps the order they were added in.
@@ -406,7 +442,7 @@ class AppDatabase extends _$AppDatabase {
           amountCents: budget.amountCents,
           isFixed: Value(budget.isFixed),
           isSinkingFund: Value(budget.isSinkingFund),
-          isSavings: Value(budget.isSavings),
+          category: Value(budget.category),
           position: Value(budget.position),
           savedCents: Value(budget.isSinkingFund
               ? fundBalanceCents(budget, templateSpent[budget.id] ?? 0)
@@ -646,7 +682,7 @@ class AppDatabase extends _$AppDatabase {
       'FROM expenses e '
       'INNER JOIN budgets b ON b.id = e.budget_id '
       'INNER JOIN months m ON m.id = b.month_id '
-      'WHERE b.is_savings AND m.year * 100 + m.month BETWEEN ? AND ? '
+      "WHERE b.category = 'savings' AND m.year * 100 + m.month BETWEEN ? AND ? "
       'GROUP BY m.id ORDER BY m.year, m.month',
       variables: [
         Variable.withInt(encodeYearMonth(first)),
@@ -720,10 +756,13 @@ class AppDatabase extends _$AppDatabase {
     int amountCents, {
     bool isFixed = false,
     bool isSinkingFund = false,
-    bool isSavings = false,
+    BudgetCategory category = BudgetCategory.other,
   }) {
     assert(!(isFixed && isSinkingFund), 'A sinking fund is never fixed');
-    assert(!(isSavings && isSinkingFund), 'A sinking fund is never savings');
+    assert(
+      !(category == BudgetCategory.savings && isSinkingFund),
+      'A sinking fund is never savings',
+    );
     return transaction(() async {
       final last = budgets.position.max();
       final lastPosition = await (selectOnly(budgets)
@@ -738,7 +777,7 @@ class AppDatabase extends _$AppDatabase {
           amountCents: amountCents,
           isFixed: Value(isFixed),
           isSinkingFund: Value(isSinkingFund),
-          isSavings: Value(isSavings),
+          category: Value(category),
           position: Value(lastPosition == null ? 0 : lastPosition + 1),
         ),
       );
@@ -749,8 +788,10 @@ class AppDatabase extends _$AppDatabase {
 
   /// Sets the month's first budget called [name], ignoring case, to
   /// [amountCents]. It keeps its name and kind; if there's none yet, it's
-  /// added as a new budget, fixed or not by [isFixed]. With [isSavings], it
-  /// counts towards the savings goal either way, unless it's a sinking fund.
+  /// added as a new budget, fixed or not by [isFixed]. It gets the
+  /// [category] either way, unless it has one other than
+  /// [BudgetCategory.other] already, or it's a sinking fund and [category] is
+  /// savings.
   ///
   /// An amount of 0 removes the budget instead, unless expenses were tracked
   /// against it or it holds savings: then it's kept at 0.
@@ -759,7 +800,7 @@ class AppDatabase extends _$AppDatabase {
     String name,
     int amountCents, {
     bool isFixed = false,
-    bool isSavings = false,
+    BudgetCategory category = BudgetCategory.other,
   }) =>
       transaction(() async {
         final existing = await (select(budgets)
@@ -776,7 +817,7 @@ class AppDatabase extends _$AppDatabase {
             name,
             amountCents,
             isFixed: isFixed,
-            isSavings: isSavings,
+            category: category,
           );
           return;
         }
@@ -795,8 +836,12 @@ class AppDatabase extends _$AppDatabase {
             .write(
           BudgetsCompanion(
             amountCents: Value(amountCents),
-            isSavings: Value(
-              existing.isSavings || (isSavings && !existing.isSinkingFund),
+            category: Value(
+              existing.category != BudgetCategory.other ||
+                      (category == BudgetCategory.savings &&
+                          existing.isSinkingFund)
+                  ? existing.category
+                  : category,
             ),
           ),
         );
@@ -822,10 +867,13 @@ class AppDatabase extends _$AppDatabase {
     required int amountCents,
     required bool isFixed,
     bool isSinkingFund = false,
-    bool isSavings = false,
+    BudgetCategory category = BudgetCategory.other,
   }) {
     assert(!(isFixed && isSinkingFund), 'A sinking fund is never fixed');
-    assert(!(isSavings && isSinkingFund), 'A sinking fund is never savings');
+    assert(
+      !(category == BudgetCategory.savings && isSinkingFund),
+      'A sinking fund is never savings',
+    );
     return transaction(() async {
       if (!isSinkingFund) await _releaseSavings(id);
       await (update(budgets)..where((b) => b.id.equals(id))).write(
@@ -834,7 +882,7 @@ class AppDatabase extends _$AppDatabase {
           amountCents: Value(amountCents),
           isFixed: Value(isFixed),
           isSinkingFund: Value(isSinkingFund),
-          isSavings: Value(isSavings),
+          category: Value(category),
         ),
       );
       await _syncCarryOvers();

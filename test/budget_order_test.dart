@@ -5,7 +5,7 @@ import 'package:zero_budget/data/database.dart';
 Budget _budget(
   int id,
   String name, {
-  bool isSavings = false,
+  BudgetCategory category = BudgetCategory.other,
   int position = 0,
 }) => Budget(
   id: id,
@@ -15,38 +15,42 @@ Budget _budget(
   isFixed: false,
   isSinkingFund: false,
   savedCents: 0,
-  isSavings: isSavings,
+  category: category,
   position: position,
 );
 
 void main() {
   final budgets = [
-    _budget(1, 'phone'),
-    _budget(2, 'Groceries'),
-    _budget(3, 'ETF', isSavings: true),
-    _budget(4, 'Rent'),
+    _budget(1, 'phone', category: BudgetCategory.essential),
+    _budget(2, 'Groceries', category: BudgetCategory.essential),
+    _budget(3, 'ETF', category: BudgetCategory.savings),
+    _budget(4, 'Rent', category: BudgetCategory.essential),
     _budget(5, 'Car'),
-    _budget(6, 'giving'),
-    _budget(7, 'Bank savings', isSavings: true),
-    _budget(8, 'Utilities'),
+    _budget(6, 'giving', category: BudgetCategory.giving),
+    _budget(7, 'Bank savings', category: BudgetCategory.savings),
+    _budget(8, 'Utilities', category: BudgetCategory.essential),
     _budget(9, 'Car'),
+    // Named like an essential, but not one.
+    _budget(10, 'Transportation'),
   ];
 
   List<String> namesOf(List<Budget> sorted) => [
     for (final budget in sorted) '${budget.name}#${budget.id}',
   ];
 
-  test('by category: giving, the essentials, savings, then A to Z', () {
+  test('by category: giving, the essentials, savings, then the rest', () {
+    // The essentials the guided planning asks for come in its order.
     expect(namesOf(sortBudgets(budgets, BudgetOrder.category)), [
       'giving#6',
       'Rent#4',
       'Utilities#8',
       'Groceries#2',
+      'phone#1',
       'Bank savings#7',
       'ETF#3',
       'Car#5',
       'Car#9',
-      'phone#1',
+      'Transportation#10',
     ]);
   });
 
@@ -60,6 +64,7 @@ void main() {
       'Groceries#2',
       'phone#1',
       'Rent#4',
+      'Transportation#10',
       'Utilities#8',
     ]);
   });

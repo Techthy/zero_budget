@@ -16,7 +16,7 @@ Budget _budget(
   int amountCents, {
   bool isFixed = false,
   bool isSinkingFund = false,
-  bool isSavings = false,
+  BudgetCategory category = BudgetCategory.other,
   int savedCents = 0,
 }) => Budget(
   id: id,
@@ -26,7 +26,7 @@ Budget _budget(
   isFixed: isFixed,
   isSinkingFund: isSinkingFund,
   savedCents: savedCents,
-  isSavings: isSavings,
+  category: category,
   position: id,
 );
 
@@ -43,7 +43,7 @@ void main() {
     _budget(1, 90000, isFixed: true), // Rent
     _budget(2, 40000), // Groceries
     _budget(3, 10000), // Fun, overspent
-    _budget(4, 20000, isFixed: true, isSavings: true),
+    _budget(4, 20000, isFixed: true, category: BudgetCategory.savings),
     _budget(5, 10000, isSinkingFund: true, savedCents: 30000),
     _budget(6, 6000), // Transport, nothing spent yet
   ];

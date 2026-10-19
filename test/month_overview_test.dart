@@ -232,9 +232,20 @@ void main() {
     await tester.runAsync(() async {
       final month = await db.getOrCreateMonth(2026, 10);
       await db.addIncome(month.id, 'Job', 250000);
-      await db.addBudget(month.id, 'Rent', 90000, isFixed: true);
+      await db.addBudget(
+        month.id,
+        'Rent',
+        90000,
+        isFixed: true,
+        category: BudgetCategory.essential,
+      );
       await db.addBudget(month.id, 'Fun', 10000);
-      await db.addBudget(month.id, 'Giving', 5000);
+      await db.addBudget(
+        month.id,
+        'Giving',
+        5000,
+        category: BudgetCategory.giving,
+      );
     });
     await pumpScreen(tester);
     // Tall enough to show every budget at once.

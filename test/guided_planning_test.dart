@@ -77,7 +77,6 @@ void main() {
     await enterAmount(tester, 'Rent', '900');
     await enterAmount(tester, 'Utilities', '200');
     await enterAmount(tester, 'Groceries', '400');
-    await tapAndSettle(tester, find.text('I need transportation for work'));
     await enterAmount(tester, 'Transportation', '80');
     await tester.pump();
     expect(find.text('1320,00€'), findsOneWidget);
@@ -111,16 +110,15 @@ void main() {
     expect(month.carryOverCents, 50000);
     expect(month.incomeCents, 250000);
     expect(settings.bufferCents, 100000);
-    expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed)), [
-      ('Giving', 10000, false),
-      ('Rent', 90000, true),
-      ('Utilities', 20000, true),
-      ('Groceries', 40000, false),
-      ('Transportation', 8000, false),
-      ('Savings', 30000, true),
-      ('Phone', 2000, false),
+    expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed, b.category)), [
+      ('Giving', 10000, false, BudgetCategory.giving),
+      ('Rent', 90000, true, BudgetCategory.essential),
+      ('Utilities', 20000, false, BudgetCategory.essential),
+      ('Groceries', 40000, false, BudgetCategory.essential),
+      ('Transportation', 8000, false, BudgetCategory.essential),
+      ('Savings', 30000, true, BudgetCategory.savings),
+      ('Phone', 2000, false, BudgetCategory.other),
     ]);
-    expect(budgets.where((b) => b.isSavings).map((b) => b.name), ['Savings']);
   });
 
   testWidgets('a later month skips the balance and starts from its plan', (
@@ -136,7 +134,13 @@ void main() {
         'ETF',
         20000,
         isFixed: true,
-        isSavings: true,
+        category: BudgetCategory.savings,
+      );
+      await db.addBudget(
+        september.id,
+        'Church',
+        5000,
+        category: BudgetCategory.giving,
       );
       await db.setSavingsGoal(600000, SavingsPeriod.year);
     });
@@ -147,7 +151,16 @@ void main() {
     expect(find.text('Your income'), findsOneWidget);
     expect(find.text('Job'), findsOneWidget);
     await tapAndSettle(tester, find.text('Next'));
-    // No giving last month: skipped by leaving it empty.
+
+    // The giving budget there already, whatever it's called.
+    expect(
+      tester
+          .widget<TextFormField>(find.widgetWithText(TextFormField, 'Giving'))
+          .controller!
+          .text,
+      '50.00',
+    );
+    await enterAmount(tester, 'Giving', '60');
     await tapAndSettle(tester, find.text('Next'));
 
     expect(
@@ -169,20 +182,23 @@ void main() {
     expect(tester.widget<TextFormField>(savings).controller!.text, '2000.00');
     await tapAndSettle(tester, find.text('Next'));
 
-    // Rent is an essential and the ETF is savings, so only the gym is left.
+    // Rent is an essential, the ETF is savings and the church is giving, so
+    // only the gym is left.
     expect(find.text('Gym'), findsOneWidget);
     expect(find.text('Rent'), findsNothing);
     expect(find.text('ETF'), findsNothing);
+    expect(find.text('Church'), findsNothing);
     await tapAndSettle(tester, find.text('Finish'));
 
     final budgets = (await tester.runAsync(() async {
       final october = await db.getOrCreateMonth(2026, 10);
       return db.watchBudgets(october.id).first;
     }))!;
-    expect(budgets.map((b) => (b.name, b.amountCents, b.isSavings)), [
-      ('Rent', 95000, false),
-      ('Gym', 3000, false),
-      ('ETF', 200000, true),
+    expect(budgets.map((b) => (b.name, b.amountCents, b.category)), [
+      ('Rent', 95000, BudgetCategory.essential),
+      ('Gym', 3000, BudgetCategory.other),
+      ('ETF', 200000, BudgetCategory.savings),
+      ('Church', 6000, BudgetCategory.giving),
     ]);
   });
 }

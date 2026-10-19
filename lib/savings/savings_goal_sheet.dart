@@ -65,7 +65,9 @@ class SavingsGoalSheet extends ConsumerWidget {
     // Until the budgets load, don't suggest adding a savings budget.
     final hasSavingsBudget = ref.watch(
       currentBudgetsProvider.select(
-        (budgets) => budgets.value?.any((b) => b.isSavings) ?? true,
+        (budgets) =>
+            budgets.value?.any((b) => b.category == BudgetCategory.savings) ??
+            true,
       ),
     );
     if (progress == null) {

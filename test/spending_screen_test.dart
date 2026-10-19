@@ -33,13 +33,24 @@ void main() {
         await db.selectMonth(october, calendar: october);
         final month = await db.getOrCreateMonth(2026, 10);
         await db.addIncome(month.id, 'Salary', 123456789);
-        await db.addBudget(month.id, 'Rent', 9876543, isFixed: true);
-        groceriesId = await db.addBudget(month.id, 'Groceries', 40000);
+        await db.addBudget(
+          month.id,
+          'Rent',
+          9876543,
+          isFixed: true,
+          category: BudgetCategory.essential,
+        );
+        groceriesId = await db.addBudget(
+          month.id,
+          'Groceries',
+          40000,
+          category: BudgetCategory.essential,
+        );
         final long = await db.addBudget(
           month.id,
           'A budget with a really very long name that goes on',
           99999999,
-          isSavings: true,
+          category: BudgetCategory.savings,
         );
         await db.addBudget(month.id, 'Holiday', 10000, isSinkingFund: true);
         await db.lockMonth(month.id);
