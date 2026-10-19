@@ -81,23 +81,8 @@ class _SpendingOverview extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Budget ${formatMonth(month.year, month.month)}',
-                        style: textTheme.headlineMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                const HistoryButton(),
-              ],
-            ),
+            Text('Your Budget Overview', style: textTheme.titleLarge),
+            const SizedBox(height: 8),
             if (month.lockedAt == null) ...[
               const SizedBox(height: 16),
               Card(
@@ -114,8 +99,8 @@ class _SpendingOverview extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
             ],
-            const SizedBox(height: 24),
             MonthStatsCard(month: month, budgets: budgets, expenses: expenses),
             if (budgets.isNotEmpty)
               _SankeyCard(
@@ -142,6 +127,7 @@ class _SpendingOverview extends ConsumerWidget {
                 expenses: expenses,
                 onDeleteExpense: (expense) =>
                     ref.read(appDatabaseProvider).deleteExpense(expense.id),
+                onEditExpense: (expense) => openEditExpense(context, expense),
                 // Expenses are only added while tracking.
                 onAddExpense: month.lockedAt == null
                     ? null

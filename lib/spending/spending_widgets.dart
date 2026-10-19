@@ -55,20 +55,24 @@ class SpendingTotalWidget extends StatelessWidget {
 /// A card per budget showing what was spent from it, which opens up to list
 /// its expenses.
 ///
-/// Expenses get a delete button when [onDeleteExpense] is set, and budgets
-/// that take expenses get a button to add one when [onAddExpense] is set.
+/// Expenses get an edit button when [onEditExpense] is set and a delete
+/// button when [onDeleteExpense] is set, and budgets that take expenses get a
+/// button to add one when [onAddExpense] is set. Fixed expenses follow their
+/// budget, so they get neither.
 class BudgetSpendingList extends StatelessWidget {
   const BudgetSpendingList({
     super.key,
     required this.budgets,
     required this.expenses,
     this.onDeleteExpense,
+    this.onEditExpense,
     this.onAddExpense,
   });
 
   final List<Budget> budgets;
   final List<Expense> expenses;
   final ValueChanged<Expense>? onDeleteExpense;
+  final ValueChanged<Expense>? onEditExpense;
   final ValueChanged<Budget>? onAddExpense;
 
   @override
@@ -86,6 +90,7 @@ class BudgetSpendingList extends StatelessWidget {
             budget: budget,
             expenses: expensesByBudget[budget.id] ?? const [],
             onDeleteExpense: onDeleteExpense,
+            onEditExpense: onEditExpense,
             onAddExpense: onAddExpense,
           ),
       ],
@@ -149,12 +154,14 @@ class _BudgetSpendingCard extends StatefulWidget {
     required this.budget,
     required this.expenses,
     this.onDeleteExpense,
+    this.onEditExpense,
     this.onAddExpense,
   });
 
   final Budget budget;
   final List<Expense> expenses;
   final ValueChanged<Expense>? onDeleteExpense;
+  final ValueChanged<Expense>? onEditExpense;
   final ValueChanged<Budget>? onAddExpense;
 
   @override
@@ -171,6 +178,7 @@ class _BudgetSpendingCardState extends State<_BudgetSpendingCard> {
     final budget = widget.budget;
     final expenses = widget.expenses;
     final onDelete = widget.onDeleteExpense;
+    final onEdit = widget.onEditExpense;
     final onAdd = widget.onAddExpense;
     final plannedCents = availableCents(budget);
     final spentCents = expenses.fold(0, (sum, e) => sum + e.amountCents);
@@ -262,16 +270,6 @@ class _BudgetSpendingCardState extends State<_BudgetSpendingCard> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Divider(height: 1),
-                      // Fixed costs are tracked for you.
-                      if (onAdd != null && !budget.isFixed)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                          child: FilledButton.tonalIcon(
-                            onPressed: () => onAdd(budget),
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add expense'),
-                          ),
-                        ),
                       if (expenses.isEmpty)
                         const ListTile(title: Text('Nothing spent yet.'))
                       else
@@ -291,22 +289,45 @@ class _BudgetSpendingCardState extends State<_BudgetSpendingCard> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            onTap: onEdit == null || expense.isFixed
+                                ? null
+                                : () => onEdit(expense),
                             // Fixed expenses follow their budget, so they
-                            // can't be deleted.
-                            trailing: onDelete == null || expense.isFixed
-                                ? Text(formatCents(expense.amountCents))
-                                : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(formatCents(expense.amountCents)),
-                                      IconButton(
-                                        tooltip: 'Delete expense',
-                                        icon: const Icon(Icons.delete_outline),
-                                        onPressed: () => onDelete(expense),
-                                      ),
-                                    ],
+                            // can't be changed.
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(formatCents(expense.amountCents)),
+                                if (onEdit != null && !expense.isFixed)
+                                  IconButton(
+                                    tooltip: 'Edit expense',
+                                    visualDensity: VisualDensity.compact,
+                                    icon: const Icon(Icons.edit_outlined),
+                                    onPressed: () => onEdit(expense),
                                   ),
+                                if (onDelete != null && !expense.isFixed)
+                                  IconButton(
+                                    tooltip: 'Delete expense',
+                                    visualDensity: VisualDensity.compact,
+                                    icon: const Icon(Icons.delete_outline),
+                                    onPressed: () => onDelete(expense),
+                                  ),
+                              ],
+                            ),
                           ),
+                      // Fixed costs are tracked for you.
+                      if (onAdd != null && !budget.isFixed)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: OutlinedButton.icon(
+                              onPressed: () => onAdd(budget),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add expense'),
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 4),
                     ],
                   ),

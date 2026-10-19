@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../data/database.dart';
 import '../money.dart';
+import '../theme/budget_theme.dart';
 
 // Mark colors from a colorblind-validated data-viz palette. Text never wears
 // these; labels use the theme's text colors.
@@ -66,7 +67,7 @@ typedef _Focus = ({bool isSource, int index});
 /// carryover) and which budgets it flows into, with a legend underneath.
 ///
 /// With [spentByBudget], each budget fills up with what was spent from it.
-/// Tapping a flow highlights it.
+/// Tapping a flow highlights it and shows its full name and numbers below.
 class BudgetSankey extends StatefulWidget {
   const BudgetSankey({
     super.key,
@@ -152,6 +153,14 @@ class _BudgetSankeyState extends State<BudgetSankey> {
     );
   }
 
+  /// The node picked by tapping, if any.
+  _Node? _focused(List<_Node> sources, List<_Node> targets) {
+    final focus = _focus;
+    if (focus == null) return null;
+    final nodes = focus.isSource ? sources : targets;
+    return focus.index < nodes.length ? nodes[focus.index] : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -204,8 +213,9 @@ class _BudgetSankeyState extends State<BudgetSankey> {
                     focus: _focus,
                     colorOf: colorOf,
                     styles: styles,
-                    totalStyle: theme.textTheme.labelLarge!.copyWith(
-                      color: theme.colorScheme.onSurface,
+                    headingStyle: theme.textTheme.bodySmall!.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -213,6 +223,20 @@ class _BudgetSankeyState extends State<BudgetSankey> {
             );
           },
         ),
+        const SizedBox(height: 12),
+        switch (_focused(sources, targets)) {
+          final node? => _NodeDetails(
+              node: node,
+              color: colorOf(node.kind),
+              totalCents: sources.fold(0, (sum, n) => sum + n.cents),
+            ),
+          null => Text(
+              'Tap a flow to see its full name and numbers.',
+              style: theme.textTheme.bodySmall!.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+        },
         const SizedBox(height: 12),
         Wrap(
           spacing: 16,
@@ -270,6 +294,84 @@ String _describe(List<_Node> sources, List<_Node> targets) {
       .join(', ');
   return 'Where the money goes: from ${list(sources)}, '
       'to ${list(targets)}.';
+}
+
+/// The full name and numbers of a node picked by tapping, which the diagram
+/// may have had to shorten.
+class _NodeDetails extends StatelessWidget {
+  const _NodeDetails({
+    required this.node,
+    required this.color,
+    required this.totalCents,
+  });
+
+  final _Node node;
+  final Color color;
+
+  /// All the money flowing through the diagram.
+  final int totalCents;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.budgetColors;
+    final textTheme = Theme.of(context).textTheme;
+    final kind = switch (node.kind) {
+      _Kind.source => 'Money in',
+      _Kind.fixed => 'Fixed budget',
+      _Kind.flexible => 'Flexible budget',
+      _Kind.sinkingFund => 'Sinking fund',
+      _Kind.unassigned => 'Not assigned to a budget yet',
+      _Kind.shortfall => 'Shortfall',
+    };
+    final share = totalCents > 0 ? (node.cents * 100 / totalCents).round() : 0;
+    final muted = textTheme.bodySmall?.copyWith(color: c.inkMuted);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: c.surfaceSunken,
+        borderRadius: BudgetRadius.md,
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(node.label, style: textTheme.titleMedium),
+                  Text(
+                    '$kind · ${formatCents(node.cents)} · $share% of the '
+                    "month's money",
+                    style: muted,
+                  ),
+                  if (node.spending case (
+                    :final spentCents,
+                    availableCents: _,
+                  ))
+                    Text(
+                      '${formatCents(spentCents)} spent · ${node.valueText}',
+                      style: node.isOverspent
+                          ? muted?.copyWith(color: c.danger)
+                          : muted,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _LegendEntry extends StatelessWidget {
@@ -398,7 +500,6 @@ class _Layout {
     flowHeight = math.max(180, targets.length * minNodeHeight);
     plotHeight = flowHeight + (rows - 1) * gap;
     height = top + plotHeight;
-    totalCents = sources.fold(0, (sum, node) => sum + node.cents);
 
     // Put the middle node where both sides' labels fit, sharing any spare
     // room; if they can't both fit, split the width in proportion.
@@ -430,7 +531,7 @@ class _Layout {
   static const gap = 8.0;
   static const labelPadding = 6.0;
 
-  /// Room above the plot for the total.
+  /// Room above the plot for the column headings.
   static const top = 24.0;
 
   final List<_Node> sources;
@@ -440,7 +541,6 @@ class _Layout {
   late final double flowHeight;
   late final double plotHeight;
   late final double height;
-  late final int totalCents;
   late final Rect middle;
   late final List<Rect> sourceRects;
   late final List<Rect> targetRects;
@@ -515,14 +615,14 @@ class _SankeyPainter extends CustomPainter {
     required this.focus,
     required this.colorOf,
     required this.styles,
-    required this.totalStyle,
+    required this.headingStyle,
   });
 
   final _Layout layout;
   final _Focus? focus;
   final Color Function(_Kind) colorOf;
   final _LabelStyles styles;
-  final TextStyle totalStyle;
+  final TextStyle headingStyle;
 
   /// Half of the 2px surface gap between neighboring flows.
   static const _halfGap = 1.0;
@@ -622,21 +722,23 @@ class _SankeyPainter extends CustomPainter {
       );
     }
 
-    final total = TextPainter(
-      text: TextSpan(text: formatCents(l.totalCents), style: totalStyle),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    total.paint(
-      canvas,
-      Offset(
-        (middle.center.dx - total.width / 2).clamp(
-          0,
-          math.max(0, size.width - total.width),
+    // Each heading sits over its column of nodes, on the outer edge.
+    for (final (text, alignEnd) in [('Money in', false), ('Budgets', true)]) {
+      final heading = TextPainter(
+        text: TextSpan(text: text, style: headingStyle),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+        ellipsis: '…',
+      )..layout(maxWidth: size.width / 2);
+      heading.paint(
+        canvas,
+        Offset(
+          alignEnd ? size.width - heading.width : 0,
+          (_Layout.top - heading.height) / 2 - 2,
         ),
-        (_Layout.top - total.height) / 2 - 2,
-      ),
-    );
-    total.dispose();
+      );
+      heading.dispose();
+    }
   }
 
   /// Paints the flow between two node edges, given as x, top and bottom.

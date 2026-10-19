@@ -39,6 +39,7 @@ void main() {
       );
       await db.addBudget(month.id, 'Holiday', 10000, isSinkingFund: true);
       await db.lockMonth(month.id);
+      await db.setSavingsGoal(500000, SavingsPeriod.year);
       await db.addExpense(long, 12345678, title: 'Transfer');
       await db.addExpense(groceriesId, 50000, title: 'Too many snacks');
     });
@@ -73,8 +74,11 @@ void main() {
 
     expect(find.text('Left to spend'), findsOneWidget);
     expect(find.text('Bank balance'), findsOneWidget);
-    expect(find.text('Per day'), findsOneWidget);
     expect(find.text('Saved'), findsOneWidget);
+    expect(
+      find.text('Contributed towards the goal of 5000,00€'),
+      findsOneWidget,
+    );
     expect(find.text('1 budget is over'), findsOneWidget);
     expect(find.text('Sinking funds'), findsOneWidget);
     expect(find.text('Change buffer'), findsNothing);
@@ -86,6 +90,24 @@ void main() {
     await tester.tap(diagram);
     await tester.pumpAndSettle();
     expect(find.byType(BudgetSankey), findsOneWidget);
+    expect(
+      find.text('Tap a flow to see its full name and numbers.'),
+      findsOneWidget,
+    );
+
+    // Tapping the top budget, the fixed rent, shows its details.
+    final plot = find
+        .descendant(
+          of: find.byType(BudgetSankey),
+          matching: find.byType(CustomPaint),
+        )
+        .first;
+    await tester.ensureVisible(plot);
+    await tester.pumpAndSettle();
+    final rect = tester.getRect(plot);
+    await tester.tapAt(Offset(rect.right - 4, rect.top + 24 + 8));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Fixed budget · 98765,43€'), findsOneWidget);
     await unmount(tester);
   });
 
@@ -96,6 +118,8 @@ void main() {
 
     final groceries = find.text('Groceries');
     await tester.scrollUntilVisible(groceries, 200);
+    await tester.ensureVisible(groceries);
+    await tester.pumpAndSettle();
     expect(find.text('100,00€ over'), findsOneWidget);
     expect(find.text('Add expense'), findsNothing);
     await tester.tap(groceries);
@@ -138,11 +162,49 @@ void main() {
 
     final rent = find.text('Rent');
     await tester.scrollUntilVisible(rent, 200);
+    await tester.ensureVisible(rent);
+    await tester.pumpAndSettle();
     expect(find.text('Paid in full'), findsOneWidget);
     await tester.tap(rent);
     await tester.pumpAndSettle();
     expect(find.text('Fixed cost'), findsOneWidget);
     expect(find.text('Add expense'), findsNothing);
+    await unmount(tester);
+  });
+
+  testWidgets('editing an expense changes it in place', (tester) async {
+    await pumpScreen(tester);
+
+    final groceries = find.text('Groceries');
+    await tester.scrollUntilVisible(groceries, 200);
+    await tester.ensureVisible(groceries);
+    await tester.pumpAndSettle();
+    await tester.tap(groceries);
+    await tester.pumpAndSettle();
+
+    final edit = find.byTooltip('Edit expense');
+    await tester.ensureVisible(edit);
+    await tester.pumpAndSettle();
+    await tester.tap(edit);
+    await tester.pumpAndSettle();
+    expect(find.text('Edit expense'), findsOneWidget);
+    expect(find.text('Too many snacks'), findsOneWidget);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Expense title'),
+      'Snacks',
+    );
+    await tester.enterText(find.widgetWithText(TextFormField, 'Amount'), '45');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save changes'));
+    await tester.pumpAndSettle();
+
+    final expenses = (await tester.runAsync(() async {
+      final month = await db.getOrCreateMonth(2026, 10);
+      return db.watchExpenses(month.id).first;
+    }))!;
+    final snacks = expenses.singleWhere((e) => e.budgetId == groceriesId);
+    expect((snacks.title, snacks.amountCents), ('Snacks', 4500));
+    expect(find.text('Snacks'), findsOneWidget);
     await unmount(tester);
   });
 }

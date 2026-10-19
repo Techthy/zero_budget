@@ -837,6 +837,27 @@ class AppDatabase extends _$AppDatabase {
         return id;
       });
 
+  /// Changes what an expense was, its amount and the budget it came out of.
+  /// When it was spent stays the same.
+  Future<void> updateExpense(
+    int id, {
+    required int budgetId,
+    required int amountCents,
+    required String? title,
+    String? note,
+  }) =>
+      transaction(() async {
+        await (update(expenses)..where((e) => e.id.equals(id))).write(
+          ExpensesCompanion(
+            budgetId: Value(budgetId),
+            amountCents: Value(amountCents),
+            title: Value(title),
+            note: Value(note),
+          ),
+        );
+        await _syncCarryOvers();
+      });
+
   Future<void> deleteExpense(int id) => transaction(() async {
         await (delete(expenses)..where((e) => e.id.equals(id))).go();
         await _syncCarryOvers();

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database.dart';
 import '../money.dart';
+import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
 import '../welcome/welcome_providers.dart';
 import 'month_stats.dart';
@@ -28,6 +29,9 @@ class MonthStatsCard extends ConsumerWidget {
     final c = context.budgetColors;
     final textTheme = Theme.of(context).textTheme;
     final bufferCents = ref.watch(bufferCentsProvider).value;
+    final savingsGoalCents = ref.watch(
+      settingsProvider.select((settings) => settings.value?.savingsGoalCents),
+    );
     final stats = MonthStats.of(
       month: month,
       budgets: budgets,
@@ -46,22 +50,16 @@ class MonthStatsCard extends ConsumerWidget {
           value: formatCents(stats.bankBalanceCents),
           caption: 'Expected now, incl. ${formatCents(bufferCents)} buffer',
         ),
-      if (stats.perDayCents case final perDayCents?)
-        _StatTile(
-          icon: Icons.today_outlined,
-          label: 'Per day',
-          value: formatCents(perDayCents),
-          caption: switch (stats.daysLeft) {
-            1 => 'Left in everyday budgets for today',
-            final days => 'Left in everyday budgets for $days days',
-          },
-        ),
       if (stats.hasSavings)
         _StatTile(
           icon: Icons.savings_outlined,
           label: 'Saved',
           value: formatCents(stats.savedCents),
-          caption: 'of ${formatCents(stats.savingsPlannedCents)} planned',
+          caption: switch (savingsGoalCents) {
+            final goalCents? =>
+              'Contributed towards the goal of ${formatCents(goalCents)}',
+            null => 'of ${formatCents(stats.savingsPlannedCents)} planned',
+          },
         ),
       if (stats.budgetCount > 0)
         _StatTile(
@@ -219,7 +217,7 @@ class _StatTile extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             caption,
-            maxLines: 2,
+            maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
           ),

@@ -815,6 +815,26 @@ void main() {
     expect(await db.watchExpenses(month.id).first, hasLength(1));
   });
 
+  test('updateExpense changes an expense and what the month carries over',
+      () async {
+    final september = await db.getOrCreateMonth(2026, 9);
+    await db.addIncome(september.id, 'Salary', 100000);
+    final food = await db.addBudget(september.id, 'Food', 40000);
+    final fun = await db.addBudget(september.id, 'Fun', 10000);
+    final id = await db.addExpense(food, 5000, title: 'Market', note: 'Cash');
+    final october = await db.getOrCreateMonth(2026, 10);
+
+    await db.updateExpense(id,
+        budgetId: fun, amountCents: 7000, title: 'Cinema', note: null);
+
+    final expense = (await db.watchExpenses(september.id).first).single;
+    expect(
+      (expense.budgetId, expense.amountCents, expense.title, expense.note),
+      (fun, 7000, 'Cinema', null),
+    );
+    expect((await db.watchMonth(october.id).first).carryOverCents, 93000);
+  });
+
   group('monthsToChooseFrom', () {
     test('offers the next month three days before it starts', () {
       const october = (year: 2026, month: 10);

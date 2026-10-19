@@ -22,13 +22,27 @@ Future<void> openAddExpense(BuildContext context, {int? budgetId}) {
   );
 }
 
+/// Opens the screen to change [expense].
+Future<void> openEditExpense(BuildContext context, Expense expense) {
+  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  return Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => AddExpenseScreen(expense: expense),
+    ),
+  );
+}
+
 /// Notes down an expense quickly: what it was, the amount, a tap on its
-/// budget, done.
+/// budget, done. Given an [expense], changes that one instead.
 class AddExpenseScreen extends ConsumerWidget {
-  const AddExpenseScreen({super.key, this.budgetId});
+  const AddExpenseScreen({super.key, this.budgetId, this.expense});
 
   /// The budget picked to start with, if any.
   final int? budgetId;
+
+  /// The expense to change, if any.
+  final Expense? expense;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,15 +50,22 @@ class AddExpenseScreen extends ConsumerWidget {
     final expenses = ref.watch(currentExpensesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('New expense')),
+      appBar: AppBar(
+        title: Text(expense == null ? 'New expense' : 'Edit expense'),
+      ),
       body: LeafBackground(
         child: switch ((budgets, expenses)) {
           (AsyncData(value: final budgets), AsyncData(value: final expenses)) =>
             _ExpenseForm(
               // Fixed budgets are spent in full when the plan is locked in.
               budgets: budgets.where((b) => !b.isFixed).toList(),
-              spent: spentByBudget(expenses),
-              initialBudgetId: budgetId,
+              // What's left in each budget, as if the expense being changed
+              // wasn't there.
+              spent: spentByBudget(
+                expenses.where((e) => e.id != expense?.id),
+              ),
+              initialBudgetId: expense?.budgetId ?? budgetId,
+              expense: expense,
             ),
           (AsyncError(:final error), _) ||
           (_, AsyncError(:final error)) =>
@@ -61,9 +82,13 @@ class _ExpenseForm extends ConsumerStatefulWidget {
     required this.budgets,
     required this.spent,
     this.initialBudgetId,
+    this.expense,
   });
 
   final List<Budget> budgets;
+
+  /// The expense to change, if any.
+  final Expense? expense;
 
   /// The budget picked to start with, if it's one of [budgets].
   final int? initialBudgetId;
@@ -77,9 +102,14 @@ class _ExpenseForm extends ConsumerStatefulWidget {
 
 class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
   final _formKey = GlobalKey<FormState>();
-  final _title = TextEditingController();
-  final _amount = TextEditingController();
-  final _note = TextEditingController();
+  late final _title = TextEditingController(text: widget.expense?.title);
+  late final _amount = TextEditingController(
+    text: switch (widget.expense) {
+      final expense? => formatAmount(expense.amountCents),
+      null => '',
+    },
+  );
+  late final _note = TextEditingController(text: widget.expense?.note);
   late int? _budgetId = switch (widget.budgets) {
     final budgets when budgets.any((b) => b.id == widget.initialBudgetId) =>
       widget.initialBudgetId,
@@ -106,6 +136,35 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
     final budget = widget.budgets.firstWhere((b) => b.id == _budgetId);
     final amountCents = parseAmountToCents(_amount.text)!;
     final note = _note.text.trim();
+    if (widget.expense case final old?) {
+      await db.updateExpense(
+        old.id,
+        budgetId: budget.id,
+        amountCents: amountCents,
+        title: _title.text.trim(),
+        note: note.isEmpty ? null : note,
+      );
+      navigator.pop();
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Saved ${_title.text.trim()}.'),
+            persist: false,
+            action: SnackBarAction(
+              label: 'Undo',
+              onPressed: () => db.updateExpense(
+                old.id,
+                budgetId: old.budgetId,
+                amountCents: old.amountCents,
+                title: old.title,
+                note: old.note,
+              ),
+            ),
+          ),
+        );
+      return;
+    }
     final id = await db.addExpense(
       budget.id,
       amountCents,
@@ -211,7 +270,9 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
                     minimumSize: const Size.fromHeight(48),
                   ),
                   icon: const Icon(Icons.check),
-                  label: const Text('Add expense'),
+                  label: Text(
+                    widget.expense == null ? 'Add expense' : 'Save changes',
+                  ),
                 ),
               ),
             ],
