@@ -18,12 +18,14 @@ import 'welcome_providers.dart';
 
 /// Opens the guided planning for the current month.
 Future<void> startGuidedPlanning(BuildContext context) =>
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => const GuidedPlanningScreen(),
-      ),
-    );
+    Navigator.of(context).push(guidedPlanningRoute());
+
+/// The route of the guided planning, for when the context that opens it
+/// goes away first.
+Route<void> guidedPlanningRoute() => MaterialPageRoute<void>(
+  fullscreenDialog: true,
+  builder: (_) => const GuidedPlanningScreen(),
+);
 
 enum _Step { balance, income, giving, essentials, savings, everythingElse }
 
@@ -690,7 +692,7 @@ class _LeftToAssignBar extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final (background, foreground, message) = switch (leftCents) {
-      0 => (c.sproutTint, c.onSproutTint, 'Every euro has a job.'),
+      0 => (c.sproutTint, c.onSproutTint, 'Every ${currency.unitName} has a job.'),
       > 0 => (c.highlight, c.onHighlight, 'Left to assign'),
       _ => (colors.error, colors.onError, 'Assigned more than you have'),
     };

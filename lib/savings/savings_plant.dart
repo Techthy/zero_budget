@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../money.dart';
+
 /// A plant growing out of a coin pot, like the app's logo, that is as grown
 /// as [growth], from 0 (a seed) to 1 (fully grown, with sparkles).
 ///
@@ -18,7 +20,10 @@ class SavingsPlant extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (_, growth, _) => CustomPaint(
         size: Size.square(size),
-        painter: _PlantPainter(growth.clamp(0.0, 1.0)),
+        painter: _PlantPainter(
+          growth.clamp(0.0, 1.0),
+          coinSymbol: currency.coinSymbol,
+        ),
       ),
     );
   }
@@ -31,9 +36,12 @@ typedef _Leaf = ({double at, double angle, double length, double from});
 
 // Drawn on a 100 by 100 canvas, scaled to the size.
 class _PlantPainter extends CustomPainter {
-  _PlantPainter(this.growth);
+  _PlantPainter(this.growth, {required this.coinSymbol});
 
   final double growth;
+
+  /// On the coin's face, like the € in the logo.
+  final String coinSymbol;
 
   static const _gold = Color(0xFFF2B93B);
   static const _goldLight = Color(0xFFFAD772);
@@ -171,7 +179,7 @@ class _PlantPainter extends CustomPainter {
         ..close(),
       Paint()..color = _gold,
     );
-    // The coin's face, with its € sign.
+    // The coin's face, with the currency's sign.
     const face = Offset(51, 80);
     canvas.drawCircle(face, 11, Paint()..color = _goldLight);
     canvas.drawCircle(
@@ -182,10 +190,10 @@ class _PlantPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
-    final euro = TextPainter(
-      text: const TextSpan(
-        text: '€',
-        style: TextStyle(
+    final sign = TextPainter(
+      text: TextSpan(
+        text: coinSymbol,
+        style: const TextStyle(
           color: _goldDark,
           fontSize: 14,
           fontWeight: FontWeight.bold,
@@ -194,8 +202,8 @@ class _PlantPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    euro.paint(canvas, face - Offset(euro.width / 2, euro.height / 2));
-    euro.dispose();
+    sign.paint(canvas, face - Offset(sign.width / 2, sign.height / 2));
+    sign.dispose();
     // The rim, with soil inside.
     canvas.drawOval(
       const Rect.fromLTRB(26, 59.5, 74, 68.5),
@@ -209,5 +217,5 @@ class _PlantPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PlantPainter oldDelegate) =>
-      oldDelegate.growth != growth;
+      oldDelegate.growth != growth || oldDelegate.coinSymbol != coinSymbol;
 }

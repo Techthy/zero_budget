@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../budget_order.dart';
+import '../money.dart';
 import '../theme/budget_theme.dart';
 
 /// Opens the explanation of the guided planning in a sheet from the bottom.
@@ -73,15 +74,16 @@ const List<_HelpStep> _steps = [
 ];
 
 /// General rules, shown after the steps.
-const List<String> _goodToKnow = [
+List<String> get _goodToKnow => [
   'Each step is saved when you tap Next. You can stop at any time and keep '
       'what you entered.',
   'The steps start from your current plan. A new month begins as a copy of '
       'the month before, so you mostly check and adjust.',
-  'Left to assign shows what still needs a job. Aim for 0: every euro gets a '
-      'job.',
-  'Giving and the essentials are found by their names. Keep the names to '
-      'have them filled in next time.',
+  'Left to assign shows what still needs a job. Aim for 0: every '
+      '${currency.unitName} gets a job.',
+  'The essentials are found by their names, so keep them to have them '
+      'filled in next time. Giving and savings are found by their category, '
+      'whatever they are called.',
   'Leaving an amount empty skips it, and removes a budget there already, '
       'unless you tracked expenses on it.',
   'When you are done, lock your plan in. Fixed budgets then count as spent '

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import '../dates.dart';
+import '../money.dart';
 
 part 'database.drift.dart';
 
@@ -33,6 +34,10 @@ class Months extends Table {
   /// Free-form notes about the month's plan, like goals or things to take
   /// care of; null when there are none.
   TextColumn get notes => text().nullable()();
+
+  /// Copied from the month before and not set up yet: the user first picks
+  /// which budgets to keep, see [AppDatabase.setUpMonth].
+  BoolColumn get needsSetUp => boolean().withDefault(const Constant(false))();
 
   @override
   List<Set<Column>> get uniqueKeys => [
@@ -132,6 +137,10 @@ class Settings extends Table {
   /// How budgets are listed on the plan and while tracking.
   TextColumn get budgetOrder => textEnum<BudgetOrder>()
       .withDefault(Constant(BudgetOrder.category.name))();
+
+  /// What amounts are shown in.
+  TextColumn get currency =>
+      textEnum<Currency>().withDefault(Constant(Currency.eur.name))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -252,7 +261,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'zero_budget'));
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -295,7 +304,8 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(settings, settings.offeredYearMonth);
           }
           // Added out of order, as syncing the carryovers below reads whole
-          // budgets.
+          // months and budgets.
+          if (from < 19) await m.addColumn(months, months.needsSetUp);
           if (from < 18) {
             await m.addColumn(budgets, budgets.category);
             // Savings were a flag from version 14 on.
@@ -339,6 +349,9 @@ class AppDatabase extends _$AppDatabase {
           if (from >= 10 && from < 16) {
             await m.addColumn(settings, settings.budgetOrder);
           }
+          if (from >= 10 && from < 20) {
+            await m.addColumn(settings, settings.currency);
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -348,17 +361,21 @@ class AppDatabase extends _$AppDatabase {
   /// Returns the row for [year]/[month], creating it if it doesn't exist yet.
   ///
   /// A new month uses the latest earlier month as its template, see
-  /// [_copyPlan].
+  /// [_copyPlan], and then [Months.needsSetUp].
   Future<Month> getOrCreateMonth(int year, int month) => transaction(() async {
         final query = select(months)
           ..where((m) => m.year.equals(year) & m.month.equals(month));
         final existing = await query.getSingleOrNull();
         if (existing != null) return existing;
 
-        final monthId = await into(months).insert(
-          MonthsCompanion.insert(year: year, month: month),
-        );
         final template = await _monthBefore(year, month);
+        final monthId = await into(months).insert(
+          MonthsCompanion.insert(
+            year: year,
+            month: month,
+            needsSetUp: Value(template != null),
+          ),
+        );
         if (template != null) await _copyPlan(template, monthId);
         await _syncCarryOvers();
         return query.getSingle();
@@ -638,6 +655,7 @@ class AppDatabase extends _$AppDatabase {
                   savingsGoalPeriod: SavingsPeriod.year,
                   appearance: Appearance.system,
                   budgetOrder: BudgetOrder.category,
+                  currency: Currency.eur,
                 ),
           );
 
@@ -655,6 +673,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setAppearance(Appearance appearance) =>
       _updateSettings(SettingsCompanion(appearance: Value(appearance)));
+
+  Future<void> setCurrency(Currency currency) =>
+      _updateSettings(SettingsCompanion(currency: Value(currency)));
 
   Future<void> setBudgetOrder(BudgetOrder order) =>
       _updateSettings(SettingsCompanion(budgetOrder: Value(order)));
@@ -845,6 +866,23 @@ class AppDatabase extends _$AppDatabase {
             ),
           ),
         );
+        await _syncCarryOvers();
+      });
+
+  /// Sets up a month copied from the month before, keeping only the budgets
+  /// [keptBudgetIds]. The others are deleted like with [deleteBudget].
+  Future<void> setUpMonth(int monthId, Set<int> keptBudgetIds) =>
+      transaction(() async {
+        final monthBudgets = await (select(budgets)
+              ..where((b) => b.monthId.equals(monthId)))
+            .get();
+        for (final budget in monthBudgets) {
+          if (keptBudgetIds.contains(budget.id)) continue;
+          await _releaseSavings(budget.id);
+          await (delete(budgets)..where((b) => b.id.equals(budget.id))).go();
+        }
+        await (update(months)..where((m) => m.id.equals(monthId)))
+            .write(const MonthsCompanion(needsSetUp: Value(false)));
         await _syncCarryOvers();
       });
 

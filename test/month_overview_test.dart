@@ -50,6 +50,26 @@ void main() {
     await tester.pump(Duration.zero);
   }
 
+  /// Lets the app's queries finish: writing from inside the app and
+  /// watching the database needs real time and fake time in turns.
+  Future<void> settleQueries(WidgetTester tester) async {
+    for (var i = 0; i < 20; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await tester.pumpAndSettle();
+  }
+
+  /// Adds a September plan, which October is copied from.
+  Future<void> planSeptember(WidgetTester tester) => tester.runAsync(() async {
+    final september = await db.getOrCreateMonth(2026, 9);
+    await db.addIncome(september.id, 'Job', 250000);
+    await db.addBudget(september.id, 'Rent', 90000, isFixed: true);
+    await db.addBudget(september.id, 'Gym', 3000);
+  });
+
   Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
     await tester.tap(finder);
     await tester.pumpAndSettle();
@@ -283,6 +303,41 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
     final settings = (await tester.runAsync(() => db.watchSettings().first))!;
     expect(settings.budgetOrder, BudgetOrder.custom);
+    await unmount(tester);
+  });
+
+  testWidgets('a copied month first asks which budgets to keep', (
+    tester,
+  ) async {
+    await planSeptember(tester);
+    await pumpScreen(tester);
+
+    expect(find.text('Welcome to October 2026'), findsOneWidget);
+    expect(find.text('Keeping 2 of 2 budgets'), findsOneWidget);
+    await tapAndSettle(tester, find.text('Gym'));
+    expect(find.text('Keeping 1 of 2 budgets'), findsOneWidget);
+
+    await tester.tap(find.text('Go to my plan'));
+    await settleQueries(tester);
+    expect(find.text('Welcome to October 2026'), findsNothing);
+    // The plan, with its card to plan step by step.
+    expect(find.text('Plan step by step'), findsOneWidget);
+    final (month, budgets) = (await tester.runAsync(() async {
+      final month = await db.getOrCreateMonth(2026, 10);
+      return (month, await db.watchBudgets(month.id).first);
+    }))!;
+    expect(month.needsSetUp, isFalse);
+    expect(budgets.map((b) => b.name), ['Rent']);
+    await unmount(tester);
+  });
+
+  testWidgets('setting up a month can go on step by step', (tester) async {
+    await planSeptember(tester);
+    await pumpScreen(tester);
+
+    await tester.tap(find.text('Plan step by step'));
+    await settleQueries(tester);
+    expect(find.text('Step 1 of 5'), findsOneWidget);
     await unmount(tester);
   });
 }

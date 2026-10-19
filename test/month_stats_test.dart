@@ -9,6 +9,7 @@ const _october = Month(
   incomeCents: 300000,
   carryOverCents: 50000,
   carryOverAdjustmentCents: 0,
+  needsSetUp: false,
 );
 
 Budget _budget(

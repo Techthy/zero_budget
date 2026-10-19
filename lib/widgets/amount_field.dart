@@ -39,6 +39,8 @@ class AmountField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: labelText,
         hintText: '0.00',
+        prefixText: currency.isSymbolFirst ? '${currency.symbol} ' : null,
+        suffixText: currency.isSymbolFirst ? null : currency.symbol,
         helperText: helperText,
         helperMaxLines: 2,
       ),

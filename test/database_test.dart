@@ -189,6 +189,9 @@ void main() {
 
     final old = AppDatabase(NativeDatabase(file));
     await seed(old);
+    if (version < 19) {
+      await old.customStatement('ALTER TABLE months DROP COLUMN needs_set_up');
+    }
     if (version >= 14 && version < 18) {
       await old.customStatement(
           'ALTER TABLE budgets ADD COLUMN is_savings INTEGER NOT NULL '
@@ -201,6 +204,9 @@ void main() {
     }
     if (version < 17) {
       await old.customStatement('ALTER TABLE budgets DROP COLUMN position');
+    }
+    if (version >= 10 && version < 20) {
+      await old.customStatement('ALTER TABLE settings DROP COLUMN currency');
     }
     if (version >= 10 && version < 16) {
       await old
@@ -263,7 +269,7 @@ void main() {
   }
 
   for (final version in [
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, //
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, //
   ]) {
     test('upgrading from schema $version keeps the plan', () async {
       late int monthId;
@@ -286,9 +292,10 @@ void main() {
       expect(await upgraded.watchSelectedYearMonth().first,
           (year: 2026, month: 9));
       expect((await upgraded.watchSettings().first).showDebugBar, isTrue);
-      // Recognized as an essential by its name.
+      // Recognized as an essential by its name, before there were
+      // categories.
       expect((await upgraded.watchBudgets(monthId).first).single.category,
-          BudgetCategory.essential);
+          version < 18 ? BudgetCategory.essential : BudgetCategory.other);
       await upgraded.setSavingsGoal(100000, SavingsPeriod.quarter);
       expect((await upgraded.watchSettings().first).savingsGoalCents, 100000);
       expect((await upgraded.watchSettings().first).appearance,
@@ -301,6 +308,9 @@ void main() {
       await upgraded.setBudgetOrder(BudgetOrder.alphabetical);
       expect((await upgraded.watchSettings().first).budgetOrder,
           BudgetOrder.alphabetical);
+      expect((await upgraded.watchSettings().first).currency, Currency.eur);
+      await upgraded.setCurrency(Currency.chf);
+      expect((await upgraded.watchSettings().first).currency, Currency.chf);
     });
   }
 
@@ -385,6 +395,32 @@ void main() {
     // 1000.00 income + 100.00 carried over - 900.00 food - 100.00 fund.
     expect(september.carryOverCents, 10000);
     expect((await db.watchBudgets(september.id).first).last.savedCents, 2500);
+  });
+
+  test('a copied month is set up by picking the budgets to keep', () async {
+    final august = await db.getOrCreateMonth(2026, 8);
+    expect(august.needsSetUp, isFalse);
+    await db.addIncome(august.id, 'Salary', 100000);
+    await db.addBudget(august.id, 'Food', 40000);
+    await db.addBudget(august.id, 'Gym', 3000);
+    await db.addBudget(august.id, 'Insurance', 10000, isSinkingFund: true);
+
+    final september = await db.getOrCreateMonth(2026, 9);
+    expect(september.needsSetUp, isTrue);
+    // Nothing spent in August: the food and the gym carry over.
+    expect(september.carryOverCents, 43000 + 100000 - 53000);
+    final budgets = await db.watchBudgets(september.id).first;
+    final food = budgets.firstWhere((b) => b.name == 'Food');
+
+    await db.setUpMonth(september.id, {food.id});
+
+    final setUp = await db.watchMonth(september.id).first;
+    expect(setUp.needsSetUp, isFalse);
+    expect((await db.watchBudgets(september.id).first).map((b) => b.name),
+        ['Food']);
+    // The fund's 100.00 saved in August goes back into September.
+    expect(setUp.carryOverCents, 90000 + 10000);
+    expect(await db.watchIncomes(september.id).first, hasLength(1));
   });
 
   test('a sinking fund that stops being one releases its savings', () async {
@@ -644,21 +680,32 @@ void main() {
     expect(await container.read(currentYearMonthProvider.future), next);
   });
 
-  test('a new month is offered once it starts, and only once', () async {
+  test('a new month is offered days before it starts, and only once',
+      () async {
     final container = ProviderContainer.test(
       overrides: [appDatabaseProvider.overrideWithValue(db)],
     );
     container.listen(monthToOfferProvider, (_, _) {});
+    // Not the last day, whenever the test runs.
+    container.read(dayOffsetProvider.notifier).shiftToMonthStart(0);
     final start = await container.read(currentYearMonthProvider.future);
     expect(await container.read(monthToOfferProvider.future), isNull);
 
-    container.read(dayOffsetProvider.notifier).shiftToMonthStart(1);
-    final next = yearMonthOf(container.read(todayProvider));
+    container.read(dayOffsetProvider.notifier)
+      ..shiftToMonthStart(1)
+      ..shiftDays(-planAheadDays - 1);
+    expect(await container.read(monthToOfferProvider.future), isNull);
+    container.read(dayOffsetProvider.notifier).shiftDays(1);
+    final next = yearMonthOf(
+      DateTime(start.year, start.month + 1),
+    );
     expect(await container.read(monthToOfferProvider.future), next);
 
-    // Declining stays in the month before.
+    // Declining stays in the month before, also once the next one starts.
     await db.declineMonth(next);
     await pumpEventQueue();
+    expect(await container.read(monthToOfferProvider.future), isNull);
+    container.read(dayOffsetProvider.notifier).shiftToMonthStart(1);
     expect(await container.read(monthToOfferProvider.future), isNull);
     expect(await container.read(currentYearMonthProvider.future), start);
 
@@ -999,6 +1046,41 @@ void main() {
       newMonthToOffer(current: october, offered: null, today: inOctober),
       isNull,
     );
+    // From three days before the month starts, to plan ahead.
+    const november = (year: 2026, month: 11);
+    expect(
+      newMonthToOffer(
+        current: october,
+        offered: null,
+        today: DateTime(2026, 10, 28),
+      ),
+      isNull,
+    );
+    expect(
+      newMonthToOffer(
+        current: october,
+        offered: null,
+        today: DateTime(2026, 10, 29),
+      ),
+      november,
+    );
+    final lastDay = DateTime(2026, 10, 31);
+    expect(
+      newMonthToOffer(current: october, offered: null, today: lastDay),
+      november,
+    );
+    expect(
+      newMonthToOffer(current: october, offered: november, today: lastDay),
+      isNull,
+    );
+    expect(
+      newMonthToOffer(
+        current: (year: 2026, month: 12),
+        offered: null,
+        today: DateTime(2026, 12, 31),
+      ),
+      (year: 2027, month: 1),
+    );
   });
 
   group('parseAmountToCents', () {
@@ -1020,6 +1102,18 @@ void main() {
     expect(formatCents(123450), '1234,50€');
     expect(formatCents(5), '0,05€');
     expect(formatCents(-2500), '-25,00€');
+  });
+
+  test('formatCents follows the currency', () {
+    addTearDown(() => currency = Currency.eur);
+    currency = Currency.usd;
+    expect(formatCents(123450), r'$1234.50');
+    expect(formatCents(-2500), r'-$25.00');
+    currency = Currency.gbp;
+    expect(formatCents(5), '£0.05');
+    currency = Currency.chf;
+    expect(formatCents(123450), 'CHF 1234.50');
+    expect(formatSignedCents(2500), '+CHF 25.00');
   });
 
   test('formatAmount is read back by parseAmountToCents', () {

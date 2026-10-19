@@ -7,6 +7,7 @@ import '../welcome/welcome_providers.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/budget_sankey.dart';
 import '../widgets/leaf_background.dart';
+import '../widgets/new_month_card.dart';
 import 'add_expense_screen.dart';
 import 'month_stats_card.dart';
 import 'spending_providers.dart';
@@ -83,6 +84,7 @@ class _SpendingOverview extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
               sliver: SliverList.list(
                 children: [
+                  const NewMonthCard(),
                   Text('Your Budget Overview', style: textTheme.titleLarge),
                   const SizedBox(height: 8),
                   if (month.lockedAt == null) ...[

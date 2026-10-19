@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../money.dart';
 import '../theme/budget_theme.dart';
 
 /// Opens the explanation of zero-based budgeting in a sheet from the bottom.
@@ -19,15 +20,15 @@ Future<void> showZeroBasedHelp(BuildContext context) =>
 
 typedef _Section = ({IconData icon, String title, String text});
 
-const List<_Section> _sections = [
+List<_Section> get _sections => [
   (
     icon: Icons.work_outline,
-    title: 'Every euro gets a job',
+    title: 'Every ${currency.unitName} gets a job',
     text:
         'Before the month starts, you split all the money you have for it, '
         'your income plus what last month left, into budgets: giving, rent, '
-        'groceries, savings, fun. When nothing is left to assign, every euro '
-        'has a job.',
+        'groceries, savings, fun. When nothing is left to assign, every '
+        '${currency.unitName} has a job.',
   ),
   (
     icon: Icons.savings_outlined,
@@ -58,8 +59,8 @@ const List<_Section> _sections = [
     title: 'When the month goes differently',
     text:
         'Spent more on one budget? Unlock your plan and move money from '
-        'another one. The total stays the same, and every euro still has a '
-        'job.',
+        'another one. The total stays the same, and every '
+        '${currency.unitName} still has a job.',
   ),
 ];
 
@@ -95,7 +96,7 @@ class _ZeroBasedHelp extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Plan every euro before you spend it.',
+                  'Plan every ${currency.unitName} before you spend it.',
                   textAlign: TextAlign.center,
                   style: textTheme.bodyMedium?.copyWith(color: c.onSproutTint),
                 ),

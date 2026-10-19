@@ -99,6 +99,15 @@ class _SettingsList extends ConsumerWidget {
               ),
               onTap: () => editBuffer(context, ref, settings.bufferCents),
             ),
+            ListTile(
+              leading: const Icon(Icons.payments_outlined),
+              title: const Text('Currency'),
+              subtitle: Text(
+                '${settings.currency.label}, like '
+                '${formatCents(123450)}',
+              ),
+              onTap: () => _chooseCurrency(context, ref, settings.currency),
+            ),
             const _SectionHeader('History'),
             ListTile(
               leading: const Icon(Icons.history),
@@ -137,6 +146,35 @@ class _SettingsList extends ConsumerWidget {
   }
 }
 
+/// Asks which currency to show amounts in, starting from [current].
+Future<void> _chooseCurrency(
+  BuildContext context,
+  WidgetRef ref,
+  Currency current,
+) async {
+  final chosen = await showDialog<Currency>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: const Text('Currency'),
+      children: [
+        for (final currency in Currency.values)
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(context).pop(currency),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text('${currency.label} (${currency.symbol})'),
+                ),
+                if (currency == current) const Icon(Icons.check),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
+  if (chosen != null) await ref.read(appDatabaseProvider).setCurrency(chosen);
+}
+
 /// What the app is, who wrote it, its version, and where to report issues.
 class _About extends ConsumerWidget {
   const _About();
@@ -158,12 +196,12 @@ class _About extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(
-            'Zero Budget helps you plan every euro of your month before you '
-            "spend it, instead of tracking where your money went after it's "
-            'gone.\n\n'
+            'Zero Budget helps you plan every ${currency.unitName} of your '
+            'month before you spend it, instead of tracking where your money '
+            "went after it's gone.\n\n"
             'Written by C. Hammann. The app is highly vibe coded, so expect a '
             'rough edge here and there, and please report anything that '
             "doesn't work as it should.",

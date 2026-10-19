@@ -44,16 +44,18 @@ List<YearMonth> monthsToChooseFrom(
       .toList();
 }
 
-/// The month that started after the [current] one, to offer moving on to;
-/// null if [current] isn't behind [today] or the user was already offered it
-/// ([offered] is the latest month they were).
+/// The month after the [current] one to offer moving on to, from
+/// [planAheadDays] before it starts, so it can be planned ahead: the month
+/// that's in [planAheadDays]. Null if [current] isn't behind that, or the
+/// user was already offered it ([offered] is the latest month they were).
 YearMonth? newMonthToOffer({
   required YearMonth current,
   required YearMonth? offered,
   required DateTime today,
 }) {
-  final calendar = encodeYearMonth(yearMonthOf(today));
-  if (encodeYearMonth(current) >= calendar) return null;
-  if (offered != null && encodeYearMonth(offered) >= calendar) return null;
-  return decodeYearMonth(calendar);
+  final ahead = DateTime(today.year, today.month, today.day + planAheadDays);
+  final target = encodeYearMonth(yearMonthOf(ahead));
+  if (encodeYearMonth(current) >= target) return null;
+  if (offered != null && encodeYearMonth(offered) >= target) return null;
+  return decodeYearMonth(target);
 }

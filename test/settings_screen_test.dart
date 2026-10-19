@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
 import 'package:zero_budget/data/database_provider.dart';
+import 'package:zero_budget/money.dart';
 import 'package:zero_budget/settings/settings_providers.dart';
 import 'package:zero_budget/settings/settings_screen.dart';
 import 'package:zero_budget/theme/budget_theme.dart';
@@ -62,6 +63,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(copied, 'zero-budget@chammann.dev');
     expect(find.text('Copied zero-budget@chammann.dev'), findsOneWidget);
+
+    // Amounts are in euros until another currency is chosen.
+    final currency = find.text('Euro, like 1234,50€');
+    await tester.scrollUntilVisible(currency, -200);
+    await tester.tap(currency);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(r'US Dollar ($)'));
+    await tester.pumpAndSettle();
+    final settings = (await tester.runAsync(() => db.watchSettings().first))!;
+    expect(settings.currency, Currency.usd);
 
     // Unmounts the app while the test still runs, then runs the timers
     // drift starts when its streams close.

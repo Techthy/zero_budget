@@ -15,9 +15,11 @@ import '../widgets/budget_sankey.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/fixed_badge.dart';
 import '../widgets/leaf_background.dart';
+import '../widgets/new_month_card.dart';
 import '../widgets/reorderable_budgets.dart';
 import 'guided_planning_help.dart';
 import 'guided_planning_screen.dart';
+import 'month_set_up.dart';
 import 'month_overview_card.dart';
 import 'plan_editing.dart';
 import 'welcome_providers.dart';
@@ -36,6 +38,14 @@ class WelcomeScreen extends ConsumerWidget {
       body: LeafBackground(
         child: SafeArea(
           child: switch ((month, incomes, budgets, expenses)) {
+            (
+              AsyncData(value: final month),
+              AsyncData(value: _),
+              AsyncData(value: final budgets),
+              AsyncData(value: _),
+            )
+                when month.needsSetUp =>
+              MonthSetUp(month: month, budgets: budgets),
             (
               AsyncData(value: final month),
               AsyncData(value: final incomes),
@@ -176,6 +186,7 @@ class _BudgetPlan extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
               sliver: SliverList.list(
                 children: [
+                  const NewMonthCard(),
                   _TitleRow(
                     title: title,
                     isLocked: isLocked,

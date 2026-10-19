@@ -94,6 +94,21 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _needsSetUpMeta = const VerificationMeta(
+    'needsSetUp',
+  );
+  @override
+  late final GeneratedColumn<bool> needsSetUp = GeneratedColumn<bool>(
+    'needs_set_up',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("needs_set_up" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -104,6 +119,7 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
     carryOverCents,
     carryOverAdjustmentCents,
     notes,
+    needsSetUp,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -175,6 +191,15 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('needs_set_up')) {
+      context.handle(
+        _needsSetUpMeta,
+        needsSetUp.isAcceptableOrUnknown(
+          data['needs_set_up']!,
+          _needsSetUpMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -220,6 +245,10 @@ class $MonthsTable extends Months with TableInfo<$MonthsTable, Month> {
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      needsSetUp: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}needs_set_up'],
+      )!,
     );
   }
 
@@ -254,6 +283,10 @@ class Month extends DataClass implements Insertable<Month> {
   /// Free-form notes about the month's plan, like goals or things to take
   /// care of; null when there are none.
   final String? notes;
+
+  /// Copied from the month before and not set up yet: the user first picks
+  /// which budgets to keep, see [AppDatabase.setUpMonth].
+  final bool needsSetUp;
   const Month({
     required this.id,
     required this.year,
@@ -263,6 +296,7 @@ class Month extends DataClass implements Insertable<Month> {
     required this.carryOverCents,
     required this.carryOverAdjustmentCents,
     this.notes,
+    required this.needsSetUp,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -281,6 +315,7 @@ class Month extends DataClass implements Insertable<Month> {
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
+    map['needs_set_up'] = Variable<bool>(needsSetUp);
     return map;
   }
 
@@ -298,6 +333,7 @@ class Month extends DataClass implements Insertable<Month> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
           : Value(notes),
+      needsSetUp: Value(needsSetUp),
     );
   }
 
@@ -317,6 +353,7 @@ class Month extends DataClass implements Insertable<Month> {
         json['carryOverAdjustmentCents'],
       ),
       notes: serializer.fromJson<String?>(json['notes']),
+      needsSetUp: serializer.fromJson<bool>(json['needsSetUp']),
     );
   }
   @override
@@ -333,6 +370,7 @@ class Month extends DataClass implements Insertable<Month> {
         carryOverAdjustmentCents,
       ),
       'notes': serializer.toJson<String?>(notes),
+      'needsSetUp': serializer.toJson<bool>(needsSetUp),
     };
   }
 
@@ -345,6 +383,7 @@ class Month extends DataClass implements Insertable<Month> {
     int? carryOverCents,
     int? carryOverAdjustmentCents,
     Value<String?> notes = const Value.absent(),
+    bool? needsSetUp,
   }) => Month(
     id: id ?? this.id,
     year: year ?? this.year,
@@ -355,6 +394,7 @@ class Month extends DataClass implements Insertable<Month> {
     carryOverAdjustmentCents:
         carryOverAdjustmentCents ?? this.carryOverAdjustmentCents,
     notes: notes.present ? notes.value : this.notes,
+    needsSetUp: needsSetUp ?? this.needsSetUp,
   );
   Month copyWithCompanion(MonthsCompanion data) {
     return Month(
@@ -372,6 +412,9 @@ class Month extends DataClass implements Insertable<Month> {
           ? data.carryOverAdjustmentCents.value
           : this.carryOverAdjustmentCents,
       notes: data.notes.present ? data.notes.value : this.notes,
+      needsSetUp: data.needsSetUp.present
+          ? data.needsSetUp.value
+          : this.needsSetUp,
     );
   }
 
@@ -385,7 +428,8 @@ class Month extends DataClass implements Insertable<Month> {
           ..write('lockedAt: $lockedAt, ')
           ..write('carryOverCents: $carryOverCents, ')
           ..write('carryOverAdjustmentCents: $carryOverAdjustmentCents, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('needsSetUp: $needsSetUp')
           ..write(')'))
         .toString();
   }
@@ -400,6 +444,7 @@ class Month extends DataClass implements Insertable<Month> {
     carryOverCents,
     carryOverAdjustmentCents,
     notes,
+    needsSetUp,
   );
   @override
   bool operator ==(Object other) =>
@@ -412,7 +457,8 @@ class Month extends DataClass implements Insertable<Month> {
           other.lockedAt == this.lockedAt &&
           other.carryOverCents == this.carryOverCents &&
           other.carryOverAdjustmentCents == this.carryOverAdjustmentCents &&
-          other.notes == this.notes);
+          other.notes == this.notes &&
+          other.needsSetUp == this.needsSetUp);
 }
 
 class MonthsCompanion extends UpdateCompanion<Month> {
@@ -424,6 +470,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
   final Value<int> carryOverCents;
   final Value<int> carryOverAdjustmentCents;
   final Value<String?> notes;
+  final Value<bool> needsSetUp;
   const MonthsCompanion({
     this.id = const Value.absent(),
     this.year = const Value.absent(),
@@ -433,6 +480,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     this.carryOverCents = const Value.absent(),
     this.carryOverAdjustmentCents = const Value.absent(),
     this.notes = const Value.absent(),
+    this.needsSetUp = const Value.absent(),
   });
   MonthsCompanion.insert({
     this.id = const Value.absent(),
@@ -443,6 +491,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     this.carryOverCents = const Value.absent(),
     this.carryOverAdjustmentCents = const Value.absent(),
     this.notes = const Value.absent(),
+    this.needsSetUp = const Value.absent(),
   }) : year = Value(year),
        month = Value(month);
   static Insertable<Month> custom({
@@ -454,6 +503,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     Expression<int>? carryOverCents,
     Expression<int>? carryOverAdjustmentCents,
     Expression<String>? notes,
+    Expression<bool>? needsSetUp,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -465,6 +515,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
       if (carryOverAdjustmentCents != null)
         'carry_over_adjustment_cents': carryOverAdjustmentCents,
       if (notes != null) 'notes': notes,
+      if (needsSetUp != null) 'needs_set_up': needsSetUp,
     });
   }
 
@@ -477,6 +528,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     Value<int>? carryOverCents,
     Value<int>? carryOverAdjustmentCents,
     Value<String?>? notes,
+    Value<bool>? needsSetUp,
   }) {
     return MonthsCompanion(
       id: id ?? this.id,
@@ -488,6 +540,7 @@ class MonthsCompanion extends UpdateCompanion<Month> {
       carryOverAdjustmentCents:
           carryOverAdjustmentCents ?? this.carryOverAdjustmentCents,
       notes: notes ?? this.notes,
+      needsSetUp: needsSetUp ?? this.needsSetUp,
     );
   }
 
@@ -520,6 +573,9 @@ class MonthsCompanion extends UpdateCompanion<Month> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (needsSetUp.present) {
+      map['needs_set_up'] = Variable<bool>(needsSetUp.value);
+    }
     return map;
   }
 
@@ -533,7 +589,8 @@ class MonthsCompanion extends UpdateCompanion<Month> {
           ..write('lockedAt: $lockedAt, ')
           ..write('carryOverCents: $carryOverCents, ')
           ..write('carryOverAdjustmentCents: $carryOverAdjustmentCents, ')
-          ..write('notes: $notes')
+          ..write('notes: $notes, ')
+          ..write('needsSetUp: $needsSetUp')
           ..write(')'))
         .toString();
   }
@@ -1993,6 +2050,16 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         defaultValue: Constant(BudgetOrder.category.name),
       ).withConverter<BudgetOrder>($SettingsTable.$converterbudgetOrder);
   @override
+  late final GeneratedColumnWithTypeConverter<Currency, String> currency =
+      GeneratedColumn<String>(
+        'currency',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(Currency.eur.name),
+      ).withConverter<Currency>($SettingsTable.$convertercurrency);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     bufferCents,
@@ -2003,6 +2070,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     savingsGoalPeriod,
     appearance,
     budgetOrder,
+    currency,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2115,6 +2183,12 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
           data['${effectivePrefix}budget_order'],
         )!,
       ),
+      currency: $SettingsTable.$convertercurrency.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}currency'],
+        )!,
+      ),
     );
   }
 
@@ -2131,6 +2205,8 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
       const EnumNameConverter<Appearance>(Appearance.values);
   static JsonTypeConverter2<BudgetOrder, String, String> $converterbudgetOrder =
       const EnumNameConverter<BudgetOrder>(BudgetOrder.values);
+  static JsonTypeConverter2<Currency, String, String> $convertercurrency =
+      const EnumNameConverter<Currency>(Currency.values);
 }
 
 class Setting extends DataClass implements Insertable<Setting> {
@@ -2161,6 +2237,9 @@ class Setting extends DataClass implements Insertable<Setting> {
 
   /// How budgets are listed on the plan and while tracking.
   final BudgetOrder budgetOrder;
+
+  /// What amounts are shown in.
+  final Currency currency;
   const Setting({
     required this.id,
     required this.bufferCents,
@@ -2171,6 +2250,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.savingsGoalPeriod,
     required this.appearance,
     required this.budgetOrder,
+    required this.currency,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2202,6 +2282,11 @@ class Setting extends DataClass implements Insertable<Setting> {
         $SettingsTable.$converterbudgetOrder.toSql(budgetOrder),
       );
     }
+    {
+      map['currency'] = Variable<String>(
+        $SettingsTable.$convertercurrency.toSql(currency),
+      );
+    }
     return map;
   }
 
@@ -2222,6 +2307,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       savingsGoalPeriod: Value(savingsGoalPeriod),
       appearance: Value(appearance),
       budgetOrder: Value(budgetOrder),
+      currency: Value(currency),
     );
   }
 
@@ -2246,6 +2332,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       budgetOrder: $SettingsTable.$converterbudgetOrder.fromJson(
         serializer.fromJson<String>(json['budgetOrder']),
       ),
+      currency: $SettingsTable.$convertercurrency.fromJson(
+        serializer.fromJson<String>(json['currency']),
+      ),
     );
   }
   @override
@@ -2267,6 +2356,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       'budgetOrder': serializer.toJson<String>(
         $SettingsTable.$converterbudgetOrder.toJson(budgetOrder),
       ),
+      'currency': serializer.toJson<String>(
+        $SettingsTable.$convertercurrency.toJson(currency),
+      ),
     };
   }
 
@@ -2280,6 +2372,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     SavingsPeriod? savingsGoalPeriod,
     Appearance? appearance,
     BudgetOrder? budgetOrder,
+    Currency? currency,
   }) => Setting(
     id: id ?? this.id,
     bufferCents: bufferCents ?? this.bufferCents,
@@ -2296,6 +2389,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     savingsGoalPeriod: savingsGoalPeriod ?? this.savingsGoalPeriod,
     appearance: appearance ?? this.appearance,
     budgetOrder: budgetOrder ?? this.budgetOrder,
+    currency: currency ?? this.currency,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -2324,6 +2418,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       budgetOrder: data.budgetOrder.present
           ? data.budgetOrder.value
           : this.budgetOrder,
+      currency: data.currency.present ? data.currency.value : this.currency,
     );
   }
 
@@ -2338,7 +2433,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('savingsGoalCents: $savingsGoalCents, ')
           ..write('savingsGoalPeriod: $savingsGoalPeriod, ')
           ..write('appearance: $appearance, ')
-          ..write('budgetOrder: $budgetOrder')
+          ..write('budgetOrder: $budgetOrder, ')
+          ..write('currency: $currency')
           ..write(')'))
         .toString();
   }
@@ -2354,6 +2450,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     savingsGoalPeriod,
     appearance,
     budgetOrder,
+    currency,
   );
   @override
   bool operator ==(Object other) =>
@@ -2367,7 +2464,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.savingsGoalCents == this.savingsGoalCents &&
           other.savingsGoalPeriod == this.savingsGoalPeriod &&
           other.appearance == this.appearance &&
-          other.budgetOrder == this.budgetOrder);
+          other.budgetOrder == this.budgetOrder &&
+          other.currency == this.currency);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -2380,6 +2478,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<SavingsPeriod> savingsGoalPeriod;
   final Value<Appearance> appearance;
   final Value<BudgetOrder> budgetOrder;
+  final Value<Currency> currency;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.bufferCents = const Value.absent(),
@@ -2390,6 +2489,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.savingsGoalPeriod = const Value.absent(),
     this.appearance = const Value.absent(),
     this.budgetOrder = const Value.absent(),
+    this.currency = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2401,6 +2501,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.savingsGoalPeriod = const Value.absent(),
     this.appearance = const Value.absent(),
     this.budgetOrder = const Value.absent(),
+    this.currency = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -2412,6 +2513,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? savingsGoalPeriod,
     Expression<String>? appearance,
     Expression<String>? budgetOrder,
+    Expression<String>? currency,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2423,6 +2525,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (savingsGoalPeriod != null) 'savings_goal_period': savingsGoalPeriod,
       if (appearance != null) 'appearance': appearance,
       if (budgetOrder != null) 'budget_order': budgetOrder,
+      if (currency != null) 'currency': currency,
     });
   }
 
@@ -2436,6 +2539,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<SavingsPeriod>? savingsGoalPeriod,
     Value<Appearance>? appearance,
     Value<BudgetOrder>? budgetOrder,
+    Value<Currency>? currency,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -2447,6 +2551,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       savingsGoalPeriod: savingsGoalPeriod ?? this.savingsGoalPeriod,
       appearance: appearance ?? this.appearance,
       budgetOrder: budgetOrder ?? this.budgetOrder,
+      currency: currency ?? this.currency,
     );
   }
 
@@ -2488,6 +2593,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         $SettingsTable.$converterbudgetOrder.toSql(budgetOrder.value),
       );
     }
+    if (currency.present) {
+      map['currency'] = Variable<String>(
+        $SettingsTable.$convertercurrency.toSql(currency.value),
+      );
+    }
     return map;
   }
 
@@ -2502,7 +2612,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('savingsGoalCents: $savingsGoalCents, ')
           ..write('savingsGoalPeriod: $savingsGoalPeriod, ')
           ..write('appearance: $appearance, ')
-          ..write('budgetOrder: $budgetOrder')
+          ..write('budgetOrder: $budgetOrder, ')
+          ..write('currency: $currency')
           ..write(')'))
         .toString();
   }
@@ -2562,6 +2673,7 @@ typedef $$MonthsTableCreateCompanionBuilder = MonthsCompanion Function({
   Value<int> carryOverCents,
   Value<int> carryOverAdjustmentCents,
   Value<String?> notes,
+  Value<bool> needsSetUp,
 });
 typedef $$MonthsTableUpdateCompanionBuilder = MonthsCompanion Function({
   Value<int> id,
@@ -2572,6 +2684,7 @@ typedef $$MonthsTableUpdateCompanionBuilder = MonthsCompanion Function({
   Value<int> carryOverCents,
   Value<int> carryOverAdjustmentCents,
   Value<String?> notes,
+  Value<bool> needsSetUp,
 });
 
 final class $$MonthsTableReferences
@@ -2663,6 +2776,11 @@ class $$MonthsTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get needsSetUp => $composableBuilder(
+    column: $table.needsSetUp,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2765,6 +2883,11 @@ class $$MonthsTableOrderingComposer
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get needsSetUp => $composableBuilder(
+    column: $table.needsSetUp,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MonthsTableAnnotationComposer
@@ -2805,6 +2928,11 @@ class $$MonthsTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<bool> get needsSetUp => $composableBuilder(
+    column: $table.needsSetUp,
+    builder: (column) => column,
+  );
 
   Expression<T> incomesRefs<T extends Object>(
     Expression<T> Function($$IncomesTableAnnotationComposer a) f,
@@ -2893,6 +3021,7 @@ class $$MonthsTableTableManager
                 Value<int> carryOverCents = const Value.absent(),
                 Value<int> carryOverAdjustmentCents = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<bool> needsSetUp = const Value.absent(),
               }) => MonthsCompanion(
                 id: id,
                 year: year,
@@ -2902,6 +3031,7 @@ class $$MonthsTableTableManager
                 carryOverCents: carryOverCents,
                 carryOverAdjustmentCents: carryOverAdjustmentCents,
                 notes: notes,
+                needsSetUp: needsSetUp,
               ),
           createCompanionCallback:
               ({
@@ -2913,6 +3043,7 @@ class $$MonthsTableTableManager
                 Value<int> carryOverCents = const Value.absent(),
                 Value<int> carryOverAdjustmentCents = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<bool> needsSetUp = const Value.absent(),
               }) => MonthsCompanion.insert(
                 id: id,
                 year: year,
@@ -2922,6 +3053,7 @@ class $$MonthsTableTableManager
                 carryOverCents: carryOverCents,
                 carryOverAdjustmentCents: carryOverAdjustmentCents,
                 notes: notes,
+                needsSetUp: needsSetUp,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4105,6 +4237,7 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   Value<SavingsPeriod> savingsGoalPeriod,
   Value<Appearance> appearance,
   Value<BudgetOrder> budgetOrder,
+  Value<Currency> currency,
 });
 typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<int> id,
@@ -4116,6 +4249,7 @@ typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<SavingsPeriod> savingsGoalPeriod,
   Value<Appearance> appearance,
   Value<BudgetOrder> budgetOrder,
+  Value<Currency> currency,
 });
 
 class $$SettingsTableFilterComposer
@@ -4174,6 +4308,12 @@ class $$SettingsTableFilterComposer
     column: $table.budgetOrder,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<Currency, Currency, String> get currency =>
+      $composableBuilder(
+        column: $table.currency,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 }
 
 class $$SettingsTableOrderingComposer
@@ -4227,6 +4367,11 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<String> get budgetOrder => $composableBuilder(
     column: $table.budgetOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -4285,6 +4430,9 @@ class $$SettingsTableAnnotationComposer
         column: $table.budgetOrder,
         builder: (column) => column,
       );
+
+  GeneratedColumnWithTypeConverter<Currency, String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
 }
 
 class $$SettingsTableTableManager
@@ -4324,6 +4472,7 @@ class $$SettingsTableTableManager
                 Value<SavingsPeriod> savingsGoalPeriod = const Value.absent(),
                 Value<Appearance> appearance = const Value.absent(),
                 Value<BudgetOrder> budgetOrder = const Value.absent(),
+                Value<Currency> currency = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 bufferCents: bufferCents,
@@ -4334,6 +4483,7 @@ class $$SettingsTableTableManager
                 savingsGoalPeriod: savingsGoalPeriod,
                 appearance: appearance,
                 budgetOrder: budgetOrder,
+                currency: currency,
               ),
           createCompanionCallback:
               ({
@@ -4346,6 +4496,7 @@ class $$SettingsTableTableManager
                 Value<SavingsPeriod> savingsGoalPeriod = const Value.absent(),
                 Value<Appearance> appearance = const Value.absent(),
                 Value<BudgetOrder> budgetOrder = const Value.absent(),
+                Value<Currency> currency = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 bufferCents: bufferCents,
@@ -4356,6 +4507,7 @@ class $$SettingsTableTableManager
                 savingsGoalPeriod: savingsGoalPeriod,
                 appearance: appearance,
                 budgetOrder: budgetOrder,
+                currency: currency,
               ),
           withReferenceMapper: (p0) => p0
               .map(
