@@ -106,11 +106,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       (month) => month.value?.lockedAt != null,
     );
     final isLocked = ref.watch(isLockedProvider);
-    // Locking the plan in starts tracking, and an unlocked plan needs work,
-    // so follow along. This also picks the tab the app opens on.
+    // A month that's locked in opens on tracking, one still being planned on
+    // the plan: when the app opens and when switching months. Locking or
+    // unlocking the month at hand stays on the tab it was done on.
     ref.listen(
-      isLockedProvider,
-      (_, isLocked) => setState(() => _tab = isLocked ? _Tab.track : _Tab.plan),
+      currentMonthProvider.select(
+        (month) => (
+          id: month.value?.id,
+          isLocked: month.value?.lockedAt != null,
+        ),
+      ),
+      (previous, next) {
+        if (next.id == null || next.id == previous?.id) return;
+        setState(() => _tab = next.isLocked ? _Tab.track : _Tab.plan);
+      },
     );
 
     Widget body = IndexedStack(

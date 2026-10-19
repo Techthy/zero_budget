@@ -192,4 +192,27 @@ void main() {
     expect(month.lockedAt, isNull);
     await unmount(tester);
   });
+
+  testWidgets('the step by step card explains how it works', (tester) async {
+    await pumpScreen(tester);
+
+    await tapAndSettle(tester, find.byTooltip('How it works'));
+    expect(find.text('How step by step works'), findsOneWidget);
+    expect(find.text('Where you start'), findsOneWidget);
+    // Further down, the sheet scrolls.
+    await tester.scrollUntilVisible(
+      find.text('Pay yourself'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(BottomSheet),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(find.text('Pay yourself'), findsOneWidget);
+    await closeSheet(tester);
+    expect(find.text('How step by step works'), findsNothing);
+    await unmount(tester);
+  });
 }

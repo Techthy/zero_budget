@@ -15,6 +15,7 @@ import '../widgets/budget_sankey.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/fixed_badge.dart';
 import '../widgets/leaf_background.dart';
+import 'guided_planning_help.dart';
 import 'guided_planning_screen.dart';
 import 'month_overview_card.dart';
 import 'plan_editing.dart';
@@ -432,12 +433,18 @@ class _GuidedPlanningCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                IconButton(
+                  tooltip: 'How it works',
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.info_outline, color: c.onSproutTint),
+                  onPressed: () => showGuidedPlanningHelp(context),
+                ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              'Go through your income, giving, the essentials and everything '
-              'else, one step at a time.',
+              'Go through your income, giving, the essentials, savings and '
+              'everything else, one step at a time. You can always fine-tune your plan later on this plan tab.',
               style: textTheme.bodyMedium?.copyWith(color: c.onSproutTint),
             ),
             const SizedBox(height: 12),
