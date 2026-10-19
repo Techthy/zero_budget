@@ -139,7 +139,7 @@ class SpentVsPlanned extends StatelessWidget {
                     ? '${formatCents(-leftCents)} over'
                     : '${formatCents(leftCents)} left',
                 style: textTheme.bodyMedium?.copyWith(
-                  color: overspent ? colors.error : Colors.green.shade700,
+                  color: overspent ? colors.error : colors.primary,
                   fontWeight: FontWeight.bold,
                 ),
               ),

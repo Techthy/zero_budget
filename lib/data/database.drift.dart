@@ -1921,6 +1921,16 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     defaultValue: Constant(SavingsPeriod.year.name),
   ).withConverter<SavingsPeriod>($SettingsTable.$convertersavingsGoalPeriod);
   @override
+  late final GeneratedColumnWithTypeConverter<Appearance, String> appearance =
+      GeneratedColumn<String>(
+        'appearance',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(Appearance.system.name),
+      ).withConverter<Appearance>($SettingsTable.$converterappearance);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     bufferCents,
@@ -1929,6 +1939,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     showDebugBar,
     savingsGoalCents,
     savingsGoalPeriod,
+    appearance,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2029,6 +2040,12 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
           data['${effectivePrefix}savings_goal_period'],
         )!,
       ),
+      appearance: $SettingsTable.$converterappearance.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}appearance'],
+        )!,
+      ),
     );
   }
 
@@ -2041,6 +2058,8 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   $convertersavingsGoalPeriod = const EnumNameConverter<SavingsPeriod>(
     SavingsPeriod.values,
   );
+  static JsonTypeConverter2<Appearance, String, String> $converterappearance =
+      const EnumNameConverter<Appearance>(Appearance.values);
 }
 
 class Setting extends DataClass implements Insertable<Setting> {
@@ -2065,6 +2084,9 @@ class Setting extends DataClass implements Insertable<Setting> {
   /// What to save in each [savingsGoalPeriod]; null while there's no goal.
   final int? savingsGoalCents;
   final SavingsPeriod savingsGoalPeriod;
+
+  /// Whether the app is shown light, dark, or following the system.
+  final Appearance appearance;
   const Setting({
     required this.id,
     required this.bufferCents,
@@ -2073,6 +2095,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.showDebugBar,
     this.savingsGoalCents,
     required this.savingsGoalPeriod,
+    required this.appearance,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2094,6 +2117,11 @@ class Setting extends DataClass implements Insertable<Setting> {
         $SettingsTable.$convertersavingsGoalPeriod.toSql(savingsGoalPeriod),
       );
     }
+    {
+      map['appearance'] = Variable<String>(
+        $SettingsTable.$converterappearance.toSql(appearance),
+      );
+    }
     return map;
   }
 
@@ -2112,6 +2140,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? const Value.absent()
           : Value(savingsGoalCents),
       savingsGoalPeriod: Value(savingsGoalPeriod),
+      appearance: Value(appearance),
     );
   }
 
@@ -2130,6 +2159,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       savingsGoalPeriod: $SettingsTable.$convertersavingsGoalPeriod.fromJson(
         serializer.fromJson<String>(json['savingsGoalPeriod']),
       ),
+      appearance: $SettingsTable.$converterappearance.fromJson(
+        serializer.fromJson<String>(json['appearance']),
+      ),
     );
   }
   @override
@@ -2145,6 +2177,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       'savingsGoalPeriod': serializer.toJson<String>(
         $SettingsTable.$convertersavingsGoalPeriod.toJson(savingsGoalPeriod),
       ),
+      'appearance': serializer.toJson<String>(
+        $SettingsTable.$converterappearance.toJson(appearance),
+      ),
     };
   }
 
@@ -2156,6 +2191,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     bool? showDebugBar,
     Value<int?> savingsGoalCents = const Value.absent(),
     SavingsPeriod? savingsGoalPeriod,
+    Appearance? appearance,
   }) => Setting(
     id: id ?? this.id,
     bufferCents: bufferCents ?? this.bufferCents,
@@ -2170,6 +2206,7 @@ class Setting extends DataClass implements Insertable<Setting> {
         ? savingsGoalCents.value
         : this.savingsGoalCents,
     savingsGoalPeriod: savingsGoalPeriod ?? this.savingsGoalPeriod,
+    appearance: appearance ?? this.appearance,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -2192,6 +2229,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       savingsGoalPeriod: data.savingsGoalPeriod.present
           ? data.savingsGoalPeriod.value
           : this.savingsGoalPeriod,
+      appearance: data.appearance.present
+          ? data.appearance.value
+          : this.appearance,
     );
   }
 
@@ -2204,7 +2244,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('offeredYearMonth: $offeredYearMonth, ')
           ..write('showDebugBar: $showDebugBar, ')
           ..write('savingsGoalCents: $savingsGoalCents, ')
-          ..write('savingsGoalPeriod: $savingsGoalPeriod')
+          ..write('savingsGoalPeriod: $savingsGoalPeriod, ')
+          ..write('appearance: $appearance')
           ..write(')'))
         .toString();
   }
@@ -2218,6 +2259,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     showDebugBar,
     savingsGoalCents,
     savingsGoalPeriod,
+    appearance,
   );
   @override
   bool operator ==(Object other) =>
@@ -2229,7 +2271,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.offeredYearMonth == this.offeredYearMonth &&
           other.showDebugBar == this.showDebugBar &&
           other.savingsGoalCents == this.savingsGoalCents &&
-          other.savingsGoalPeriod == this.savingsGoalPeriod);
+          other.savingsGoalPeriod == this.savingsGoalPeriod &&
+          other.appearance == this.appearance);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -2240,6 +2283,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<bool> showDebugBar;
   final Value<int?> savingsGoalCents;
   final Value<SavingsPeriod> savingsGoalPeriod;
+  final Value<Appearance> appearance;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.bufferCents = const Value.absent(),
@@ -2248,6 +2292,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.showDebugBar = const Value.absent(),
     this.savingsGoalCents = const Value.absent(),
     this.savingsGoalPeriod = const Value.absent(),
+    this.appearance = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -2257,6 +2302,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.showDebugBar = const Value.absent(),
     this.savingsGoalCents = const Value.absent(),
     this.savingsGoalPeriod = const Value.absent(),
+    this.appearance = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -2266,6 +2312,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<bool>? showDebugBar,
     Expression<int>? savingsGoalCents,
     Expression<String>? savingsGoalPeriod,
+    Expression<String>? appearance,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2275,6 +2322,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (showDebugBar != null) 'show_debug_bar': showDebugBar,
       if (savingsGoalCents != null) 'savings_goal_cents': savingsGoalCents,
       if (savingsGoalPeriod != null) 'savings_goal_period': savingsGoalPeriod,
+      if (appearance != null) 'appearance': appearance,
     });
   }
 
@@ -2286,6 +2334,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<bool>? showDebugBar,
     Value<int?>? savingsGoalCents,
     Value<SavingsPeriod>? savingsGoalPeriod,
+    Value<Appearance>? appearance,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -2295,6 +2344,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       showDebugBar: showDebugBar ?? this.showDebugBar,
       savingsGoalCents: savingsGoalCents ?? this.savingsGoalCents,
       savingsGoalPeriod: savingsGoalPeriod ?? this.savingsGoalPeriod,
+      appearance: appearance ?? this.appearance,
     );
   }
 
@@ -2326,6 +2376,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         ),
       );
     }
+    if (appearance.present) {
+      map['appearance'] = Variable<String>(
+        $SettingsTable.$converterappearance.toSql(appearance.value),
+      );
+    }
     return map;
   }
 
@@ -2338,7 +2393,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('offeredYearMonth: $offeredYearMonth, ')
           ..write('showDebugBar: $showDebugBar, ')
           ..write('savingsGoalCents: $savingsGoalCents, ')
-          ..write('savingsGoalPeriod: $savingsGoalPeriod')
+          ..write('savingsGoalPeriod: $savingsGoalPeriod, ')
+          ..write('appearance: $appearance')
           ..write(')'))
         .toString();
   }
@@ -3919,6 +3975,7 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   Value<bool> showDebugBar,
   Value<int?> savingsGoalCents,
   Value<SavingsPeriod> savingsGoalPeriod,
+  Value<Appearance> appearance,
 });
 typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<int> id,
@@ -3928,6 +3985,7 @@ typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<bool> showDebugBar,
   Value<int?> savingsGoalCents,
   Value<SavingsPeriod> savingsGoalPeriod,
+  Value<Appearance> appearance,
 });
 
 class $$SettingsTableFilterComposer
@@ -3972,6 +4030,12 @@ class $$SettingsTableFilterComposer
   ColumnWithTypeConverterFilters<SavingsPeriod, SavingsPeriod, String>
   get savingsGoalPeriod => $composableBuilder(
     column: $table.savingsGoalPeriod,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Appearance, Appearance, String>
+  get appearance => $composableBuilder(
+    column: $table.appearance,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 }
@@ -4019,6 +4083,11 @@ class $$SettingsTableOrderingComposer
     column: $table.savingsGoalPeriod,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get appearance => $composableBuilder(
+    column: $table.appearance,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -4063,6 +4132,12 @@ class $$SettingsTableAnnotationComposer
     column: $table.savingsGoalPeriod,
     builder: (column) => column,
   );
+
+  GeneratedColumnWithTypeConverter<Appearance, String> get appearance =>
+      $composableBuilder(
+        column: $table.appearance,
+        builder: (column) => column,
+      );
 }
 
 class $$SettingsTableTableManager
@@ -4100,6 +4175,7 @@ class $$SettingsTableTableManager
                 Value<bool> showDebugBar = const Value.absent(),
                 Value<int?> savingsGoalCents = const Value.absent(),
                 Value<SavingsPeriod> savingsGoalPeriod = const Value.absent(),
+                Value<Appearance> appearance = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 bufferCents: bufferCents,
@@ -4108,6 +4184,7 @@ class $$SettingsTableTableManager
                 showDebugBar: showDebugBar,
                 savingsGoalCents: savingsGoalCents,
                 savingsGoalPeriod: savingsGoalPeriod,
+                appearance: appearance,
               ),
           createCompanionCallback:
               ({
@@ -4118,6 +4195,7 @@ class $$SettingsTableTableManager
                 Value<bool> showDebugBar = const Value.absent(),
                 Value<int?> savingsGoalCents = const Value.absent(),
                 Value<SavingsPeriod> savingsGoalPeriod = const Value.absent(),
+                Value<Appearance> appearance = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 bufferCents: bufferCents,
@@ -4126,6 +4204,7 @@ class $$SettingsTableTableManager
                 showDebugBar: showDebugBar,
                 savingsGoalCents: savingsGoalCents,
                 savingsGoalPeriod: savingsGoalPeriod,
+                appearance: appearance,
               ),
           withReferenceMapper: (p0) => p0
               .map(

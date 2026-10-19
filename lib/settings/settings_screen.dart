@@ -58,6 +58,32 @@ class _SettingsList extends ConsumerWidget {
         constraints: const BoxConstraints(maxWidth: 600),
         child: ListView(
           children: [
+            const _SectionHeader('Appearance'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SegmentedButton<Appearance>(
+                segments: const [
+                  ButtonSegment(
+                    value: Appearance.system,
+                    icon: Icon(Icons.brightness_auto_outlined),
+                    label: Text('System'),
+                  ),
+                  ButtonSegment(
+                    value: Appearance.light,
+                    icon: Icon(Icons.light_mode_outlined),
+                    label: Text('Light'),
+                  ),
+                  ButtonSegment(
+                    value: Appearance.dark,
+                    icon: Icon(Icons.dark_mode_outlined),
+                    label: Text('Dark'),
+                  ),
+                ],
+                selected: {settings.appearance},
+                onSelectionChanged: (selected) =>
+                    db.setAppearance(selected.single),
+              ),
+            ),
             const _SectionHeader('Money'),
             ListTile(
               leading: const Icon(Icons.account_balance_outlined),

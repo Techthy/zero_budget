@@ -5,6 +5,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../money.dart';
+import '../theme/budget_theme.dart';
 import '../welcome/welcome_providers.dart';
 import '../widgets/amount_field.dart';
 import 'savings_plant.dart';
@@ -110,6 +111,7 @@ class SavingsGoalSheet extends ConsumerWidget {
               const SizedBox(height: 12),
               LinearProgressIndicator(
                 value: progress.fraction,
+                color: context.budgetColors.sproutStrong,
                 minHeight: 8,
                 borderRadius: BorderRadius.circular(4),
               ),

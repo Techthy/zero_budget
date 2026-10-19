@@ -189,6 +189,9 @@ void main() {
 
     final old = AppDatabase(NativeDatabase(file));
     await seed(old);
+    if (version >= 10 && version < 15) {
+      await old.customStatement('ALTER TABLE settings DROP COLUMN appearance');
+    }
     if (version < 14) {
       await old.customStatement('ALTER TABLE budgets DROP COLUMN is_savings');
     }
@@ -245,7 +248,7 @@ void main() {
     return upgraded;
   }
 
-  for (final version in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]) {
+  for (final version in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
     test('upgrading from schema $version keeps the plan', () async {
       late int monthId;
       late int rent;
@@ -271,6 +274,11 @@ void main() {
           isFalse);
       await upgraded.setSavingsGoal(100000, SavingsPeriod.quarter);
       expect((await upgraded.watchSettings().first).savingsGoalCents, 100000);
+      expect((await upgraded.watchSettings().first).appearance,
+          Appearance.system);
+      await upgraded.setAppearance(Appearance.dark);
+      expect(
+          (await upgraded.watchSettings().first).appearance, Appearance.dark);
     });
   }
 

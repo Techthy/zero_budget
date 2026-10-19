@@ -7,8 +7,6 @@ import '../money.dart';
 
 // Mark colors from a colorblind-validated data-viz palette. Text never wears
 // these; labels use the theme's text colors.
-const _fixedLight = Color(0xFF2A78D6);
-const _fixedDark = Color(0xFF3987E5);
 const _flexibleLight = Color(0xFFEB6834);
 const _flexibleDark = Color(0xFFD95926);
 const _sinkingFundLight = Color(0xFF1BAF7A);
@@ -163,7 +161,7 @@ class _BudgetSankeyState extends State<BudgetSankey> {
     final dark = theme.brightness == Brightness.dark;
     Color colorOf(_Kind kind) => switch (kind) {
           _Kind.source => theme.colorScheme.onSurfaceVariant,
-          _Kind.fixed => dark ? _fixedDark : _fixedLight,
+          _Kind.fixed => theme.colorScheme.tertiary,
           _Kind.flexible => dark ? _flexibleDark : _flexibleLight,
           _Kind.sinkingFund => dark ? _sinkingFundDark : _sinkingFundLight,
           _Kind.unassigned => _unassignedColor,

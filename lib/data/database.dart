@@ -121,12 +121,19 @@ class Settings extends Table {
   TextColumn get savingsGoalPeriod => textEnum<SavingsPeriod>()
       .withDefault(Constant(SavingsPeriod.year.name))();
 
+  /// Whether the app is shown light, dark, or following the system.
+  TextColumn get appearance => textEnum<Appearance>()
+      .withDefault(Constant(Appearance.system.name))();
+
   @override
   Set<Column> get primaryKey => {id};
 }
 
 /// How long the savings goal runs before it starts over.
 enum SavingsPeriod { quarter, year }
+
+/// Light or dark colours for the app, see [Settings.appearance].
+enum Appearance { system, light, dark }
 
 const settingsRowId = 1;
 const defaultBufferCents = 100000;
@@ -205,7 +212,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'zero_budget'));
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -263,6 +270,9 @@ class AppDatabase extends _$AppDatabase {
           if (from >= 10 && from < 14) {
             await m.addColumn(settings, settings.savingsGoalCents);
             await m.addColumn(settings, settings.savingsGoalPeriod);
+          }
+          if (from >= 10 && from < 15) {
+            await m.addColumn(settings, settings.appearance);
           }
         },
         beforeOpen: (details) async {
@@ -552,6 +562,7 @@ class AppDatabase extends _$AppDatabase {
                   bufferCents: defaultBufferCents,
                   showDebugBar: true,
                   savingsGoalPeriod: SavingsPeriod.year,
+                  appearance: Appearance.system,
                 ),
           );
 
@@ -566,6 +577,9 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> setBufferCents(int bufferCents) =>
       _updateSettings(SettingsCompanion(bufferCents: Value(bufferCents)));
+
+  Future<void> setAppearance(Appearance appearance) =>
+      _updateSettings(SettingsCompanion(appearance: Value(appearance)));
 
   Future<void> setShowDebugBar(bool show) =>
       _updateSettings(SettingsCompanion(showDebugBar: Value(show)));
