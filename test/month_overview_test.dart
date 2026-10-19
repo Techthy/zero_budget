@@ -215,4 +215,15 @@ void main() {
     expect(find.text('How step by step works'), findsNothing);
     await unmount(tester);
   });
+
+  testWidgets('left to assign explains zero-based budgeting', (tester) async {
+    await pumpScreen(tester);
+
+    await tapAndSettle(tester, find.byTooltip('How a zero-based budget works'));
+    expect(find.text('How a zero-based budget works'), findsOneWidget);
+    expect(find.text('Income + carried over − budgets = 0'), findsOneWidget);
+    await closeSheet(tester);
+    expect(find.text('Every euro gets a job'), findsNothing);
+    await unmount(tester);
+  });
 }

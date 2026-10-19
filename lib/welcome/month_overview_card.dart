@@ -7,6 +7,7 @@ import '../money.dart';
 import '../theme/budget_theme.dart';
 import 'plan_editing.dart';
 import 'welcome_providers.dart';
+import 'zero_based_help.dart';
 
 /// The month's money in one card: what's left to assign on top, then where it
 /// comes from and the notes. Income and notes open in a sheet from the
@@ -165,9 +166,21 @@ class _LeftToAssign extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            leftCents < 0 ? 'Over-assigned' : 'Left to assign',
-            style: textTheme.titleMedium?.copyWith(color: foreground),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  leftCents < 0 ? 'Over-assigned' : 'Left to assign',
+                  style: textTheme.titleMedium?.copyWith(color: foreground),
+                ),
+              ),
+              IconButton(
+                tooltip: 'How a zero-based budget works',
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.info_outline, color: foreground),
+                onPressed: () => showZeroBasedHelp(context),
+              ),
+            ],
           ),
           FittedBox(
             fit: BoxFit.scaleDown,
