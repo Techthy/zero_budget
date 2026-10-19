@@ -544,6 +544,12 @@ ThemeData budgetTheme(Brightness brightness) {
         textStyle: BudgetText.heading,
       ),
     ),
+    // Menus, like sorting the budgets, round off like the cards.
+    popupMenuTheme: PopupMenuThemeData(
+      color: c.surfaceRaised,
+      surfaceTintColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(borderRadius: BudgetRadius.md),
+    ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
       color: c.sproutStrong,
       linearTrackColor: c.progressTrack,

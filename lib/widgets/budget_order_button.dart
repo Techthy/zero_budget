@@ -21,6 +21,8 @@ class BudgetOrderButton extends ConsumerWidget {
 
     return PopupMenuButton<BudgetOrder>(
       tooltip: 'Sort budgets',
+      // Keeps the highlighted choice inside the rounded corners.
+      clipBehavior: Clip.antiAlias,
       icon: const Icon(Icons.sort),
       initialValue: order,
       onSelected: ref.read(appDatabaseProvider).setBudgetOrder,
