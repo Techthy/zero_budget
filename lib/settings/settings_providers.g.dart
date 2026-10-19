@@ -41,3 +41,44 @@ final class SettingsProvider
 }
 
 String _$settingsHash() => r'e7ebe58834936753a5598249462db6aa6b81f85b';
+
+/// The app's version as the build named it, like 1.2.0 for a release or
+/// 1.2.0-nightly.57 for a nightly.
+
+@ProviderFor(appVersion)
+final appVersionProvider = AppVersionProvider._();
+
+/// The app's version as the build named it, like 1.2.0 for a release or
+/// 1.2.0-nightly.57 for a nightly.
+
+final class AppVersionProvider
+    extends $FunctionalProvider<AsyncValue<String>, String, FutureOr<String>>
+    with $FutureModifier<String>, $FutureProvider<String> {
+  /// The app's version as the build named it, like 1.2.0 for a release or
+  /// 1.2.0-nightly.57 for a nightly.
+  AppVersionProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appVersionProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appVersionHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<String> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<String> create(Ref ref) {
+    return appVersion(ref);
+  }
+}
+
+String _$appVersionHash() => r'ba3c22ffcbb681a34abb9097ad16cde90c9e2247';

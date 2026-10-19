@@ -137,8 +137,8 @@ class _SettingsList extends ConsumerWidget {
   }
 }
 
-/// What the app is, who wrote it, and where to report issues.
-class _About extends StatelessWidget {
+/// What the app is, who wrote it, its version, and where to report issues.
+class _About extends ConsumerWidget {
   const _About();
 
   static const issuesUrl = 'https://github.com/Techthy/zero_budget/issues';
@@ -153,7 +153,8 @@ class _About extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final version = ref.watch(appVersionProvider).value;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -181,6 +182,14 @@ class _About extends StatelessWidget {
           subtitle: const Text(email),
           trailing: const Icon(Icons.copy_outlined),
           onTap: () => _copy(context, email),
+        ),
+        // Copied for an issue report, to say which build it's about.
+        ListTile(
+          leading: const Icon(Icons.info_outline),
+          title: const Text('Version'),
+          subtitle: Text(version ?? ''),
+          trailing: const Icon(Icons.copy_outlined),
+          onTap: version == null ? null : () => _copy(context, version),
         ),
         const SizedBox(height: 16),
       ],
