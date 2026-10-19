@@ -5,11 +5,11 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../history/history_screen.dart';
-import '../money.dart';
-import '../settings/buffer_dialog.dart';
 import '../welcome/welcome_providers.dart';
 import '../widgets/budget_sankey.dart';
 import '../widgets/leaf_background.dart';
+import 'add_expense_screen.dart';
+import 'month_stats_card.dart';
 import 'spending_providers.dart';
 import 'spending_widgets.dart';
 
@@ -116,30 +116,14 @@ class _SpendingOverview extends ConsumerWidget {
               ),
             ],
             const SizedBox(height: 24),
-            _BankBalanceCard(
-              month: month,
-              budgets: budgets,
-              expenses: expenses,
-            ),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    SpendingTotalWidget(budgets: budgets, expenses: expenses),
-                    if (budgets.isNotEmpty) ...[
-                      const SizedBox(width: 16),
-                      BudgetSankey(
-                        incomes: incomes,
-                        carryOverCents: month.carryOverCents,
-                        budgets: budgets,
-                        spentByBudget: spentByBudget(expenses),
-                      ),
-                    ],
-                  ],
-                ),
+            MonthStatsCard(month: month, budgets: budgets, expenses: expenses),
+            if (budgets.isNotEmpty)
+              _SankeyCard(
+                month: month,
+                incomes: incomes,
+                budgets: budgets,
+                expenses: expenses,
               ),
-            ),
             const SizedBox(height: 24),
             Text('Budgets', style: textTheme.titleLarge),
             const SizedBox(height: 8),
@@ -158,6 +142,10 @@ class _SpendingOverview extends ConsumerWidget {
                 expenses: expenses,
                 onDeleteExpense: (expense) =>
                     ref.read(appDatabaseProvider).deleteExpense(expense.id),
+                // Expenses are only added while tracking.
+                onAddExpense: month.lockedAt == null
+                    ? null
+                    : (budget) => openAddExpense(context, budgetId: budget.id),
               ),
           ],
         ),
@@ -166,68 +154,41 @@ class _SpendingOverview extends ConsumerWidget {
   }
 }
 
-/// What should be in the bank account right now, buffer included. Tapping it
-/// changes the buffer.
-class _BankBalanceCard extends ConsumerWidget {
-  const _BankBalanceCard({
+/// Where the month's money goes, folded away until it's wanted.
+class _SankeyCard extends StatelessWidget {
+  const _SankeyCard({
     required this.month,
+    required this.incomes,
     required this.budgets,
     required this.expenses,
   });
 
   final Month month;
+  final List<Income> incomes;
   final List<Budget> budgets;
   final List<Expense> expenses;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final textTheme = Theme.of(context).textTheme;
-    // Showing a balance without the right buffer would be misleading.
-    final bufferCents = ref.watch(bufferCentsProvider).value;
-    if (bufferCents == null) return const SizedBox.shrink();
-
+  Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => editBuffer(context, ref, bufferCents),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Should be in your bank account',
-                      style: textTheme.labelLarge,
-                    ),
-                    Text(
-                      formatCents(
-                        expectedBankBalanceCents(
-                          month,
-                          budgets,
-                          expenses,
-                          bufferCents: bufferCents,
-                        ),
-                      ),
-                      style: textTheme.headlineSmall,
-                    ),
-                    Text(
-                      'Including your ${formatCents(bufferCents)} buffer',
-                      style: textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: 'Change buffer',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () => editBuffer(context, ref, bufferCents),
-              ),
-            ],
-          ),
+      child: ExpansionTile(
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: const Icon(Icons.account_tree_outlined),
+        title: Text(
+          'Where your money goes',
+          style: Theme.of(context).textTheme.titleMedium,
         ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          BudgetSankey(
+            incomes: incomes,
+            carryOverCents: month.carryOverCents,
+            budgets: budgets,
+            spentByBudget: spentByBudget(expenses),
+          ),
+        ],
       ),
     );
   }

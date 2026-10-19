@@ -9,10 +9,26 @@ import '../widgets/amount_field.dart';
 import '../widgets/leaf_background.dart';
 import 'spending_providers.dart';
 
+/// Opens the screen to add an expense, with the budget [budgetId] already
+/// picked when it's given.
+Future<void> openAddExpense(BuildContext context, {int? budgetId}) {
+  // A snack bar from the last expense would cover the button to add one.
+  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+  return Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => AddExpenseScreen(budgetId: budgetId),
+    ),
+  );
+}
+
 /// Notes down an expense quickly: what it was, the amount, a tap on its
 /// budget, done.
 class AddExpenseScreen extends ConsumerWidget {
-  const AddExpenseScreen({super.key});
+  const AddExpenseScreen({super.key, this.budgetId});
+
+  /// The budget picked to start with, if any.
+  final int? budgetId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,6 +44,7 @@ class AddExpenseScreen extends ConsumerWidget {
               // Fixed budgets are spent in full when the plan is locked in.
               budgets: budgets.where((b) => !b.isFixed).toList(),
               spent: spentByBudget(expenses),
+              initialBudgetId: budgetId,
             ),
           (AsyncError(:final error), _) ||
           (_, AsyncError(:final error)) =>
@@ -40,9 +57,16 @@ class AddExpenseScreen extends ConsumerWidget {
 }
 
 class _ExpenseForm extends ConsumerStatefulWidget {
-  const _ExpenseForm({required this.budgets, required this.spent});
+  const _ExpenseForm({
+    required this.budgets,
+    required this.spent,
+    this.initialBudgetId,
+  });
 
   final List<Budget> budgets;
+
+  /// The budget picked to start with, if it's one of [budgets].
+  final int? initialBudgetId;
 
   /// Cents spent so far per budget id.
   final Map<int, int> spent;
@@ -56,8 +80,12 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
   final _title = TextEditingController();
   final _amount = TextEditingController();
   final _note = TextEditingController();
-  late int? _budgetId =
-      widget.budgets.length == 1 ? widget.budgets.single.id : null;
+  late int? _budgetId = switch (widget.budgets) {
+    final budgets when budgets.any((b) => b.id == widget.initialBudgetId) =>
+      widget.initialBudgetId,
+    [final only] => only.id,
+    _ => null,
+  };
   var _saving = false;
 
   @override

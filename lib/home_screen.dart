@@ -87,22 +87,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _addExpense(bool isLocked) {
-    // A snack bar from the last expense would cover the button to add one.
-    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
     if (!isLocked) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Lock in your plan to start tracking expenses.'),
-        ),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Lock in your plan to start tracking expenses.'),
+          ),
+        );
       return;
     }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => const AddExpenseScreen(),
-      ),
-    );
+    openAddExpense(context);
   }
 
   @override

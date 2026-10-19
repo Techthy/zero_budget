@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/database.dart';
 import '../dates.dart';
 import '../money.dart';
+import '../theme/budget_theme.dart';
 import '../widgets/fixed_badge.dart';
 
 /// Everything spent against everything planned across [budgets].
@@ -18,7 +19,7 @@ class SpendingTotalWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final c = context.budgetColors;
     final textTheme = Theme.of(context).textTheme;
     final spentCents = expenses.fold(0, (sum, e) => sum + e.amountCents);
     final plannedCents = budgets.fold(0, (sum, b) => sum + availableCents(b));
@@ -27,45 +28,48 @@ class SpendingTotalWidget extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(4),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             leftCents < 0 ? 'Over budget' : 'Left to spend',
-            style: textTheme.labelLarge,
+            style: textTheme.titleMedium?.copyWith(color: c.inkMuted),
           ),
-          Text(
-            formatCents(leftCents.abs()),
-            style: textTheme.displaySmall?.copyWith(
-              color: leftCents < 0 ? colors.error : null,
-              fontWeight: FontWeight.bold,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              formatCents(leftCents.abs()),
+              style: textTheme.headlineMedium?.copyWith(
+                color: leftCents < 0 ? c.danger : null,
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          SpentVsPlanned(
-            plannedCents: plannedCents,
-            spentCents: spentCents,
-            showLeft: false,
-          ),
+          SpentVsPlanned(plannedCents: plannedCents, spentCents: spentCents),
         ],
       ),
     );
   }
 }
 
-/// An expandable card per budget showing what was spent from it.
+/// A card per budget showing what was spent from it, which opens up to list
+/// its expenses.
 ///
-/// Expenses get a delete button when [onDeleteExpense] is set.
+/// Expenses get a delete button when [onDeleteExpense] is set, and budgets
+/// that take expenses get a button to add one when [onAddExpense] is set.
 class BudgetSpendingList extends StatelessWidget {
   const BudgetSpendingList({
     super.key,
     required this.budgets,
     required this.expenses,
     this.onDeleteExpense,
+    this.onAddExpense,
   });
 
   final List<Budget> budgets;
   final List<Expense> expenses;
   final ValueChanged<Expense>? onDeleteExpense;
+  final ValueChanged<Budget>? onAddExpense;
 
   @override
   Widget build(BuildContext context) {
@@ -82,165 +86,231 @@ class BudgetSpendingList extends StatelessWidget {
             budget: budget,
             expenses: expensesByBudget[budget.id] ?? const [],
             onDeleteExpense: onDeleteExpense,
+            onAddExpense: onAddExpense,
           ),
       ],
     );
   }
 }
 
-/// Shows how much of [plannedCents] has been spent, and what's left or over.
+/// A bar of how much of [plannedCents] has been spent, with what was spent
+/// below it on the left and the total on the right.
 class SpentVsPlanned extends StatelessWidget {
   const SpentVsPlanned({
     super.key,
     required this.plannedCents,
     required this.spentCents,
-    this.showLeft = true,
   });
 
   final int plannedCents;
   final int spentCents;
 
-  /// Whether to show what's left or over, unless that's shown elsewhere.
-  final bool showLeft;
-
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final c = context.budgetColors;
     final textTheme = Theme.of(context).textTheme;
-    final leftCents = plannedCents - spentCents;
-    final overspent = leftCents < 0;
+    final overspent = spentCents > plannedCents;
+    final caption = textTheme.bodySmall?.copyWith(color: c.inkMuted);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  Text(
-                    formatCents(spentCents),
-                    textAlign: TextAlign.end,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    ' of ${formatCents(plannedCents)} spent',
-                    style: textTheme.bodyMedium?.copyWith(),
-                  ),
-                ],
-              ),
-            ),
-            if (showLeft)
-              Text(
-                overspent
-                    ? '${formatCents(-leftCents)} over'
-                    : '${formatCents(leftCents)} left',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: overspent ? colors.error : colors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 8),
         LinearProgressIndicator(
           value: plannedCents == 0
               ? (spentCents > 0 ? 1 : 0)
               : (spentCents / plannedCents).clamp(0.0, 1.0),
-          color: overspent ? colors.error : null,
+          color: overspent ? c.danger : null,
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${formatCents(spentCents)} spent',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: overspent ? caption?.copyWith(color: c.danger) : caption,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('of ${formatCents(plannedCents)}', style: caption),
+          ],
         ),
       ],
     );
   }
 }
 
-class _BudgetSpendingCard extends StatelessWidget {
+/// A budget's name, what's left in it and its kind, and how much of it was
+/// spent. Tapping it lists its expenses.
+class _BudgetSpendingCard extends StatefulWidget {
   const _BudgetSpendingCard({
     super.key,
     required this.budget,
     required this.expenses,
     this.onDeleteExpense,
+    this.onAddExpense,
   });
 
   final Budget budget;
   final List<Expense> expenses;
   final ValueChanged<Expense>? onDeleteExpense;
+  final ValueChanged<Budget>? onAddExpense;
+
+  @override
+  State<_BudgetSpendingCard> createState() => _BudgetSpendingCardState();
+}
+
+class _BudgetSpendingCardState extends State<_BudgetSpendingCard> {
+  var _expanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final onDelete = onDeleteExpense;
+    final c = context.budgetColors;
+    final textTheme = Theme.of(context).textTheme;
+    final budget = widget.budget;
+    final expenses = widget.expenses;
+    final onDelete = widget.onDeleteExpense;
+    final onAdd = widget.onAddExpense;
+    final plannedCents = availableCents(budget);
+    final spentCents = expenses.fold(0, (sum, e) => sum + e.amountCents);
+    final leftCents = plannedCents - spentCents;
+
+    final (leftText, leftColor) = switch (leftCents) {
+      < 0 => ('${formatCents(-leftCents)} over', c.danger),
+      // Fixed costs are spent in full once the plan is locked in.
+      0 when budget.isFixed && plannedCents > 0 => ('Paid in full', c.inkMuted),
+      _ => ('${formatCents(leftCents)} left', c.forestDeep),
+    };
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        shape: const Border(),
-        collapsedShape: const Border(),
-        title: Row(
-          children: [
-            Flexible(child: Text(budget.name, overflow: TextOverflow.ellipsis)),
-            if (budget.isFixed) ...[
-              const SizedBox(width: 8),
-              const FixedBadge(),
-            ],
-            if (budget.isSinkingFund) ...[
-              const SizedBox(width: 8),
-              const SinkingFundBadge(),
-            ],
-            if (budget.isSavings) ...[
-              const SizedBox(width: 8),
-              const SavingsBadge(),
-            ],
-          ],
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SpentVsPlanned(
-                plannedCents: availableCents(budget),
-                spentCents: expenses.fold(0, (sum, e) => sum + e.amountCents),
-              ),
-              if (budget.savedCents != 0) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Includes ${formatCents(budget.savedCents)} saved in '
-                  'earlier months.',
-                ),
-              ],
-            ],
-          ),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (expenses.isEmpty)
-            const ListTile(title: Text('Nothing spent.'))
-          else
-            for (final expense in expenses)
-              ListTile(
-                title: Text(
-                  expense.title ?? (expense.isFixed ? 'Fixed cost' : 'Expense'),
-                ),
-                subtitle: Text(
-                  [formatDay(expense.spentAt), ?expense.note].join(' · '),
-                ),
-                // Fixed expenses follow their budget, so they can't be deleted.
-                trailing: onDelete == null || expense.isFixed
-                    ? Text(formatCents(expense.amountCents))
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(formatCents(expense.amountCents)),
-                          IconButton(
-                            tooltip: 'Delete expense',
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => onDelete(expense),
-                          ),
-                        ],
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          budget.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleMedium,
+                        ),
                       ),
+                      const SizedBox(width: 8),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(Icons.expand_more, color: c.inkMuted),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 4),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          leftText,
+                          style: textTheme.labelLarge?.copyWith(
+                            color: leftColor,
+                          ),
+                        ),
+                        if (budget.isFixed) const FixedBadge(),
+                        if (budget.isSinkingFund) const SinkingFundBadge(),
+                        if (budget.isSavings) const SavingsBadge(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 4),
+                    child: SpentVsPlanned(
+                      plannedCents: plannedCents,
+                      spentCents: spentCents,
+                    ),
+                  ),
+                  if (budget.savedCents != 0) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Includes ${formatCents(budget.savedCents)} saved in '
+                      'earlier months',
+                      style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
+                    ),
+                  ],
+                ],
               ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            alignment: Alignment.topCenter,
+            child: !_expanded
+                ? const SizedBox(width: double.infinity)
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Divider(height: 1),
+                      // Fixed costs are tracked for you.
+                      if (onAdd != null && !budget.isFixed)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                          child: FilledButton.tonalIcon(
+                            onPressed: () => onAdd(budget),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add expense'),
+                          ),
+                        ),
+                      if (expenses.isEmpty)
+                        const ListTile(title: Text('Nothing spent yet.'))
+                      else
+                        for (final expense in expenses)
+                          ListTile(
+                            title: Text(
+                              expense.title ??
+                                  (expense.isFixed ? 'Fixed cost' : 'Expense'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              [
+                                formatDay(expense.spentAt),
+                                ?expense.note,
+                              ].join(' · '),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            // Fixed expenses follow their budget, so they
+                            // can't be deleted.
+                            trailing: onDelete == null || expense.isFixed
+                                ? Text(formatCents(expense.amountCents))
+                                : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(formatCents(expense.amountCents)),
+                                      IconButton(
+                                        tooltip: 'Delete expense',
+                                        icon: const Icon(Icons.delete_outline),
+                                        onPressed: () => onDelete(expense),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                      const SizedBox(height: 4),
+                    ],
+                  ),
+          ),
         ],
       ),
     );
