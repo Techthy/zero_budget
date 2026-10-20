@@ -534,10 +534,10 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
       final period = savingsPeriodOf(thisMonth, progress.period);
       final monthsLeft = period.last.month - month.month + 1;
       final neededCents = goalCents - savedBeforeCents;
-      // Rounded up to whole euros, so the goal is met.
       final monthsLeftText = monthsLeft == 1
           ? 'the last month'
           : 'the $monthsLeft months left';
+      // Rounded up to a whole amount of the currency, so the goal is met.
       final perMonthCents = neededCents <= 0
           ? 0
           : (neededCents / monthsLeft / 100).ceil() * 100;
@@ -693,7 +693,7 @@ class _LeftToAssignBar extends StatelessWidget {
         'Every ${currency.unitName} has a job.',
       ),
       > 0 => (c.highlight, c.onHighlight, 'Left to assign'),
-      _ => (colors.error, colors.onError, 'Assigned more than you have'),
+      _ => (colors.error, colors.onError, 'Over-assigned'),
     };
 
     return Padding(

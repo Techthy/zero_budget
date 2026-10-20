@@ -155,7 +155,7 @@ class _BudgetPlan extends ConsumerWidget {
     // Tracked expenses mean the plan was locked in before and is being edited.
     final isEditing = expenses.isNotEmpty;
     final title = switch ((isLocked, isEditing)) {
-      (true, _) => 'Planned Budget',
+      (true, _) => 'Planned budget',
       (false, true) => 'Edit your plan',
       (false, false) => 'Welcome!',
     };
@@ -478,7 +478,8 @@ class _GuidedPlanningCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'Go through your income, giving, the essentials, savings and '
-              'everything else, one step at a time. You can always fine-tune your plan later on this plan tab.',
+              'everything else, one step at a time. You can always fine-tune '
+              'your plan here on the Plan tab later.',
               style: textTheme.bodyMedium?.copyWith(color: c.onSproutTint),
             ),
             const SizedBox(height: 12),

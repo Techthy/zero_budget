@@ -73,8 +73,9 @@ Stream<List<YearMonth>> selectableMonths(Ref ref) async* {
   );
 }
 
-/// A month that started after the current one, to ask the user whether to
-/// move on to it; null if there's none.
+/// The month after the current one, to ask the user whether to move on to
+/// it, from [planAheadDays] before it starts; null if there's none, see
+/// [newMonthToOffer].
 @riverpod
 Future<YearMonth?> monthToOffer(Ref ref) async {
   final today = ref.watch(todayProvider);

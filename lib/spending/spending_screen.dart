@@ -84,7 +84,7 @@ class _SpendingOverview extends ConsumerWidget {
               sliver: SliverList.list(
                 children: [
                   const NewMonthCard(),
-                  Text('Your Budget Overview', style: textTheme.titleLarge),
+                  Text('Your budget overview', style: textTheme.titleLarge),
                   const SizedBox(height: 8),
                   if (month.lockedAt == null) ...[
                     const SizedBox(height: 16),
