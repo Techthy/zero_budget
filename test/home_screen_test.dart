@@ -1,14 +1,12 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
-import 'package:zero_budget/data/database_provider.dart';
 import 'package:zero_budget/home_screen.dart';
 import 'package:zero_budget/main.dart';
 import 'package:zero_budget/money.dart';
-import 'package:zero_budget/month/month_providers.dart';
-import 'package:zero_budget/theme/budget_theme.dart';
+
+import 'test_helpers.dart';
 
 void main() {
   late AppDatabase db;
@@ -34,37 +32,8 @@ void main() {
       if (locked) await db.lockMonth(month.id);
     });
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          todayProvider.overrideWithValue(today ?? DateTime(2026, 10, 1)),
-        ],
-        child: MaterialApp(
-          theme: budgetTheme(Brightness.light),
-          home: const HomeScreen(),
-        ),
-      ),
+      testApp(db, const HomeScreen(), today: today ?? DateTime(2026, 10, 1)),
     );
-    await tester.pumpAndSettle();
-  }
-
-  /// Unmounts the app while the test still runs, so the database streams it
-  /// closes can finish.
-  Future<void> unmount(WidgetTester tester) async {
-    await tester.pumpWidget(const SizedBox());
-    // Runs the timers drift starts when its streams close.
-    await tester.pump(Duration.zero);
-  }
-
-  /// Lets the app's queries finish: watching the database from inside the
-  /// app needs real time and fake time in turns.
-  Future<void> settleQueries(WidgetTester tester) async {
-    for (var i = 0; i < 20; i++) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 10)),
-      );
-      await tester.pump(const Duration(milliseconds: 10));
-    }
     await tester.pumpAndSettle();
   }
 
@@ -144,13 +113,7 @@ void main() {
       await db.addIncome(month.id, 'Job', 250000);
     });
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          todayProvider.overrideWithValue(DateTime(2026, 10, 1)),
-        ],
-        child: const MainApp(),
-      ),
+      testScope(db, const MainApp(), today: DateTime(2026, 10, 1)),
     );
     await settleQueries(tester);
     expect(find.textContaining('2500,00€'), findsWidgets);

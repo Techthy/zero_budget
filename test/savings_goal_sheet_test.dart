@@ -1,12 +1,10 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
-import 'package:zero_budget/data/database_provider.dart';
-import 'package:zero_budget/month/month_providers.dart';
 import 'package:zero_budget/savings/savings_goal_sheet.dart';
-import 'package:zero_budget/theme/budget_theme.dart';
+
+import 'test_helpers.dart';
 
 void main() {
   late AppDatabase db;
@@ -37,15 +35,10 @@ void main() {
       }
     });
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          todayProvider.overrideWithValue(DateTime(2026, 10, 1)),
-        ],
-        child: MaterialApp(
-          theme: budgetTheme(Brightness.light),
-          home: const Scaffold(body: SavingsGoalSheet()),
-        ),
+      testApp(
+        db,
+        const Scaffold(body: SavingsGoalSheet()),
+        today: DateTime(2026, 10, 1),
       ),
     );
     await settleQueries(tester);
@@ -77,24 +70,4 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Set a goal'), findsOneWidget);
     await unmount(tester);
   });
-}
-
-/// Lets the app's queries finish: watching the database from inside the
-/// app needs real time and fake time in turns.
-Future<void> settleQueries(WidgetTester tester) async {
-  for (var i = 0; i < 20; i++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 10)),
-    );
-    await tester.pump(const Duration(milliseconds: 10));
-  }
-  await tester.pumpAndSettle();
-}
-
-/// Unmounts the app while the test still runs, so the database streams it
-/// closes can finish.
-Future<void> unmount(WidgetTester tester) async {
-  await tester.pumpWidget(const SizedBox());
-  // Runs the timers drift starts when its streams close.
-  await tester.pump(Duration.zero);
 }

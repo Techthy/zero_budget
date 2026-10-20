@@ -1,13 +1,11 @@
 import 'package:drift/native.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
-import 'package:zero_budget/data/database_provider.dart';
-import 'package:zero_budget/month/month_providers.dart';
 import 'package:zero_budget/planning/planning_screen.dart';
-import 'package:zero_budget/theme/budget_theme.dart';
+
+import 'test_helpers.dart';
 
 void main() {
   late AppDatabase db;
@@ -28,37 +26,8 @@ void main() {
       ),
     );
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          todayProvider.overrideWithValue(DateTime(2026, 10, 1)),
-        ],
-        child: MaterialApp(
-          theme: budgetTheme(Brightness.light),
-          home: const PlanningScreen(),
-        ),
-      ),
+      testApp(db, const PlanningScreen(), today: DateTime(2026, 10, 1)),
     );
-    await tester.pumpAndSettle();
-  }
-
-  /// Unmounts the app while the test still runs, so the database streams it
-  /// closes can finish.
-  Future<void> unmount(WidgetTester tester) async {
-    await tester.pumpWidget(const SizedBox());
-    // Runs the timers drift starts when its streams close.
-    await tester.pump(Duration.zero);
-  }
-
-  /// Lets the app's queries finish: writing from inside the app and
-  /// watching the database needs real time and fake time in turns.
-  Future<void> settleQueries(WidgetTester tester) async {
-    for (var i = 0; i < 20; i++) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 10)),
-      );
-      await tester.pump(const Duration(milliseconds: 10));
-    }
     await tester.pumpAndSettle();
   }
 
@@ -69,11 +38,6 @@ void main() {
     await db.addBudget(september.id, 'Rent', 90000, isFixed: true);
     await db.addBudget(september.id, 'Gym', 3000);
   });
-
-  Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
-    await tester.tap(finder);
-    await tester.pumpAndSettle();
-  }
 
   /// The button that locks or unlocks the plan, labeled or, when the title
   /// leaves no room, just a lock with [label] as its tooltip.

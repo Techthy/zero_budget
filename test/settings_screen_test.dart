@@ -1,14 +1,13 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
-import 'package:zero_budget/data/database_provider.dart';
 import 'package:zero_budget/money.dart';
 import 'package:zero_budget/settings/settings_providers.dart';
 import 'package:zero_budget/settings/settings_screen.dart';
-import 'package:zero_budget/theme/budget_theme.dart';
+
+import 'test_helpers.dart';
 
 void main() {
   testWidgets('the about section says who wrote it and copies contacts', (
@@ -27,15 +26,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      ProviderScope(
+      testApp(
+        db,
+        const SettingsScreen(),
         overrides: [
-          appDatabaseProvider.overrideWithValue(db),
           appVersionProvider.overrideWith((ref) async => '1.2.0-nightly.57'),
         ],
-        child: MaterialApp(
-          theme: budgetTheme(Brightness.light),
-          home: const SettingsScreen(),
-        ),
       ),
     );
     await tester.pumpAndSettle();

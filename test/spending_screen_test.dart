@@ -1,14 +1,12 @@
 import 'package:drift/native.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
-import 'package:zero_budget/data/database_provider.dart';
-import 'package:zero_budget/month/month_providers.dart';
 import 'package:zero_budget/spending/spending_screen.dart';
-import 'package:zero_budget/theme/budget_theme.dart';
 import 'package:zero_budget/widgets/budget_sankey.dart';
+
+import 'test_helpers.dart';
 
 void main() {
   late AppDatabase db;
@@ -61,16 +59,7 @@ void main() {
     }
 
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          todayProvider.overrideWithValue(DateTime(2026, 10, 20)),
-        ],
-        child: MaterialApp(
-          theme: budgetTheme(Brightness.light),
-          home: const SpendingScreen(),
-        ),
-      ),
+      testApp(db, const SpendingScreen(), today: DateTime(2026, 10, 20)),
     );
     await tester.pumpAndSettle();
   }
@@ -79,19 +68,6 @@ void main() {
   Future<List<Expense>> octoberExpenses() async {
     final month = await db.getOrCreateMonth(2026, 10);
     return db.watchExpenses(month.id).first;
-  }
-
-  Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
-    await tester.tap(finder);
-    await tester.pumpAndSettle();
-  }
-
-  /// Unmounts the app while the test still runs, so the database streams it
-  /// closes can finish.
-  Future<void> unmount(WidgetTester tester) async {
-    await tester.pumpWidget(const SizedBox());
-    // Runs the timers drift starts when its streams close.
-    await tester.pump(Duration.zero);
   }
 
   testWidgets('shows the month at a glance without overflowing', (

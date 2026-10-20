@@ -1,12 +1,10 @@
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
-import 'package:zero_budget/data/database_provider.dart';
-import 'package:zero_budget/month/month_providers.dart';
 import 'package:zero_budget/planning/guided_planning_screen.dart';
-import 'package:zero_budget/theme/budget_theme.dart';
+
+import 'test_helpers.dart';
 
 void main() {
   late AppDatabase db;
@@ -27,25 +25,8 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(800, 1600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(db),
-          todayProvider.overrideWithValue(DateTime(2026, 10, 1)),
-        ],
-        child: MaterialApp(
-          theme: budgetTheme(Brightness.light),
-          home: const GuidedPlanningScreen(),
-        ),
-      ),
+      testApp(db, const GuidedPlanningScreen(), today: DateTime(2026, 10, 1)),
     );
-    await tester.pumpAndSettle();
-  }
-
-  Future<void> enterAmount(WidgetTester tester, String label, String amount) =>
-      tester.enterText(find.widgetWithText(TextFormField, label), amount);
-
-  Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
-    await tester.tap(finder);
     await tester.pumpAndSettle();
   }
 
