@@ -77,7 +77,6 @@ class _MonthDataSheet extends ConsumerWidget {
             budgets: budgets,
             expenses: expenses,
             bufferCents: bufferCents,
-            today: ref.watch(todayProvider),
           ),
         )),
       ),

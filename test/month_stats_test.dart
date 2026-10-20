@@ -56,16 +56,15 @@ void main() {
     _expense(5, 5000),
   ];
 
-  MonthStats statsOn(DateTime today, {List<Budget>? only}) => MonthStats.of(
+  MonthStats statsOf() => MonthStats.of(
     month: _october,
-    budgets: only ?? budgets,
+    budgets: budgets,
     expenses: expenses,
     bufferCents: 100000,
-    today: today,
   );
 
   test('sums up the month', () {
-    final stats = statsOn(DateTime(2026, 10, 20));
+    final stats = statsOf();
 
     expect(stats.plannedCents, 206000);
     expect(stats.spentCents, 142000);
@@ -75,32 +74,5 @@ void main() {
     expect((stats.savedCents, stats.savingsPlannedCents), (20000, 20000));
     expect(stats.fundsCents, 35000);
     expect((stats.overspentCount, stats.budgetCount), (1, 6));
-  });
-
-  test('spreads what everyday budgets have left over the days left', () {
-    final stats = statsOn(DateTime(2026, 10, 20));
-
-    // Groceries and transport; the overspent budget doesn't count against
-    // them.
-    expect(stats.everydayLeftCents, 31000);
-    expect(stats.daysLeft, 12);
-    expect(stats.perDayCents, 31000 ~/ 12);
-  });
-
-  test('has no daily amount once the month is over or without everyday '
-      'budgets', () {
-    expect(statsOn(DateTime(2026, 11, 1)).perDayCents, isNull);
-    expect(
-      statsOn(DateTime(2026, 10, 20), only: [budgets.first]).perDayCents,
-      isNull,
-    );
-  });
-
-  test('daysLeftIn counts today and the days after it', () {
-    expect(daysLeftIn(2026, 10, DateTime(2026, 9, 29)), 31);
-    expect(daysLeftIn(2026, 10, DateTime(2026, 10, 1)), 31);
-    expect(daysLeftIn(2026, 10, DateTime(2026, 10, 31, 23, 59)), 1);
-    expect(daysLeftIn(2026, 10, DateTime(2026, 11, 1)), isNull);
-    expect(daysLeftIn(2028, 2, DateTime(2028, 2, 10)), 20);
   });
 }

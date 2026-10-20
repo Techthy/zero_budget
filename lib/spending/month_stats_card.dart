@@ -6,7 +6,6 @@ import '../money.dart';
 import '../savings/savings_goal_sheet.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
-import '../planning/planning_providers.dart';
 import 'month_stats.dart';
 import 'month_stats_sheets.dart';
 import 'spending_providers.dart';
@@ -39,7 +38,6 @@ class MonthStatsCard extends ConsumerWidget {
       budgets: budgets,
       expenses: expenses,
       bufferCents: bufferCents ?? 0,
-      today: ref.watch(todayProvider),
     );
     final overBudget = stats.leftCents < 0;
 
