@@ -27,15 +27,19 @@ class SavingsPlantButton extends ConsumerWidget {
       tooltip: 'Savings goal',
       iconSize: 32,
       icon: SavingsPlant(growth: growth ?? 0),
-      onPressed: () => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        builder: (_) => const SavingsGoalSheet(),
-      ),
+      onPressed: () => showSavingsGoalSheet(context),
     );
   }
 }
+
+/// Opens the [SavingsGoalSheet] from the bottom.
+Future<void> showSavingsGoalSheet(BuildContext context) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => const SavingsGoalSheet(),
+    );
 
 /// How far the savings goal is, month by month, with a way to change it.
 class SavingsGoalSheet extends ConsumerWidget {

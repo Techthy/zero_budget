@@ -365,4 +365,54 @@ void main() {
     expect(listed(), ['Holiday', 'Rent', 'Groceries', long]);
     await unmount(tester);
   });
+
+  testWidgets('the tiles open what is behind their numbers', (tester) async {
+    await pumpScreen(tester);
+    Future<void> open(String tile) async {
+      await tester.ensureVisible(find.text(tile));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(tile));
+      await tester.pumpAndSettle();
+    }
+
+    Finder inSheet(String text) => find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.text(text),
+    );
+
+    Future<void> close() async {
+      tester.state<NavigatorState>(find.byType(Navigator).first).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsNothing);
+    }
+
+    // The balance adds up from what's left and the buffer, which can be
+    // changed right there.
+    await open('Bank balance');
+    expect(inSheet('Expected balance'), findsOneWidget);
+    expect(inSheet('1000,00€'), findsOneWidget);
+    await tester.tap(find.byTooltip('Change buffer'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AlertDialog, 'Buffer'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    await close();
+
+    // Where the money went over.
+    await open('On track');
+    expect(inSheet('1 budget is over'), findsOneWidget);
+    expect(inSheet('100,00€ over'), findsOneWidget);
+    expect(inSheet('500,00€ spent of 400,00€'), findsOneWidget);
+    await close();
+
+    await open('Sinking funds');
+    expect(inSheet('Holiday'), findsOneWidget);
+    expect(inSheet('+ 100,00€ this month'), findsOneWidget);
+    await close();
+
+    await open('Saved');
+    expect(inSheet('Savings goal 2026'), findsOneWidget);
+    await close();
+    await unmount(tester);
+  });
 }

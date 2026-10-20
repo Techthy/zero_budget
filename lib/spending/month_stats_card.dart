@@ -3,15 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database.dart';
 import '../money.dart';
+import '../savings/savings_goal_sheet.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
 import '../planning/planning_providers.dart';
 import 'month_stats.dart';
+import 'month_stats_sheets.dart';
 import 'spending_providers.dart';
 import 'spending_widgets.dart';
 
 /// The month at a glance: what's left to spend, then a few numbers that help
-/// keep on track.
+/// keep on track. Tapping one shows what's behind it.
 class MonthStatsCard extends ConsumerWidget {
   const MonthStatsCard({
     super.key,
@@ -49,6 +51,7 @@ class MonthStatsCard extends ConsumerWidget {
           label: 'Bank balance',
           value: formatCents(stats.bankBalanceCents),
           caption: 'Expected now, incl. ${formatCents(bufferCents)} buffer',
+          onTap: () => showBankBalanceSheet(context),
         ),
       if (stats.hasSavings)
         _StatTile(
@@ -60,6 +63,7 @@ class MonthStatsCard extends ConsumerWidget {
               'Contributed towards the goal of ${formatCents(goalCents)}',
             null => 'of ${formatCents(stats.savingsPlannedCents)} planned',
           },
+          onTap: () => showSavingsGoalSheet(context),
         ),
       if (stats.budgetCount > 0)
         _StatTile(
@@ -76,6 +80,7 @@ class MonthStatsCard extends ConsumerWidget {
             1 => '1 budget is over',
             final count => '$count budgets are over',
           },
+          onTap: () => showOnTrackSheet(context),
         ),
       if (stats.hasFunds)
         _StatTile(
@@ -83,6 +88,7 @@ class MonthStatsCard extends ConsumerWidget {
           label: 'Sinking funds',
           value: formatCents(stats.fundsCents),
           caption: 'Set aside for costs to come',
+          onTap: () => showSinkingFundsSheet(context),
         ),
     ];
 
@@ -168,6 +174,7 @@ class _StatTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.caption,
+    required this.onTap,
     this.valueColor,
   });
 
@@ -175,6 +182,10 @@ class _StatTile extends StatelessWidget {
   final String label;
   final String value;
   final String caption;
+
+  /// Shows the details behind the tile.
+  final VoidCallback onTap;
+
   final Color? valueColor;
 
   @override
@@ -182,46 +193,51 @@ class _StatTile extends StatelessWidget {
     final c = context.budgetColors;
     final textTheme = Theme.of(context).textTheme;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: c.surfaceSunken,
-        borderRadius: BudgetRadius.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Material(
+      color: c.surfaceSunken,
+      borderRadius: BudgetRadius.md,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 18, color: c.inkMuted),
-              const SizedBox(width: 6),
-              Expanded(
+              Row(
+                children: [
+                  Icon(icon, size: 18, color: c.inkMuted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 18, color: c.inkMuted),
+                ],
+              ),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
                 child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
+                  value,
+                  style: textTheme.titleLarge?.copyWith(color: valueColor),
                 ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                caption,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              value,
-              style: textTheme.titleLarge?.copyWith(color: valueColor),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
-          ),
-        ],
+        ),
       ),
     );
   }
