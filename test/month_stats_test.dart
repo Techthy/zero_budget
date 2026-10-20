@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
 import 'package:zero_budget/spending/month_stats.dart';
@@ -75,24 +74,5 @@ void main() {
     expect((stats.savedCents, stats.savingsPlannedCents), (20000, 20000));
     expect(stats.fundsCents, 35000);
     expect((stats.overspentCount, stats.budgetCount), (1, 6));
-  });
-
-  test('adds up what the plan assigns, can spend and spent', () {
-    // 300,00€ income and 50,00€ carried over.
-    expect(_october.assignableCents, 350000);
-    expect(totalAssignedCents(budgets), 176000);
-    // The sinking fund's 300,00€ saved before can be spent too.
-    expect(totalPlannedCents(budgets), 206000);
-    expect(leftToAssignCents(_october, budgets), 174000);
-    expect(leftToAssignCents(_october, [_budget(1, 400000)]), -50000);
-    expect(totalSpentCents(expenses), 142000);
-  });
-
-  test('a month is locked once its plan is locked in', () {
-    expect(_october.isLocked, isFalse);
-    expect(
-      _october.copyWith(lockedAt: Value(DateTime(2026, 10, 1))).isLocked,
-      isTrue,
-    );
   });
 }

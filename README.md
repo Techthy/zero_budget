@@ -272,7 +272,8 @@ tests too.
 lib/
   *.dart      the app, its home screen, and helpers for money, dates and
               sorting budgets
-  data/       database tables, queries and migrations (drift)
+  data/       database tables, queries and migrations (drift), and what a
+              month's plan and spending add up to
   month/      the month you work in: today, switching months and moving
               on to a new one
   planning/   the Plan tab: incomes, budgets, step-by-step planning,
