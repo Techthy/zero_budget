@@ -71,10 +71,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // unlocking the month at hand stays on the tab it was done on.
     ref.listen(
       currentMonthProvider.select(
-        (month) => (
-          id: month.value?.id,
-          isLocked: month.value?.lockedAt != null,
-        ),
+        (month) =>
+            (id: month.value?.id, isLocked: month.value?.lockedAt != null),
       ),
       (previous, next) {
         if (next.id == null || next.id == previous?.id) return;

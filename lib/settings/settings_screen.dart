@@ -21,9 +21,9 @@ class SettingsButton extends StatelessWidget {
     return IconButton(
       tooltip: 'Settings',
       icon: const Icon(Icons.settings_outlined),
-      onPressed: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-      ),
+      onPressed: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
     );
   }
 }
@@ -40,8 +40,9 @@ class SettingsScreen extends ConsumerWidget {
       body: LeafBackground(
         child: switch (settings) {
           AsyncData(value: final settings) => _SettingsList(settings: settings),
-          AsyncError(:final error) =>
-            Center(child: Text('Something went wrong: $error')),
+          AsyncError(:final error) => Center(
+            child: Text('Something went wrong: $error'),
+          ),
           _ => const Center(child: CircularProgressIndicator()),
         },
       ),
@@ -162,9 +163,7 @@ Future<void> _chooseCurrency(
             onPressed: () => Navigator.of(context).pop(currency),
             child: Row(
               children: [
-                Expanded(
-                  child: Text('${currency.label} (${currency.symbol})'),
-                ),
+                Expanded(child: Text('${currency.label} (${currency.symbol})')),
                 if (currency == current) const Icon(Icons.check),
               ],
             ),
@@ -246,9 +245,8 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-            ),
+        style: Theme.of(context).textTheme.titleSmall
+            ?.copyWith(color: Theme.of(context).colorScheme.primary),
       ),
     );
   }

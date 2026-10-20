@@ -646,11 +646,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
               runSpacing: 4,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(
-                  budget.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(budget.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                 if (budget.isFixed) const FixedBadge(),
                 if (budget.isSinkingFund) const SinkingFundBadge(),
                 if (budget.category != BudgetCategory.other)
@@ -692,7 +688,11 @@ class _LeftToAssignBar extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final (background, foreground, message) = switch (leftCents) {
-      0 => (c.sproutTint, c.onSproutTint, 'Every ${currency.unitName} has a job.'),
+      0 => (
+        c.sproutTint,
+        c.onSproutTint,
+        'Every ${currency.unitName} has a job.',
+      ),
       > 0 => (c.highlight, c.onHighlight, 'Left to assign'),
       _ => (colors.error, colors.onError, 'Assigned more than you have'),
     };

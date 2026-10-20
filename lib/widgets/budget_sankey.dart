@@ -33,31 +33,30 @@ class _Node {
   final _Spending? spending;
 
   bool get isOverspent => switch (spending) {
-        (:final spentCents, :final availableCents) =>
-          spentCents > availableCents,
-        null => false,
-      };
+    (:final spentCents, :final availableCents) => spentCents > availableCents,
+    null => false,
+  };
 
   /// How much of the node is spent, from 0 to 1, or null when spending isn't
   /// shown.
   double? get spentFraction => switch (spending) {
-        (:final spentCents, :final availableCents) when availableCents <= 0 =>
-          spentCents > 0 ? 1.0 : 0.0,
-        (:final spentCents, :final availableCents) =>
-          (spentCents / availableCents).clamp(0.0, 1.0),
-        null => null,
-      };
+    (:final spentCents, :final availableCents) when availableCents <= 0 =>
+      spentCents > 0 ? 1.0 : 0.0,
+    (:final spentCents, :final availableCents) =>
+      (spentCents / availableCents).clamp(0.0, 1.0),
+    null => null,
+  };
 
   /// The amount shown beside the node: what's left of a budget while
   /// tracking, otherwise the node's amount.
   String get valueText => switch (spending) {
-        (:final spentCents, :final availableCents)
-            when spentCents > availableCents =>
-          '${formatCents(spentCents - availableCents)} over',
-        (:final spentCents, :final availableCents) =>
-          '${formatCents(availableCents - spentCents)} left',
-        null => formatCents(cents),
-      };
+    (:final spentCents, :final availableCents)
+        when spentCents > availableCents =>
+      '${formatCents(spentCents - availableCents)} over',
+    (:final spentCents, :final availableCents) =>
+      '${formatCents(availableCents - spentCents)} left',
+    null => formatCents(cents),
+  };
 }
 
 /// A node picked by tapping, on the source (left) or target (right) side.
@@ -109,17 +108,17 @@ class _BudgetSankeyState extends State<BudgetSankey> {
     final leftCents = incomeCents + widget.carryOverCents - assignedCents;
 
     _Node budgetNode(Budget budget, _Kind kind) => _Node(
-          budget.name,
-          budget.amountCents,
-          kind,
-          spending: switch (widget.spentByBudget) {
-            final spent? => (
-                spentCents: spent[budget.id] ?? 0,
-                availableCents: availableCents(budget),
-              ),
-            null => null,
-          },
-        );
+      budget.name,
+      budget.amountCents,
+      kind,
+      spending: switch (widget.spentByBudget) {
+        final spent? => (
+          spentCents: spent[budget.id] ?? 0,
+          availableCents: availableCents(budget),
+        ),
+        null => null,
+      },
+    );
 
     return (
       sources: [
@@ -169,13 +168,13 @@ class _BudgetSankeyState extends State<BudgetSankey> {
 
     final dark = theme.brightness == Brightness.dark;
     Color colorOf(_Kind kind) => switch (kind) {
-          _Kind.source => theme.colorScheme.onSurfaceVariant,
-          _Kind.fixed => theme.colorScheme.tertiary,
-          _Kind.flexible => dark ? _flexibleDark : _flexibleLight,
-          _Kind.sinkingFund => dark ? _sinkingFundDark : _sinkingFundLight,
-          _Kind.unassigned => _unassignedColor,
-          _Kind.shortfall => _shortfallColor,
-        };
+      _Kind.source => theme.colorScheme.onSurfaceVariant,
+      _Kind.fixed => theme.colorScheme.tertiary,
+      _Kind.flexible => dark ? _flexibleDark : _flexibleLight,
+      _Kind.sinkingFund => dark ? _sinkingFundDark : _sinkingFundLight,
+      _Kind.unassigned => _unassignedColor,
+      _Kind.shortfall => _shortfallColor,
+    };
     final styles = (
       name: theme.textTheme.bodySmall!.copyWith(
         color: theme.colorScheme.onSurface,
@@ -226,16 +225,16 @@ class _BudgetSankeyState extends State<BudgetSankey> {
         const SizedBox(height: 12),
         switch (_focused(sources, targets)) {
           final node? => _NodeDetails(
-              node: node,
-              color: colorOf(node.kind),
-              totalCents: sources.fold(0, (sum, n) => sum + n.cents),
-            ),
+            node: node,
+            color: colorOf(node.kind),
+            totalCents: sources.fold(0, (sum, n) => sum + n.cents),
+          ),
           null => Text(
-              'Tap a flow to see its full name and numbers.',
-              style: theme.textTheme.bodySmall!.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+            'Tap a flow to see its full name and numbers.',
+            style: theme.textTheme.bodySmall!.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
+          ),
         },
         const SizedBox(height: 12),
         Wrap(
@@ -269,8 +268,9 @@ class _BudgetSankeyState extends State<BudgetSankey> {
                 label: 'Spent',
               ),
               _LegendEntry(
-                color: theme.colorScheme.onSurfaceVariant
-                    .withValues(alpha: _SankeyPainter.unspentNodeAlpha),
+                color: theme.colorScheme.onSurfaceVariant.withValues(
+                  alpha: _SankeyPainter.unspentNodeAlpha,
+                ),
                 label: 'Left',
               ),
             ],
@@ -284,12 +284,13 @@ class _BudgetSankeyState extends State<BudgetSankey> {
 String _describe(List<_Node> sources, List<_Node> targets) {
   String list(List<_Node> nodes) => nodes
       .map(
-        (node) => '${node.label} ${node.valueText}'
+        (node) =>
+            '${node.label} ${node.valueText}'
             '${switch (node.kind) {
-          _Kind.fixed => ' (fixed)',
-          _Kind.sinkingFund => ' (sinking fund)',
-          _ => '',
-        }}',
+              _Kind.fixed => ' (fixed)',
+              _Kind.sinkingFund => ' (sinking fund)',
+              _ => '',
+            }}',
       )
       .join(', ');
   return 'Where the money goes: from ${list(sources)}, '
@@ -354,10 +355,7 @@ class _NodeDetails extends StatelessWidget {
                     "month's money",
                     style: muted,
                   ),
-                  if (node.spending case (
-                    :final spentCents,
-                    availableCents: _,
-                  ))
+                  if (node.spending case (:final spentCents, availableCents: _))
                     Text(
                       '${formatCents(spentCents)} spent · ${node.valueText}',
                       style: node.isOverspent
@@ -410,30 +408,30 @@ typedef _LabelStyles = ({TextStyle name, TextStyle value});
 /// amount. The name is shortened to fit, never the amount.
 class _Label {
   _Label(_Node node, _LabelStyles styles)
-      : _value = TextPainter(
-          text: TextSpan(text: node.valueText, style: styles.value),
-          textDirection: TextDirection.ltr,
-        )..layout(),
-        _name = TextPainter(
-          text: TextSpan(text: node.label, style: styles.name),
-          textDirection: TextDirection.ltr,
-          maxLines: 1,
-          ellipsis: '…',
-        ),
-        _icon = node.kind == _Kind.shortfall || node.isOverspent
-            ? (TextPainter(
-                text: TextSpan(
-                  text: String.fromCharCode(_shortfallIcon.codePoint),
-                  style: TextStyle(
-                    fontFamily: _shortfallIcon.fontFamily,
-                    package: _shortfallIcon.fontPackage,
-                    fontSize: 14,
-                    color: _shortfallColor,
-                  ),
+    : _value = TextPainter(
+        text: TextSpan(text: node.valueText, style: styles.value),
+        textDirection: TextDirection.ltr,
+      )..layout(),
+      _name = TextPainter(
+        text: TextSpan(text: node.label, style: styles.name),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+        ellipsis: '…',
+      ),
+      _icon = node.kind == _Kind.shortfall || node.isOverspent
+          ? (TextPainter(
+              text: TextSpan(
+                text: String.fromCharCode(_shortfallIcon.codePoint),
+                style: TextStyle(
+                  fontFamily: _shortfallIcon.fontFamily,
+                  package: _shortfallIcon.fontPackage,
+                  fontSize: 14,
+                  color: _shortfallColor,
                 ),
-                textDirection: TextDirection.ltr,
-              )..layout())
-            : null;
+              ),
+              textDirection: TextDirection.ltr,
+            )..layout())
+          : null;
 
   static const _spacing = 4.0;
 
@@ -580,8 +578,9 @@ class _Layout {
       final freeSpace =
           total - heights.whereType<double>().fold(0.0, (a, b) => a + b);
       final scale = freeSpace / freeValue;
-      final tooSmall =
-          free.where((i) => values[i] * scale < minNodeHeight).toList();
+      final tooSmall = free
+          .where((i) => values[i] * scale < minNodeHeight)
+          .toList();
       if (tooSmall.isEmpty) {
         for (final i in free) {
           heights[i] = values[i] * scale;

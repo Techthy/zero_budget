@@ -124,9 +124,7 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('not yet stays in the month and hides the offer', (
-    tester,
-  ) async {
+  testWidgets('not yet stays in the month and hides the offer', (tester) async {
     await pumpApp(tester, locked: true, today: DateTime(2026, 11, 3));
     expect(find.text('November 2026 has started'), findsOneWidget);
 

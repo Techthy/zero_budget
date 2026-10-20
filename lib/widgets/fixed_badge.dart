@@ -57,7 +57,8 @@ class CategoryBadge extends StatelessWidget {
       icon: switch (category) {
         BudgetCategory.giving => Icons.volunteer_activism_outlined,
         BudgetCategory.essential => Icons.home_outlined,
-        BudgetCategory.savings || BudgetCategory.other => Icons.savings_outlined,
+        BudgetCategory.savings ||
+        BudgetCategory.other => Icons.savings_outlined,
       },
       background: Colors.transparent,
       foreground: c.forestDeep,
@@ -87,8 +88,8 @@ class _Badge extends StatelessWidget {
     final icon = this.icon;
     final text = Text(
       label,
-      style:
-          Theme.of(context).textTheme.labelSmall?.copyWith(color: foreground),
+      style: Theme.of(context).textTheme.labelSmall
+          ?.copyWith(color: foreground),
     );
     return Container(
       // The border takes the place of the padding, so all badges are the

@@ -41,8 +41,8 @@ class Months extends Table {
 
   @override
   List<Set<Column>> get uniqueKeys => [
-        {year, month},
-      ];
+    {year, month},
+  ];
 }
 
 /// One source of money coming in during the month, like a salary.
@@ -76,8 +76,9 @@ class Budgets extends Table {
 
   /// What the budget is for. Savings budgets count towards the savings goal,
   /// see [BudgetCategory.savings].
-  TextColumn get category => textEnum<BudgetCategory>()
-      .withDefault(Constant(BudgetCategory.other.name))();
+  TextColumn get category => textEnum<BudgetCategory>().withDefault(
+    Constant(BudgetCategory.other.name),
+  )();
 
   /// Where the budget goes among the month's budgets in the custom order,
   /// lowest first; see [BudgetOrder.custom]. New budgets go last.
@@ -127,16 +128,18 @@ class Settings extends Table {
   /// What to save in each [savingsGoalPeriod]; null while there's no goal.
   IntColumn get savingsGoalCents => integer().nullable()();
 
-  TextColumn get savingsGoalPeriod => textEnum<SavingsPeriod>()
-      .withDefault(Constant(SavingsPeriod.year.name))();
+  TextColumn get savingsGoalPeriod => textEnum<SavingsPeriod>().withDefault(
+    Constant(SavingsPeriod.year.name),
+  )();
 
   /// Whether the app is shown light, dark, or following the system.
-  TextColumn get appearance => textEnum<Appearance>()
-      .withDefault(Constant(Appearance.system.name))();
+  TextColumn get appearance =>
+      textEnum<Appearance>().withDefault(Constant(Appearance.system.name))();
 
   /// How budgets are listed on the plan and while tracking.
-  TextColumn get budgetOrder => textEnum<BudgetOrder>()
-      .withDefault(Constant(BudgetOrder.category.name))();
+  TextColumn get budgetOrder => textEnum<BudgetOrder>().withDefault(
+    Constant(BudgetOrder.category.name),
+  )();
 
   /// What amounts are shown in.
   TextColumn get currency =>
@@ -258,128 +261,128 @@ class AppDatabase extends _$AppDatabase {
   // Pass an executor (e.g. NativeDatabase.memory()) to use an in-memory
   // database in tests.
   AppDatabase([QueryExecutor? executor])
-      : super(executor ?? driftDatabase(name: 'zero_budget'));
+    : super(executor ?? driftDatabase(name: 'zero_budget'));
 
   @override
   int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onUpgrade: (m, from, to) async {
-          if (from < 2) await m.createTable(expenses);
-          if (from < 3) await m.addColumn(months, months.lockedAt);
-          if (from < 4) {
-            await m.addColumn(budgets, budgets.isFixed);
-            // Before version 2 the expenses table was just created in full.
-            if (from >= 2) await m.addColumn(expenses, expenses.isFixed);
-          }
-          if (from < 5) await m.addColumn(months, months.carryOverCents);
-          if (from < 6) {
-            await m.createTable(incomes);
-            // Each month had a single income before.
-            await customStatement(
-              "INSERT INTO incomes (month_id, name, amount_cents) "
-              "SELECT id, 'Income', income_cents FROM months "
-              'WHERE income_cents > 0',
-            );
-          }
-          if (from < 7) {
-            await m.addColumn(budgets, budgets.isSinkingFund);
-            await m.addColumn(budgets, budgets.savedCents);
-          }
-          if (from < 8) {
-            // Before version 2 the expenses table was just created in full.
-            if (from >= 2) await m.addColumn(expenses, expenses.title);
-            // Notes were shown as the expense's title before.
-            await customStatement(
-              'UPDATE expenses SET title = note, note = NULL '
-              'WHERE note IS NOT NULL',
-            );
-          }
-          if (from < 9) await m.addColumn(months, months.notes);
-          if (from < 10) await m.createTable(settings);
-          // Before version 10 the settings table was just created in full.
-          if (from == 10) {
-            await m.addColumn(settings, settings.selectedYearMonth);
-            await m.addColumn(settings, settings.offeredYearMonth);
-          }
-          // Added out of order, as syncing the carryovers below reads whole
-          // months and budgets.
-          if (from < 19) await m.addColumn(months, months.needsSetUp);
-          if (from < 18) {
-            await m.addColumn(budgets, budgets.category);
-            // Savings were a flag from version 14 on.
-            if (from >= 14) {
-              await customStatement(
-                "UPDATE budgets SET category = 'savings' WHERE is_savings",
-              );
-              await m.dropColumn(budgets, 'is_savings');
-            }
-            // Giving and the essentials were recognized by their names, the
-            // ones the guided planning gives them.
-            await customStatement(
-              "UPDATE budgets SET category = CASE lower(name) "
-              "WHEN 'giving' THEN 'giving' ELSE 'essential' END "
-              "WHERE category = 'other' AND lower(name) IN "
-              "('giving', 'rent', 'utilities', 'groceries', 'transportation')",
-            );
-          }
-          if (from < 17) {
-            await m.addColumn(budgets, budgets.position);
-            // Keeps the order they were added in.
-            await customStatement('UPDATE budgets SET position = id');
-          }
-          if (from < 12) {
-            await m.addColumn(months, months.carryOverAdjustmentCents);
-            // Carryovers were only worked out when a month was created, and
-            // could be corrected by hand since. Keep them as they are.
-            await _syncCarryOvers(keepCarryOvers: true);
-          }
-          // Before version 10 the settings table was just created in full.
-          if (from >= 10 && from < 13) {
-            await m.addColumn(settings, settings.showDebugBar);
-          }
-          if (from >= 10 && from < 14) {
-            await m.addColumn(settings, settings.savingsGoalCents);
-            await m.addColumn(settings, settings.savingsGoalPeriod);
-          }
-          if (from >= 10 && from < 15) {
-            await m.addColumn(settings, settings.appearance);
-          }
-          if (from >= 10 && from < 16) {
-            await m.addColumn(settings, settings.budgetOrder);
-          }
-          if (from >= 10 && from < 20) {
-            await m.addColumn(settings, settings.currency);
-          }
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-        },
-      );
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await m.createTable(expenses);
+      if (from < 3) await m.addColumn(months, months.lockedAt);
+      if (from < 4) {
+        await m.addColumn(budgets, budgets.isFixed);
+        // Before version 2 the expenses table was just created in full.
+        if (from >= 2) await m.addColumn(expenses, expenses.isFixed);
+      }
+      if (from < 5) await m.addColumn(months, months.carryOverCents);
+      if (from < 6) {
+        await m.createTable(incomes);
+        // Each month had a single income before.
+        await customStatement(
+          "INSERT INTO incomes (month_id, name, amount_cents) "
+          "SELECT id, 'Income', income_cents FROM months "
+          'WHERE income_cents > 0',
+        );
+      }
+      if (from < 7) {
+        await m.addColumn(budgets, budgets.isSinkingFund);
+        await m.addColumn(budgets, budgets.savedCents);
+      }
+      if (from < 8) {
+        // Before version 2 the expenses table was just created in full.
+        if (from >= 2) await m.addColumn(expenses, expenses.title);
+        // Notes were shown as the expense's title before.
+        await customStatement(
+          'UPDATE expenses SET title = note, note = NULL '
+          'WHERE note IS NOT NULL',
+        );
+      }
+      if (from < 9) await m.addColumn(months, months.notes);
+      if (from < 10) await m.createTable(settings);
+      // Before version 10 the settings table was just created in full.
+      if (from == 10) {
+        await m.addColumn(settings, settings.selectedYearMonth);
+        await m.addColumn(settings, settings.offeredYearMonth);
+      }
+      // Added out of order, as syncing the carryovers below reads whole
+      // months and budgets.
+      if (from < 19) await m.addColumn(months, months.needsSetUp);
+      if (from < 18) {
+        await m.addColumn(budgets, budgets.category);
+        // Savings were a flag from version 14 on.
+        if (from >= 14) {
+          await customStatement(
+            "UPDATE budgets SET category = 'savings' WHERE is_savings",
+          );
+          await m.dropColumn(budgets, 'is_savings');
+        }
+        // Giving and the essentials were recognized by their names, the
+        // ones the guided planning gives them.
+        await customStatement(
+          "UPDATE budgets SET category = CASE lower(name) "
+          "WHEN 'giving' THEN 'giving' ELSE 'essential' END "
+          "WHERE category = 'other' AND lower(name) IN "
+          "('giving', 'rent', 'utilities', 'groceries', 'transportation')",
+        );
+      }
+      if (from < 17) {
+        await m.addColumn(budgets, budgets.position);
+        // Keeps the order they were added in.
+        await customStatement('UPDATE budgets SET position = id');
+      }
+      if (from < 12) {
+        await m.addColumn(months, months.carryOverAdjustmentCents);
+        // Carryovers were only worked out when a month was created, and
+        // could be corrected by hand since. Keep them as they are.
+        await _syncCarryOvers(keepCarryOvers: true);
+      }
+      // Before version 10 the settings table was just created in full.
+      if (from >= 10 && from < 13) {
+        await m.addColumn(settings, settings.showDebugBar);
+      }
+      if (from >= 10 && from < 14) {
+        await m.addColumn(settings, settings.savingsGoalCents);
+        await m.addColumn(settings, settings.savingsGoalPeriod);
+      }
+      if (from >= 10 && from < 15) {
+        await m.addColumn(settings, settings.appearance);
+      }
+      if (from >= 10 && from < 16) {
+        await m.addColumn(settings, settings.budgetOrder);
+      }
+      if (from >= 10 && from < 20) {
+        await m.addColumn(settings, settings.currency);
+      }
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 
   /// Returns the row for [year]/[month], creating it if it doesn't exist yet.
   ///
   /// A new month uses the latest earlier month as its template, see
   /// [_copyPlan], and then [Months.needsSetUp].
   Future<Month> getOrCreateMonth(int year, int month) => transaction(() async {
-        final query = select(months)
-          ..where((m) => m.year.equals(year) & m.month.equals(month));
-        final existing = await query.getSingleOrNull();
-        if (existing != null) return existing;
+    final query = select(months)
+      ..where((m) => m.year.equals(year) & m.month.equals(month));
+    final existing = await query.getSingleOrNull();
+    if (existing != null) return existing;
 
-        final template = await _monthBefore(year, month);
-        final monthId = await into(months).insert(
-          MonthsCompanion.insert(
-            year: year,
-            month: month,
-            needsSetUp: Value(template != null),
-          ),
-        );
-        if (template != null) await _copyPlan(template, monthId);
-        await _syncCarryOvers();
-        return query.getSingle();
-      });
+    final template = await _monthBefore(year, month);
+    final monthId = await into(months).insert(
+      MonthsCompanion.insert(
+        year: year,
+        month: month,
+        needsSetUp: Value(template != null),
+      ),
+    );
+    if (template != null) await _copyPlan(template, monthId);
+    await _syncCarryOvers();
+    return query.getSingle();
+  });
 
   /// Replaces the month's incomes and budgets with the ones of the latest
   /// earlier month, as if the month was created from it again, and unlocks
@@ -388,60 +391,68 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Returns false, changing nothing, if there's no earlier month.
   Future<bool> copyPlanFromMonthBefore(int monthId) => transaction(() async {
-        final month = await (select(months)
-              ..where((m) => m.id.equals(monthId)))
-            .getSingle();
-        final template = await _monthBefore(month.year, month.month);
-        if (template == null) return false;
+    final month = await (select(
+      months,
+    )..where((m) => m.id.equals(monthId))).getSingle();
+    final template = await _monthBefore(month.year, month.month);
+    if (template == null) return false;
 
-        await (delete(budgets)..where((b) => b.monthId.equals(monthId))).go();
-        await (delete(incomes)..where((i) => i.monthId.equals(monthId))).go();
-        await (update(months)..where((m) => m.id.equals(monthId))).write(
-          const MonthsCompanion(
-            lockedAt: Value(null),
-            carryOverAdjustmentCents: Value(0),
-          ),
-        );
-        await _copyPlan(template, monthId);
-        await _syncCarryOvers();
-        return true;
-      });
+    await (delete(budgets)..where((b) => b.monthId.equals(monthId))).go();
+    await (delete(incomes)..where((i) => i.monthId.equals(monthId))).go();
+    await (update(months)..where((m) => m.id.equals(monthId))).write(
+      const MonthsCompanion(
+        lockedAt: Value(null),
+        carryOverAdjustmentCents: Value(0),
+      ),
+    );
+    await _copyPlan(template, monthId);
+    await _syncCarryOvers();
+    return true;
+  });
 
   /// Whether there's a month before the month [monthId], which it carries
   /// money over from.
   Future<bool> hasMonthBefore(int monthId) async {
-    final month = await (select(months)..where((m) => m.id.equals(monthId)))
-        .getSingle();
+    final month = await (select(
+      months,
+    )..where((m) => m.id.equals(monthId))).getSingle();
     return await _monthBefore(month.year, month.month) != null;
   }
 
   /// The latest month before [year]/[month], if any.
-  Future<Month?> _monthBefore(int year, int month) => (select(months)
-        ..where((m) =>
-            m.year.isSmallerThanValue(year) |
-            (m.year.equals(year) & m.month.isSmallerThanValue(month)))
-        ..orderBy([
-          (m) => OrderingTerm.desc(m.year),
-          (m) => OrderingTerm.desc(m.month),
-        ])
-        ..limit(1))
-      .getSingleOrNull();
+  Future<Month?> _monthBefore(int year, int month) =>
+      (select(months)
+            ..where(
+              (m) =>
+                  m.year.isSmallerThanValue(year) |
+                  (m.year.equals(year) & m.month.isSmallerThanValue(month)),
+            )
+            ..orderBy([
+              (m) => OrderingTerm.desc(m.year),
+              (m) => OrderingTerm.desc(m.month),
+            ])
+            ..limit(1))
+          .getSingleOrNull();
 
   /// Gives the month [monthId] the same incomes and budgets as [template].
   /// Sinking funds carry over their own savings.
   Future<void> _copyPlan(Month template, int monthId) async {
-    final templateBudgets = await (select(budgets)
-          ..where((b) => b.monthId.equals(template.id))
-          ..orderBy([(b) => OrderingTerm.asc(b.id)]))
-        .get();
-    final templateSpent =
-        spentByBudget(await _expensesOfMonth(template.id).get());
-    await (update(months)..where((m) => m.id.equals(monthId)))
-        .write(MonthsCompanion(incomeCents: Value(template.incomeCents)));
-    final templateIncomes = await (select(incomes)
-          ..where((i) => i.monthId.equals(template.id))
-          ..orderBy([(i) => OrderingTerm.asc(i.id)]))
-        .get();
+    final templateBudgets =
+        await (select(budgets)
+              ..where((b) => b.monthId.equals(template.id))
+              ..orderBy([(b) => OrderingTerm.asc(b.id)]))
+            .get();
+    final templateSpent = spentByBudget(
+      await _expensesOfMonth(template.id).get(),
+    );
+    await (update(months)..where((m) => m.id.equals(monthId))).write(
+      MonthsCompanion(incomeCents: Value(template.incomeCents)),
+    );
+    final templateIncomes =
+        await (select(incomes)
+              ..where((i) => i.monthId.equals(template.id))
+              ..orderBy([(i) => OrderingTerm.asc(i.id)]))
+            .get();
     for (final income in templateIncomes) {
       await into(incomes).insert(
         IncomesCompanion.insert(
@@ -461,9 +472,11 @@ class AppDatabase extends _$AppDatabase {
           isSinkingFund: Value(budget.isSinkingFund),
           category: Value(budget.category),
           position: Value(budget.position),
-          savedCents: Value(budget.isSinkingFund
-              ? fundBalanceCents(budget, templateSpent[budget.id] ?? 0)
-              : 0),
+          savedCents: Value(
+            budget.isSinkingFund
+                ? fundBalanceCents(budget, templateSpent[budget.id] ?? 0)
+                : 0,
+          ),
         ),
       );
     }
@@ -481,23 +494,26 @@ class AppDatabase extends _$AppDatabase {
       'WHERE b.month_id = m.id) AS spent_cents '
       'FROM months m ORDER BY m.year DESC, m.month DESC',
       readsFrom: {months, budgets, expenses},
-    ).watch().map((rows) => [
-          for (final row in rows)
-            (
-              month: months.map(row.data),
-              plannedCents: row.read<int>('planned_cents'),
-              spentCents: row.read<int>('spent_cents'),
-            ),
-        ]);
+    ).watch().map(
+      (rows) => [
+        for (final row in rows)
+          (
+            month: months.map(row.data),
+            plannedCents: row.read<int>('planned_cents'),
+            spentCents: row.read<int>('spent_cents'),
+          ),
+      ],
+    );
   }
 
   Stream<Month> watchMonth(int monthId) =>
       (select(months)..where((m) => m.id.equals(monthId))).watchSingle();
 
-  Stream<List<Income>> watchIncomes(int monthId) => (select(incomes)
-        ..where((i) => i.monthId.equals(monthId))
-        ..orderBy([(i) => OrderingTerm.asc(i.id)]))
-      .watch();
+  Stream<List<Income>> watchIncomes(int monthId) =>
+      (select(incomes)
+            ..where((i) => i.monthId.equals(monthId))
+            ..orderBy([(i) => OrderingTerm.asc(i.id)]))
+          .watch();
 
   Future<int> addIncome(int monthId, String name, int amountCents) =>
       transaction(() async {
@@ -516,34 +532,35 @@ class AppDatabase extends _$AppDatabase {
     int id, {
     required String name,
     required int amountCents,
-  }) =>
-      transaction(() async {
-        final query = update(incomes)..where((i) => i.id.equals(id));
-        final updated = await query.writeReturning(
-          IncomesCompanion(name: Value(name), amountCents: Value(amountCents)),
-        );
-        for (final income in updated) {
-          await _syncIncomeTotal(income.monthId);
-        }
-      });
+  }) => transaction(() async {
+    final query = update(incomes)..where((i) => i.id.equals(id));
+    final updated = await query.writeReturning(
+      IncomesCompanion(name: Value(name), amountCents: Value(amountCents)),
+    );
+    for (final income in updated) {
+      await _syncIncomeTotal(income.monthId);
+    }
+  });
 
   Future<void> deleteIncome(int id) => transaction(() async {
-        final query = delete(incomes)..where((i) => i.id.equals(id));
-        final deleted = await query.goAndReturn();
-        for (final income in deleted) {
-          await _syncIncomeTotal(income.monthId);
-        }
-      });
+    final query = delete(incomes)..where((i) => i.id.equals(id));
+    final deleted = await query.goAndReturn();
+    for (final income in deleted) {
+      await _syncIncomeTotal(income.monthId);
+    }
+  });
 
   Future<void> _syncIncomeTotal(int monthId) async {
     final total = incomes.amountCents.sum();
-    final incomeCents = await (selectOnly(incomes)
-          ..where(incomes.monthId.equals(monthId))
-          ..addColumns([total]))
-        .map((row) => row.read(total))
-        .getSingle();
-    await (update(months)..where((m) => m.id.equals(monthId)))
-        .write(MonthsCompanion(incomeCents: Value(incomeCents ?? 0)));
+    final incomeCents =
+        await (selectOnly(incomes)
+              ..where(incomes.monthId.equals(monthId))
+              ..addColumns([total]))
+            .map((row) => row.read(total))
+            .getSingle();
+    await (update(months)..where((m) => m.id.equals(monthId))).write(
+      MonthsCompanion(incomeCents: Value(incomeCents ?? 0)),
+    );
     await _syncCarryOvers();
   }
 
@@ -554,12 +571,12 @@ class AppDatabase extends _$AppDatabase {
   /// [keepCarryOvers], the carryovers stay as they are and the adjustments
   /// are set to match instead.
   Future<void> _syncCarryOvers({bool keepCarryOvers = false}) async {
-    final allMonths = await (select(months)
-          ..orderBy([
-            (m) => OrderingTerm.asc(m.year),
-            (m) => OrderingTerm.asc(m.month),
-          ]))
-        .get();
+    final allMonths =
+        await (select(months)..orderBy([
+              (m) => OrderingTerm.asc(m.year),
+              (m) => OrderingTerm.asc(m.month),
+            ]))
+            .get();
     final budgetsByMonth = <int, List<Budget>>{};
     for (final budget in await select(budgets).get()) {
       (budgetsByMonth[budget.monthId] ??= []).add(budget);
@@ -588,32 +605,33 @@ class AppDatabase extends _$AppDatabase {
   /// Each fixed budget is spent in full by one fixed expense, which is kept in
   /// sync with the budget whenever the plan is locked in again.
   Future<void> lockMonth(int monthId) => transaction(() async {
-        final monthBudgets = await (select(budgets)
-              ..where((b) => b.monthId.equals(monthId)))
-            .get();
-        for (final budget in monthBudgets) {
-          final fixedExpense = expenses.budgetId.equals(budget.id) &
-              expenses.isFixed.equals(true);
-          if (!budget.isFixed) {
-            await (delete(expenses)..where((_) => fixedExpense)).go();
-            continue;
-          }
-          final updated = await (update(expenses)..where((_) => fixedExpense))
-              .write(ExpensesCompanion(amountCents: Value(budget.amountCents)));
-          if (updated == 0) {
-            await into(expenses).insert(
-              ExpensesCompanion.insert(
-                budgetId: budget.id,
-                amountCents: budget.amountCents,
-                isFixed: const Value(true),
-              ),
-            );
-          }
-        }
-        await (update(months)..where((m) => m.id.equals(monthId)))
-            .write(MonthsCompanion(lockedAt: Value(DateTime.now())));
-        await _syncCarryOvers();
-      });
+    final monthBudgets = await (select(
+      budgets,
+    )..where((b) => b.monthId.equals(monthId))).get();
+    for (final budget in monthBudgets) {
+      final fixedExpense =
+          expenses.budgetId.equals(budget.id) & expenses.isFixed.equals(true);
+      if (!budget.isFixed) {
+        await (delete(expenses)..where((_) => fixedExpense)).go();
+        continue;
+      }
+      final updated = await (update(expenses)..where((_) => fixedExpense))
+          .write(ExpensesCompanion(amountCents: Value(budget.amountCents)));
+      if (updated == 0) {
+        await into(expenses).insert(
+          ExpensesCompanion.insert(
+            budgetId: budget.id,
+            amountCents: budget.amountCents,
+            isFixed: const Value(true),
+          ),
+        );
+      }
+    }
+    await (update(months)..where((m) => m.id.equals(monthId))).write(
+      MonthsCompanion(lockedAt: Value(DateTime.now())),
+    );
+    await _syncCarryOvers();
+  });
 
   /// Corrects what the month carries over from the month before, when it
   /// doesn't match what was actually left.
@@ -622,11 +640,10 @@ class AppDatabase extends _$AppDatabase {
   /// changes to the month before.
   Future<void> setCarryOverCents(int monthId, int carryOverCents) =>
       transaction(() async {
-        final month = await (select(months)
-              ..where((m) => m.id.equals(monthId)))
-            .getSingle();
-        final leftCents =
-            month.carryOverCents - month.carryOverAdjustmentCents;
+        final month = await (select(
+          months,
+        )..where((m) => m.id.equals(monthId))).getSingle();
+        final leftCents = month.carryOverCents - month.carryOverAdjustmentCents;
         await (update(months)..where((m) => m.id.equals(monthId))).write(
           MonthsCompanion(
             carryOverAdjustmentCents: Value(carryOverCents - leftCents),
@@ -639,30 +656,27 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateMonthNotes(int monthId, String notes) {
     final trimmed = notes.trim();
     return (update(months)..where((m) => m.id.equals(monthId))).write(
-          MonthsCompanion(notes: Value(trimmed.isEmpty ? null : trimmed)),
-        );
+      MonthsCompanion(notes: Value(trimmed.isEmpty ? null : trimmed)),
+    );
   }
 
   /// The settings, with defaults until any is changed.
-  Stream<Setting> watchSettings() =>
-      select(settings).watchSingleOrNull().map(
-            (row) =>
-                row ??
-                const Setting(
-                  id: settingsRowId,
-                  bufferCents: defaultBufferCents,
-                  showDebugBar: true,
-                  savingsGoalPeriod: SavingsPeriod.year,
-                  appearance: Appearance.system,
-                  budgetOrder: BudgetOrder.category,
-                  currency: Currency.eur,
-                ),
-          );
+  Stream<Setting> watchSettings() => select(settings).watchSingleOrNull().map(
+    (row) =>
+        row ??
+        const Setting(
+          id: settingsRowId,
+          bufferCents: defaultBufferCents,
+          showDebugBar: true,
+          savingsGoalPeriod: SavingsPeriod.year,
+          appearance: Appearance.system,
+          budgetOrder: BudgetOrder.category,
+          currency: Currency.eur,
+        ),
+  );
 
-  Future<void> _updateSettings(SettingsCompanion changes) =>
-      into(settings).insertOnConflictUpdate(
-        changes.copyWith(id: const Value(settingsRowId)),
-      );
+  Future<void> _updateSettings(SettingsCompanion changes) => into(settings)
+      .insertOnConflictUpdate(changes.copyWith(id: const Value(settingsRowId)));
 
   /// The buffer to keep in the bank account, see [Settings.bufferCents].
   Stream<int> watchBufferCents() =>
@@ -710,13 +724,15 @@ class AppDatabase extends _$AppDatabase {
         Variable.withInt(encodeYearMonth(last)),
       ],
       readsFrom: {months, budgets, expenses},
-    ).watch().map((rows) => [
-          for (final row in rows)
-            (
-              month: (year: row.read<int>('year'), month: row.read<int>('month')),
-              savedCents: row.read<int>('saved_cents'),
-            ),
-        ]);
+    ).watch().map(
+      (rows) => [
+        for (final row in rows)
+          (
+            month: (year: row.read<int>('year'), month: row.read<int>('month')),
+            savedCents: row.read<int>('saved_cents'),
+          ),
+      ],
+    );
   }
 
   /// The month the user works in, or null if they haven't been in one yet.
@@ -734,16 +750,16 @@ class AppDatabase extends _$AppDatabase {
 
   /// Moves the user to [yearMonth]. Choosing a month also counts as being
   /// offered it and the [calendar] month, which aren't offered again.
-  Future<void> selectMonth(YearMonth yearMonth, {required YearMonth calendar}) =>
-      transaction(() async {
-        await _markOffered(yearMonth);
-        await _markOffered(calendar);
-        await _updateSettings(
-          SettingsCompanion(
-            selectedYearMonth: Value(encodeYearMonth(yearMonth)),
-          ),
-        );
-      });
+  Future<void> selectMonth(
+    YearMonth yearMonth, {
+    required YearMonth calendar,
+  }) => transaction(() async {
+    await _markOffered(yearMonth);
+    await _markOffered(calendar);
+    await _updateSettings(
+      SettingsCompanion(selectedYearMonth: Value(encodeYearMonth(yearMonth))),
+    );
+  });
 
   /// Remembers that the user was offered to move on to [yearMonth] and
   /// declined.
@@ -757,19 +773,20 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Every month with a plan, in no particular order.
-  Stream<List<YearMonth>> watchYearMonths() => select(months)
-      .map((m) => (year: m.year, month: m.month))
-      .watch();
+  Stream<List<YearMonth>> watchYearMonths() =>
+      select(months).map((m) => (year: m.year, month: m.month)).watch();
 
   /// Unlocks the month's plan for editing. Tracked expenses are kept.
   Future<void> unlockMonth(int monthId) =>
-      (update(months)..where((m) => m.id.equals(monthId)))
-          .write(const MonthsCompanion(lockedAt: Value(null)));
+      (update(months)..where((m) => m.id.equals(monthId))).write(
+        const MonthsCompanion(lockedAt: Value(null)),
+      );
 
-  Stream<List<Budget>> watchBudgets(int monthId) => (select(budgets)
-        ..where((b) => b.monthId.equals(monthId))
-        ..orderBy([(b) => OrderingTerm.asc(b.id)]))
-      .watch();
+  Stream<List<Budget>> watchBudgets(int monthId) =>
+      (select(budgets)
+            ..where((b) => b.monthId.equals(monthId))
+            ..orderBy([(b) => OrderingTerm.asc(b.id)]))
+          .watch();
 
   Future<int> addBudget(
     int monthId,
@@ -786,11 +803,12 @@ class AppDatabase extends _$AppDatabase {
     );
     return transaction(() async {
       final last = budgets.position.max();
-      final lastPosition = await (selectOnly(budgets)
-            ..where(budgets.monthId.equals(monthId))
-            ..addColumns([last]))
-          .map((row) => row.read(last))
-          .getSingle();
+      final lastPosition =
+          await (selectOnly(budgets)
+                ..where(budgets.monthId.equals(monthId))
+                ..addColumns([last]))
+              .map((row) => row.read(last))
+              .getSingle();
       final id = await into(budgets).insert(
         BudgetsCompanion.insert(
           monthId: monthId,
@@ -822,67 +840,71 @@ class AppDatabase extends _$AppDatabase {
     int amountCents, {
     bool isFixed = false,
     BudgetCategory category = BudgetCategory.other,
-  }) =>
-      transaction(() async {
-        final existing = await (select(budgets)
-              ..where((b) =>
-                  b.monthId.equals(monthId) &
-                  b.name.lower().equals(name.toLowerCase()))
+  }) => transaction(() async {
+    final existing =
+        await (select(budgets)
+              ..where(
+                (b) =>
+                    b.monthId.equals(monthId) &
+                    b.name.lower().equals(name.toLowerCase()),
+              )
               ..orderBy([(b) => OrderingTerm.asc(b.id)])
               ..limit(1))
             .getSingleOrNull();
-        if (existing == null) {
-          if (amountCents == 0) return;
-          await addBudget(
-            monthId,
-            name,
-            amountCents,
-            isFixed: isFixed,
-            category: category,
-          );
-          return;
-        }
-        if (amountCents == 0 && existing.savedCents == 0) {
-          final tracked = await (select(expenses)
-                ..where((e) =>
-                    e.budgetId.equals(existing.id) & e.isFixed.equals(false))
+    if (existing == null) {
+      if (amountCents == 0) return;
+      await addBudget(
+        monthId,
+        name,
+        amountCents,
+        isFixed: isFixed,
+        category: category,
+      );
+      return;
+    }
+    if (amountCents == 0 && existing.savedCents == 0) {
+      final tracked =
+          await (select(expenses)
+                ..where(
+                  (e) =>
+                      e.budgetId.equals(existing.id) & e.isFixed.equals(false),
+                )
                 ..limit(1))
               .getSingleOrNull();
-          if (tracked == null) {
-            await deleteBudget(existing.id);
-            return;
-          }
-        }
-        await (update(budgets)..where((b) => b.id.equals(existing.id)))
-            .write(
-          BudgetsCompanion(
-            amountCents: Value(amountCents),
-            category: Value(
-              existing.category != BudgetCategory.other ||
-                      (category == BudgetCategory.savings &&
-                          existing.isSinkingFund)
-                  ? existing.category
-                  : category,
-            ),
-          ),
-        );
-        await _syncCarryOvers();
-      });
+      if (tracked == null) {
+        await deleteBudget(existing.id);
+        return;
+      }
+    }
+    await (update(budgets)..where((b) => b.id.equals(existing.id))).write(
+      BudgetsCompanion(
+        amountCents: Value(amountCents),
+        category: Value(
+          existing.category != BudgetCategory.other ||
+                  (category == BudgetCategory.savings && existing.isSinkingFund)
+              ? existing.category
+              : category,
+        ),
+      ),
+    );
+    await _syncCarryOvers();
+  });
 
   /// Sets up a month copied from the month before, keeping only the budgets
   /// [keptBudgetIds]. The others are deleted like with [deleteBudget].
   Future<void> setUpMonth(int monthId, Set<int> keptBudgetIds) =>
       transaction(() async {
-        final monthBudgets = await (select(budgets)
-              ..where((b) => b.monthId.equals(monthId)))
-            .get();
+        final monthBudgets = await (select(
+          budgets,
+        )..where((b) => b.monthId.equals(monthId))).get();
         for (final budget in monthBudgets) {
           if (keptBudgetIds.contains(budget.id)) continue;
           await _releaseSavings(budget.id);
           await (delete(budgets)..where((b) => b.id.equals(budget.id))).go();
         }
-        await (update(months)..where((m) => m.id.equals(monthId)))
-            .write(const MonthsCompanion(needsSetUp: Value(false)));
+        await (update(months)..where((m) => m.id.equals(monthId))).write(
+          const MonthsCompanion(needsSetUp: Value(false)),
+        );
         await _syncCarryOvers();
       });
 
@@ -891,8 +913,9 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setCustomBudgetOrder(List<int> budgetIds) =>
       transaction(() async {
         for (final (position, id) in budgetIds.indexed) {
-          await (update(budgets)..where((b) => b.id.equals(id)))
-              .write(BudgetsCompanion(position: Value(position)));
+          await (update(budgets)..where((b) => b.id.equals(id))).write(
+            BudgetsCompanion(position: Value(position)),
+          );
         }
         await setBudgetOrder(BudgetOrder.custom);
       });
@@ -930,16 +953,17 @@ class AppDatabase extends _$AppDatabase {
   /// Deletes the budget and its expenses. A sinking fund's savings go back
   /// into the month.
   Future<void> deleteBudget(int id) => transaction(() async {
-        await _releaseSavings(id);
-        await (delete(budgets)..where((b) => b.id.equals(id))).go();
-        await _syncCarryOvers();
-      });
+    await _releaseSavings(id);
+    await (delete(budgets)..where((b) => b.id.equals(id))).go();
+    await _syncCarryOvers();
+  });
 
   /// Moves a budget's savings into its month's carryover, so they're available
   /// to assign again. Call [_syncCarryOvers] after.
   Future<void> _releaseSavings(int budgetId) async {
-    final budget = await (select(budgets)..where((b) => b.id.equals(budgetId)))
-        .getSingleOrNull();
+    final budget = await (select(
+      budgets,
+    )..where((b) => b.id.equals(budgetId))).getSingleOrNull();
     if (budget == null || budget.savedCents == 0) return;
     await customUpdate(
       'UPDATE months '
@@ -951,8 +975,9 @@ class AppDatabase extends _$AppDatabase {
       ],
       updates: {months},
     );
-    await (update(budgets)..where((b) => b.id.equals(budgetId)))
-        .write(const BudgetsCompanion(savedCents: Value(0)));
+    await (update(budgets)..where((b) => b.id.equals(budgetId))).write(
+      const BudgetsCompanion(savedCents: Value(0)),
+    );
   }
 
   /// Expenses from all budgets of the month, newest first.
@@ -960,14 +985,14 @@ class AppDatabase extends _$AppDatabase {
       _expensesOfMonth(monthId).watch();
 
   Selectable<Expense> _expensesOfMonth(int monthId) {
-    final query = select(expenses).join([
-      innerJoin(budgets, budgets.id.equalsExp(expenses.budgetId)),
-    ])
-      ..where(budgets.monthId.equals(monthId))
-      ..orderBy([
-        OrderingTerm.desc(expenses.spentAt),
-        OrderingTerm.desc(expenses.id),
-      ]);
+    final query =
+        select(expenses)
+            .join([innerJoin(budgets, budgets.id.equalsExp(expenses.budgetId))])
+          ..where(budgets.monthId.equals(monthId))
+          ..orderBy([
+            OrderingTerm.desc(expenses.spentAt),
+            OrderingTerm.desc(expenses.id),
+          ]);
     return query.map((row) => row.readTable(expenses));
   }
 
@@ -976,19 +1001,18 @@ class AppDatabase extends _$AppDatabase {
     int amountCents, {
     String? title,
     String? note,
-  }) =>
-      transaction(() async {
-        final id = await into(expenses).insert(
-          ExpensesCompanion.insert(
-            budgetId: budgetId,
-            amountCents: amountCents,
-            title: Value(title),
-            note: Value(note),
-          ),
-        );
-        await _syncCarryOvers();
-        return id;
-      });
+  }) => transaction(() async {
+    final id = await into(expenses).insert(
+      ExpensesCompanion.insert(
+        budgetId: budgetId,
+        amountCents: amountCents,
+        title: Value(title),
+        note: Value(note),
+      ),
+    );
+    await _syncCarryOvers();
+    return id;
+  });
 
   /// Changes what an expense was, its amount and the budget it came out of.
   /// When it was spent stays the same.
@@ -998,21 +1022,20 @@ class AppDatabase extends _$AppDatabase {
     required int amountCents,
     required String? title,
     String? note,
-  }) =>
-      transaction(() async {
-        await (update(expenses)..where((e) => e.id.equals(id))).write(
-          ExpensesCompanion(
-            budgetId: Value(budgetId),
-            amountCents: Value(amountCents),
-            title: Value(title),
-            note: Value(note),
-          ),
-        );
-        await _syncCarryOvers();
-      });
+  }) => transaction(() async {
+    await (update(expenses)..where((e) => e.id.equals(id))).write(
+      ExpensesCompanion(
+        budgetId: Value(budgetId),
+        amountCents: Value(amountCents),
+        title: Value(title),
+        note: Value(note),
+      ),
+    );
+    await _syncCarryOvers();
+  });
 
   Future<void> deleteExpense(int id) => transaction(() async {
-        await (delete(expenses)..where((e) => e.id.equals(id))).go();
-        await _syncCarryOvers();
-      });
+    await (delete(expenses)..where((e) => e.id.equals(id))).go();
+    await _syncCarryOvers();
+  });
 }

@@ -42,6 +42,9 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
       - run: flutter analyze --no-fatal-infos
 
       # The widget tests can hang, so only the database tests run here.

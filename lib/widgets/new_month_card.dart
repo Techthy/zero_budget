@@ -24,9 +24,10 @@ class NewMonthCard extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
     final today = ref.watch(todayProvider);
     final monthName = formatMonth(month.year, month.month);
-    final daysToStart = DateTime.utc(month.year, month.month)
-        .difference(DateTime.utc(today.year, today.month, today.day))
-        .inDays;
+    final daysToStart = DateTime.utc(
+      month.year,
+      month.month,
+    ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
     final db = ref.read(appDatabaseProvider);
 
     return Padding(
@@ -79,9 +80,7 @@ class NewMonthCard extends ConsumerWidget {
                     label: Text('Plan $monthName'),
                   ),
                   TextButton(
-                    style: TextButton.styleFrom(
-                      foregroundColor: c.onHighlight,
-                    ),
+                    style: TextButton.styleFrom(foregroundColor: c.onHighlight),
                     onPressed: () => db.declineMonth(month),
                     child: const Text('Not yet'),
                   ),

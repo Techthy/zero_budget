@@ -53,10 +53,10 @@ class SavingsProgress {
 
   /// How much of the goal is saved, from 0 to 1; 0 without a goal.
   double get fraction => switch (goalCents) {
-        null => 0,
-        final goal when goal <= 0 => 1,
-        final goal => (savedCents / goal).clamp(0.0, 1.0),
-      };
+    null => 0,
+    final goal when goal <= 0 => 1,
+    final goal => (savedCents / goal).clamp(0.0, 1.0),
+  };
 
   String get periodName => formatSavingsPeriod(month, period);
 }
@@ -70,7 +70,9 @@ Stream<SavingsProgress> savingsProgress(Ref ref) async* {
   final settings = await ref.watch(settingsProvider.future);
   final period = settings.savingsGoalPeriod;
   final (:first, :last) = savingsPeriodOf(month, period);
-  yield* db.watchSavingsByMonth(first, last).map(
+  yield* db
+      .watchSavingsByMonth(first, last)
+      .map(
         (months) => SavingsProgress(
           goalCents: settings.savingsGoalCents,
           period: period,

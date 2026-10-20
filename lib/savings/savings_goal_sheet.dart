@@ -52,10 +52,8 @@ class SavingsGoalSheet extends ConsumerWidget {
   ) async {
     final goal = await showDialog<_GoalInput>(
       context: context,
-      builder: (_) => _GoalDialog(
-        goalCents: progress.goalCents,
-        period: progress.period,
-      ),
+      builder: (_) =>
+          _GoalDialog(goalCents: progress.goalCents, period: progress.period),
     );
     if (goal != null) {
       await ref
@@ -225,9 +223,8 @@ class _GrowthStage extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: c.onSproutTint,
-            ),
+            style: Theme.of(context).textTheme.labelLarge
+                ?.copyWith(color: c.onSproutTint),
           ),
         ],
       ),
@@ -284,8 +281,13 @@ class _VinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final y = size.height / 2;
-    final track = RRect.fromLTRBR(0, y - 4, size.width, y + 4,
-        const Radius.circular(4));
+    final track = RRect.fromLTRBR(
+      0,
+      y - 4,
+      size.width,
+      y + 4,
+      const Radius.circular(4),
+    );
     canvas.drawRRect(track, Paint()..color = soil);
     if (fraction <= 0) return;
 

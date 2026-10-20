@@ -77,9 +77,9 @@ class _PlantPainter extends CustomPainter {
     final stemTop = _soilY - stemLength;
     // Bends a little to the left on its way up.
     Offset stemAt(double t) => Offset(
-          50 - 8 * t * (1 - t) * (stemLength / _fullStemLength),
-          _soilY - stemLength * t,
-        );
+      50 - 8 * t * (1 - t) * (stemLength / _fullStemLength),
+      _soilY - stemLength * t,
+    );
 
     if (growth < 0.05) {
       canvas.drawOval(

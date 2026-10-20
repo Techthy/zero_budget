@@ -8,8 +8,9 @@ import 'package:zero_budget/theme/budget_theme.dart';
 import 'package:zero_budget/planning/planning_screen.dart';
 
 void main() {
-  testWidgets('adding income and budgets updates what is left to assign',
-      (tester) async {
+  testWidgets('adding income and budgets updates what is left to assign', (
+    tester,
+  ) async {
     final db = AppDatabase(NativeDatabase.memory());
     // Tall enough to keep the whole plan on screen.
     await tester.binding.setSurfaceSize(const Size(800, 1600));
@@ -27,15 +28,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome!'), findsOneWidget);
-    expect(find.text('Start by adding your income for this month.'),
-        findsOneWidget);
+    expect(
+      find.text('Start by adding your income for this month.'),
+      findsOneWidget,
+    );
 
     Future<void> addIncome(String name, String amount) async {
       await tester.tap(find.text('Add income'));
       await tester.pumpAndSettle();
       await tester.enterText(find.widgetWithText(TextFormField, 'Name'), name);
       await tester.enterText(
-          find.widgetWithText(TextFormField, 'Amount'), amount);
+        find.widgetWithText(TextFormField, 'Amount'),
+        amount,
+      );
       await tester.tap(find.text('Add'));
       await tester.pumpAndSettle();
     }
@@ -52,7 +57,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextFormField, 'Name'), 'Rent');
     await tester.enterText(
-        find.widgetWithText(TextFormField, 'Amount'), '3000');
+      find.widgetWithText(TextFormField, 'Amount'),
+      '3000',
+    );
     await tester.tap(find.text('Add'));
     await tester.pumpAndSettle();
 

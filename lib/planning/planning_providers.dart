@@ -31,10 +31,11 @@ DateTime _today(int dayOffset) {
   return DateTime(now.year, now.month, now.day + dayOffset);
 }
 
-int _daysBetween(DateTime from, DateTime to) =>
-    DateTime.utc(to.year, to.month, to.day)
-        .difference(DateTime.utc(from.year, from.month, from.day))
-        .inDays;
+int _daysBetween(DateTime from, DateTime to) => DateTime.utc(
+  to.year,
+  to.month,
+  to.day,
+).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
 
 /// Today's date, shifted by [DayOffset] in debug builds.
 ///
@@ -67,9 +68,9 @@ Stream<List<YearMonth>> selectableMonths(Ref ref) async* {
   final db = ref.watch(appDatabaseProvider);
   final today = ref.watch(todayProvider);
   final current = await ref.watch(currentYearMonthProvider.future);
-  yield* db
-      .watchYearMonths()
-      .map((planned) => monthsToChooseFrom([...planned, current], today));
+  yield* db.watchYearMonths().map(
+    (planned) => monthsToChooseFrom([...planned, current], today),
+  );
 }
 
 /// A month that started after the current one, to ask the user whether to
@@ -90,8 +91,9 @@ Stream<YearMonth?> offeredYearMonth(Ref ref) =>
 @riverpod
 Future<int> currentMonthId(Ref ref) async {
   final (:year, :month) = await ref.watch(currentYearMonthProvider.future);
-  final row =
-      await ref.watch(appDatabaseProvider).getOrCreateMonth(year, month);
+  final row = await ref
+      .watch(appDatabaseProvider)
+      .getOrCreateMonth(year, month);
   return row.id;
 }
 

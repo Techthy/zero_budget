@@ -21,8 +21,12 @@ void main() {
     final rent = await db.addBudget(month.id, 'Rent', 120000);
     await db.addBudget(month.id, 'Food', 40000);
 
-    await db.updateBudget(rent,
-        name: 'Rent & bills', amountCents: 125000, isFixed: true);
+    await db.updateBudget(
+      rent,
+      name: 'Rent & bills',
+      amountCents: 125000,
+      isFixed: true,
+    );
 
     final budgets = await db.watchBudgets(month.id).first;
     expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed)), [
@@ -37,8 +41,12 @@ void main() {
     final august = await db.getOrCreateMonth(2026, 8);
     await db.addIncome(august.id, 'Salary', 250000);
     await db.addIncome(august.id, 'Side job', 50000);
-    await db.updateBudget((await db.watchBudgets(august.id).first).single.id,
-        name: 'Rent', amountCents: 120000, isFixed: true);
+    await db.updateBudget(
+      (await db.watchBudgets(august.id).first).single.id,
+      name: 'Rent',
+      amountCents: 120000,
+      isFixed: true,
+    );
     final food = await db.addBudget(august.id, 'Food', 40000);
     await db.lockMonth(august.id);
     await db.addExpense(food, 5000);
@@ -110,20 +118,30 @@ void main() {
 
     await db.lockMonth(month.id);
     final fixed = (await db.watchExpenses(month.id).first).single;
-    expect((fixed.budgetId, fixed.amountCents, fixed.isFixed),
-        (rent, 120000, true));
+    expect(
+      (fixed.budgetId, fixed.amountCents, fixed.isFixed),
+      (rent, 120000, true),
+    );
 
     // Locking in again after an edit updates instead of duplicating.
     await db.unlockMonth(month.id);
-    await db.updateBudget(rent,
-        name: 'Rent', amountCents: 125000, isFixed: true);
+    await db.updateBudget(
+      rent,
+      name: 'Rent',
+      amountCents: 125000,
+      isFixed: true,
+    );
     await db.lockMonth(month.id);
     expect((await db.watchExpenses(month.id).first).single.amountCents, 125000);
 
     // A budget that's no longer fixed loses its fixed expense.
     await db.unlockMonth(month.id);
-    await db.updateBudget(rent,
-        name: 'Rent', amountCents: 125000, isFixed: false);
+    await db.updateBudget(
+      rent,
+      name: 'Rent',
+      amountCents: 125000,
+      isFixed: false,
+    );
     await db.lockMonth(month.id);
     expect(await db.watchExpenses(month.id).first, isEmpty);
   });
@@ -194,10 +212,12 @@ void main() {
     }
     if (version >= 14 && version < 18) {
       await old.customStatement(
-          'ALTER TABLE budgets ADD COLUMN is_savings INTEGER NOT NULL '
-          'DEFAULT 0 CHECK (is_savings IN (0, 1))');
+        'ALTER TABLE budgets ADD COLUMN is_savings INTEGER NOT NULL '
+        'DEFAULT 0 CHECK (is_savings IN (0, 1))',
+      );
       await old.customStatement(
-          "UPDATE budgets SET is_savings = category = 'savings'");
+        "UPDATE budgets SET is_savings = category = 'savings'",
+      );
     }
     if (version < 18) {
       await old.customStatement('ALTER TABLE budgets DROP COLUMN category');
@@ -209,31 +229,38 @@ void main() {
       await old.customStatement('ALTER TABLE settings DROP COLUMN currency');
     }
     if (version >= 10 && version < 16) {
-      await old
-          .customStatement('ALTER TABLE settings DROP COLUMN budget_order');
+      await old.customStatement(
+        'ALTER TABLE settings DROP COLUMN budget_order',
+      );
     }
     if (version >= 10 && version < 15) {
       await old.customStatement('ALTER TABLE settings DROP COLUMN appearance');
     }
     if (version >= 10 && version < 14) {
       await old.customStatement(
-          'ALTER TABLE settings DROP COLUMN savings_goal_cents');
+        'ALTER TABLE settings DROP COLUMN savings_goal_cents',
+      );
       await old.customStatement(
-          'ALTER TABLE settings DROP COLUMN savings_goal_period');
+        'ALTER TABLE settings DROP COLUMN savings_goal_period',
+      );
     }
     if (version < 12) {
       await old.customStatement(
-          'ALTER TABLE months DROP COLUMN carry_over_adjustment_cents');
+        'ALTER TABLE months DROP COLUMN carry_over_adjustment_cents',
+      );
     }
     if (version >= 10 && version < 13) {
-      await old
-          .customStatement('ALTER TABLE settings DROP COLUMN show_debug_bar');
+      await old.customStatement(
+        'ALTER TABLE settings DROP COLUMN show_debug_bar',
+      );
     }
     if (version == 10) {
       await old.customStatement(
-          'ALTER TABLE settings DROP COLUMN selected_year_month');
+        'ALTER TABLE settings DROP COLUMN selected_year_month',
+      );
       await old.customStatement(
-          'ALTER TABLE settings DROP COLUMN offered_year_month');
+        'ALTER TABLE settings DROP COLUMN offered_year_month',
+      );
     }
     if (version < 10) await old.customStatement('DROP TABLE settings');
     if (version < 9) {
@@ -243,14 +270,16 @@ void main() {
       await old.customStatement('ALTER TABLE expenses DROP COLUMN title');
     }
     if (version < 7) {
-      await old
-          .customStatement('ALTER TABLE budgets DROP COLUMN is_sinking_fund');
+      await old.customStatement(
+        'ALTER TABLE budgets DROP COLUMN is_sinking_fund',
+      );
       await old.customStatement('ALTER TABLE budgets DROP COLUMN saved_cents');
     }
     if (version < 6) await old.customStatement('DROP TABLE incomes');
     if (version < 5) {
-      await old
-          .customStatement('ALTER TABLE months DROP COLUMN carry_over_cents');
+      await old.customStatement(
+        'ALTER TABLE months DROP COLUMN carry_over_cents',
+      );
     }
     if (version < 4) {
       await old.customStatement('ALTER TABLE budgets DROP COLUMN is_fixed');
@@ -287,35 +316,48 @@ void main() {
       expect((await upgraded.watchMonth(monthId).first).lockedAt, isNotNull);
       await upgraded.setBufferCents(50000);
       expect(await upgraded.watchBufferCents().first, 50000);
-      await upgraded.selectMonth((year: 2026, month: 9),
-          calendar: (year: 2026, month: 9));
-      expect(await upgraded.watchSelectedYearMonth().first,
-          (year: 2026, month: 9));
+      await upgraded.selectMonth(
+        (year: 2026, month: 9),
+        calendar: (year: 2026, month: 9),
+      );
+      expect(await upgraded.watchSelectedYearMonth().first, (
+        year: 2026,
+        month: 9,
+      ));
       expect((await upgraded.watchSettings().first).showDebugBar, isTrue);
       // Recognized as an essential by its name, before there were
       // categories.
-      expect((await upgraded.watchBudgets(monthId).first).single.category,
-          version < 18 ? BudgetCategory.essential : BudgetCategory.other);
+      expect(
+        (await upgraded.watchBudgets(monthId).first).single.category,
+        version < 18 ? BudgetCategory.essential : BudgetCategory.other,
+      );
       await upgraded.setSavingsGoal(100000, SavingsPeriod.quarter);
       expect((await upgraded.watchSettings().first).savingsGoalCents, 100000);
-      expect((await upgraded.watchSettings().first).appearance,
-          Appearance.system);
+      expect(
+        (await upgraded.watchSettings().first).appearance,
+        Appearance.system,
+      );
       await upgraded.setAppearance(Appearance.dark);
       expect(
-          (await upgraded.watchSettings().first).appearance, Appearance.dark);
-      expect((await upgraded.watchSettings().first).budgetOrder,
-          BudgetOrder.category);
+        (await upgraded.watchSettings().first).appearance,
+        Appearance.dark,
+      );
+      expect(
+        (await upgraded.watchSettings().first).budgetOrder,
+        BudgetOrder.category,
+      );
       await upgraded.setBudgetOrder(BudgetOrder.alphabetical);
-      expect((await upgraded.watchSettings().first).budgetOrder,
-          BudgetOrder.alphabetical);
+      expect(
+        (await upgraded.watchSettings().first).budgetOrder,
+        BudgetOrder.alphabetical,
+      );
       expect((await upgraded.watchSettings().first).currency, Currency.eur);
       await upgraded.setCurrency(Currency.chf);
       expect((await upgraded.watchSettings().first).currency, Currency.chf);
     });
   }
 
-  test('upgrading from schema 11 keeps carryovers, then syncs them',
-      () async {
+  test('upgrading from schema 11 keeps carryovers, then syncs them', () async {
     late int september;
     late int october;
     late int food;
@@ -326,7 +368,8 @@ void main() {
       october = (await old.getOrCreateMonth(2026, 10)).id;
       // Corrected by hand, or out of date.
       await old.customStatement(
-          'UPDATE months SET carry_over_cents = 250000 WHERE id = $october');
+        'UPDATE months SET carry_over_cents = 250000 WHERE id = $october',
+      );
     });
     Future<Month> octoberNow() => upgraded.watchMonth(october).first;
 
@@ -360,7 +403,8 @@ void main() {
       await old.addIncome(monthId, 'Salary', 300000);
       await old.getOrCreateMonth(2026, 10);
       await old.customStatement(
-          'UPDATE months SET income_cents = 0 WHERE year = 2026 AND month = 10');
+        'UPDATE months SET income_cents = 0 WHERE year = 2026 AND month = 10',
+      );
     });
 
     final incomes = await upgraded.select(upgraded.incomes).get();
@@ -374,8 +418,12 @@ void main() {
     final july = await db.getOrCreateMonth(2026, 7);
     await db.addIncome(july.id, 'Salary', 100000);
     final julyFood = await db.addBudget(july.id, 'Food', 90000);
-    final julyInsurance =
-        await db.addBudget(july.id, 'Insurance', 10000, isSinkingFund: true);
+    final julyInsurance = await db.addBudget(
+      july.id,
+      'Insurance',
+      10000,
+      isSinkingFund: true,
+    );
     await db.addExpense(julyFood, 80000);
     await db.addExpense(julyInsurance, 2500);
 
@@ -416,8 +464,9 @@ void main() {
 
     final setUp = await db.watchMonth(september.id).first;
     expect(setUp.needsSetUp, isFalse);
-    expect((await db.watchBudgets(september.id).first).map((b) => b.name),
-        ['Food']);
+    expect((await db.watchBudgets(september.id).first).map((b) => b.name), [
+      'Food',
+    ]);
     // The fund's 100.00 saved in August goes back into September.
     expect(setUp.carryOverCents, 90000 + 10000);
     expect(await db.watchIncomes(september.id).first, hasLength(1));
@@ -431,8 +480,12 @@ void main() {
     expect(insurance.savedCents, 10000);
     expect(september.carryOverCents, -10000);
 
-    await db.updateBudget(insurance.id,
-        name: 'Insurance', amountCents: 10000, isFixed: false);
+    await db.updateBudget(
+      insurance.id,
+      name: 'Insurance',
+      amountCents: 10000,
+      isFixed: false,
+    );
 
     final budget = (await db.watchBudgets(september.id).first).single;
     expect((budget.isSinkingFund, budget.savedCents), (false, 0));
@@ -497,13 +550,12 @@ void main() {
     await db.lockMonth(august.id);
     await db.addExpense(food, 5000);
 
-    Future<int> balanceCents(int monthId) async =>
-        expectedBankBalanceCents(
-          await db.watchMonth(monthId).first,
-          await db.watchBudgets(monthId).first,
-          await db.watchExpenses(monthId).first,
-          bufferCents: 100000,
-        );
+    Future<int> balanceCents(int monthId) async => expectedBankBalanceCents(
+      await db.watchMonth(monthId).first,
+      await db.watchBudgets(monthId).first,
+      await db.watchExpenses(monthId).first,
+      bufferCents: 100000,
+    );
 
     // 1000.00 buffer + 3000.00 income - 1200.00 rent - 50.00 food.
     expect(await balanceCents(august.id), 275000);
@@ -571,8 +623,13 @@ void main() {
 
     await db.addIncome(august.id, 'Bonus', 10000);
     expect(await carryOverCents(october), 605000);
-    await db.updateBudget(food, name: 'Food', amountCents: 40000,
-        isFixed: false, isSinkingFund: true);
+    await db.updateBudget(
+      food,
+      name: 'Food',
+      amountCents: 40000,
+      isFixed: false,
+      isSinkingFund: true,
+    );
     // The whole sinking fund amount stays in the fund.
     expect(await carryOverCents(september), 270000);
     await db.deleteBudget(food);
@@ -581,8 +638,12 @@ void main() {
     // The plan of a month in between counts too.
     final rent = await db.addBudget(september.id, 'Rent', 120000);
     expect(await carryOverCents(october), 610000);
-    await db.updateBudget(rent, name: 'Rent', amountCents: 120000,
-        isFixed: true);
+    await db.updateBudget(
+      rent,
+      name: 'Rent',
+      amountCents: 120000,
+      isFixed: true,
+    );
     await db.lockMonth(september.id);
     expect(await carryOverCents(october), 490000);
     await db.deleteExpense(groceries);
@@ -648,40 +709,43 @@ void main() {
     container.listen(currentMonthProvider, (_, _) {});
     container.listen(currentBudgetsProvider, (_, _) {});
 
-    expect((await container.read(currentMonthProvider.future)).incomeCents,
-        300000);
+    expect(
+      (await container.read(currentMonthProvider.future)).incomeCents,
+      300000,
+    );
     final budgets = await container.read(currentBudgetsProvider.future);
     expect(budgets.single.name, 'Rent');
   });
 
-  test('the app starts in today\'s month and remembers the chosen one',
-      () async {
-    final now = DateTime.now();
-    final today = (year: now.year, month: now.month);
-    final next = yearMonthOf(DateTime(now.year, now.month + 1));
-    var container = ProviderContainer.test(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-    );
-    container.listen(currentMonthProvider, (_, _) {});
+  test(
+    'the app starts in today\'s month and remembers the chosen one',
+    () async {
+      final now = DateTime.now();
+      final today = (year: now.year, month: now.month);
+      final next = yearMonthOf(DateTime(now.year, now.month + 1));
+      var container = ProviderContainer.test(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+      );
+      container.listen(currentMonthProvider, (_, _) {});
 
-    expect(await container.read(currentYearMonthProvider.future), today);
-    expect(await db.watchSelectedYearMonth().first, today);
+      expect(await container.read(currentYearMonthProvider.future), today);
+      expect(await db.watchSelectedYearMonth().first, today);
 
-    await db.selectMonth(next, calendar: today);
-    await pumpEventQueue();
-    final month = await container.read(currentMonthProvider.future);
-    expect((month.year, month.month), (next.year, next.month));
+      await db.selectMonth(next, calendar: today);
+      await pumpEventQueue();
+      final month = await container.read(currentMonthProvider.future);
+      expect((month.year, month.month), (next.year, next.month));
 
-    // Opening the app again stays in the chosen month.
-    container = ProviderContainer.test(
-      overrides: [appDatabaseProvider.overrideWithValue(db)],
-    );
-    container.listen(currentYearMonthProvider, (_, _) {});
-    expect(await container.read(currentYearMonthProvider.future), next);
-  });
+      // Opening the app again stays in the chosen month.
+      container = ProviderContainer.test(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+      );
+      container.listen(currentYearMonthProvider, (_, _) {});
+      expect(await container.read(currentYearMonthProvider.future), next);
+    },
+  );
 
-  test('a new month is offered days before it starts, and only once',
-      () async {
+  test('a new month is offered days before it starts, and only once', () async {
     final container = ProviderContainer.test(
       overrides: [appDatabaseProvider.overrideWithValue(db)],
     );
@@ -696,9 +760,7 @@ void main() {
       ..shiftDays(-planAheadDays - 1);
     expect(await container.read(monthToOfferProvider.future), isNull);
     container.read(dayOffsetProvider.notifier).shiftDays(1);
-    final next = yearMonthOf(
-      DateTime(start.year, start.month + 1),
-    );
+    final next = yearMonthOf(DateTime(start.year, start.month + 1));
     expect(await container.read(monthToOfferProvider.future), next);
 
     // Declining stays in the month before, also once the next one starts.
@@ -736,21 +798,33 @@ void main() {
     expect(container.read(todayProvider), DateTime(now.year));
 
     offset.reset();
-    expect(container.read(todayProvider), DateTime(now.year, now.month, now.day));
+    expect(
+      container.read(todayProvider),
+      DateTime(now.year, now.month, now.day),
+    );
   });
 
   test('savings budgets count towards the goal month by month', () async {
     final september = await db.getOrCreateMonth(2026, 9);
     await db.addIncome(september.id, 'Salary', 300000);
-    await db.addBudget(september.id, 'ETF', 20000,
-        isFixed: true, category: BudgetCategory.savings);
-    final savings = await db.addBudget(september.id, 'Savings', 30000,
-        category: BudgetCategory.savings);
+    await db.addBudget(
+      september.id,
+      'ETF',
+      20000,
+      isFixed: true,
+      category: BudgetCategory.savings,
+    );
+    final savings = await db.addBudget(
+      september.id,
+      'Savings',
+      30000,
+      category: BudgetCategory.savings,
+    );
     final food = await db.addBudget(september.id, 'Food', 40000);
     await db.addBudget(september.id, 'Holiday', 10000, isSinkingFund: true);
-    Future<List<MonthSavings>> savedIn(int from, int to) =>
-        db.watchSavingsByMonth((year: 2026, month: from),
-            (year: 2026, month: to)).first;
+    Future<List<MonthSavings>> savedIn(int from, int to) => db
+        .watchSavingsByMonth((year: 2026, month: from), (year: 2026, month: to))
+        .first;
 
     // Only what's spent counts: fixed savings once the plan is locked in.
     expect(await savedIn(1, 12), isEmpty);
@@ -765,18 +839,18 @@ void main() {
     final october = await db.getOrCreateMonth(2026, 10);
     final octoberBudgets = await db.watchBudgets(october.id).first;
     expect(
-        octoberBudgets
-            .where((b) => b.category == BudgetCategory.savings)
-            .map((b) => b.name),
-        ['ETF', 'Savings']);
+      octoberBudgets
+          .where((b) => b.category == BudgetCategory.savings)
+          .map((b) => b.name),
+      ['ETF', 'Savings'],
+    );
     await db.lockMonth(october.id);
     expect((await savedIn(1, 12)).map((m) => m.savedCents), [30000, 20000]);
     // Only months in the period count.
     expect((await savedIn(10, 12)).map((m) => m.savedCents), [20000]);
   });
 
-  test('the savings goal starts unset, per year, and can be changed',
-      () async {
+  test('the savings goal starts unset, per year, and can be changed', () async {
     var settings = await db.watchSettings().first;
     expect(settings.savingsGoalCents, isNull);
     expect(settings.savingsGoalPeriod, SavingsPeriod.year);
@@ -794,11 +868,18 @@ void main() {
     final container = ProviderContainer.test(
       overrides: [appDatabaseProvider.overrideWithValue(db)],
     );
-    await db.selectMonth((year: 2026, month: 11),
-        calendar: (year: 2026, month: 11));
+    await db.selectMonth(
+      (year: 2026, month: 11),
+      calendar: (year: 2026, month: 11),
+    );
     final august = await db.getOrCreateMonth(2026, 8);
-    await db.addBudget(august.id, 'Savings', 50000,
-        isFixed: true, category: BudgetCategory.savings);
+    await db.addBudget(
+      august.id,
+      'Savings',
+      50000,
+      isFixed: true,
+      category: BudgetCategory.savings,
+    );
     await db.lockMonth(august.id);
     final november = await db.getOrCreateMonth(2026, 11);
     await db.lockMonth(november.id);
@@ -846,13 +927,12 @@ void main() {
     expect(await db.hasMonthBefore(september.id), isFalse);
   });
 
-  test('setBudgetByName adds, updates and removes a budget by name',
-      () async {
+  test('setBudgetByName adds, updates and removes a budget by name', () async {
     final month = await db.getOrCreateMonth(2026, 9);
     Future<List<(String, int, bool)>> budgets() async => [
-          for (final b in await db.watchBudgets(month.id).first)
-            (b.name, b.amountCents, b.isFixed),
-        ];
+      for (final b in await db.watchBudgets(month.id).first)
+        (b.name, b.amountCents, b.isFixed),
+    ];
 
     await db.setBudgetByName(month.id, 'Giving', 0);
     expect(await budgets(), isEmpty);
@@ -878,19 +958,40 @@ void main() {
   test('setBudgetByName gives a budget without a category one', () async {
     final month = await db.getOrCreateMonth(2026, 9);
     await db.addBudget(month.id, 'Nest egg', 10000);
-    await db.addBudget(month.id, 'Rent', 90000,
-        category: BudgetCategory.giving);
+    await db.addBudget(
+      month.id,
+      'Rent',
+      90000,
+      category: BudgetCategory.giving,
+    );
     await db.addBudget(month.id, 'Fund', 5000, isSinkingFund: true);
 
-    await db.setBudgetByName(month.id, 'Savings', 20000,
-        isFixed: true, category: BudgetCategory.savings);
-    await db.setBudgetByName(month.id, 'Nest egg', 15000,
-        category: BudgetCategory.savings);
+    await db.setBudgetByName(
+      month.id,
+      'Savings',
+      20000,
+      isFixed: true,
+      category: BudgetCategory.savings,
+    );
+    await db.setBudgetByName(
+      month.id,
+      'Nest egg',
+      15000,
+      category: BudgetCategory.savings,
+    );
     // Keeps the category it has, and a sinking fund is never savings.
-    await db.setBudgetByName(month.id, 'Rent', 95000,
-        category: BudgetCategory.essential);
-    await db.setBudgetByName(month.id, 'Fund', 6000,
-        category: BudgetCategory.savings);
+    await db.setBudgetByName(
+      month.id,
+      'Rent',
+      95000,
+      category: BudgetCategory.essential,
+    );
+    await db.setBudgetByName(
+      month.id,
+      'Fund',
+      6000,
+      category: BudgetCategory.savings,
+    );
 
     final budgets = await db.watchBudgets(month.id).first;
     expect(budgets.map((b) => (b.name, b.amountCents, b.isFixed, b.category)), [
@@ -913,73 +1014,92 @@ void main() {
     expect(await db.watchExpenses(month.id).first, hasLength(1));
   });
 
-  test('updateExpense changes an expense and what the month carries over',
-      () async {
-    final september = await db.getOrCreateMonth(2026, 9);
-    await db.addIncome(september.id, 'Salary', 100000);
-    final food = await db.addBudget(september.id, 'Food', 40000);
-    final fun = await db.addBudget(september.id, 'Fun', 10000);
-    final id = await db.addExpense(food, 5000, title: 'Market', note: 'Cash');
-    final october = await db.getOrCreateMonth(2026, 10);
+  test(
+    'updateExpense changes an expense and what the month carries over',
+    () async {
+      final september = await db.getOrCreateMonth(2026, 9);
+      await db.addIncome(september.id, 'Salary', 100000);
+      final food = await db.addBudget(september.id, 'Food', 40000);
+      final fun = await db.addBudget(september.id, 'Fun', 10000);
+      final id = await db.addExpense(food, 5000, title: 'Market', note: 'Cash');
+      final october = await db.getOrCreateMonth(2026, 10);
 
-    await db.updateExpense(id,
-        budgetId: fun, amountCents: 7000, title: 'Cinema', note: null);
+      await db.updateExpense(
+        id,
+        budgetId: fun,
+        amountCents: 7000,
+        title: 'Cinema',
+        note: null,
+      );
 
-    final expense = (await db.watchExpenses(september.id).first).single;
-    expect(
-      (expense.budgetId, expense.amountCents, expense.title, expense.note),
-      (fun, 7000, 'Cinema', null),
-    );
-    expect((await db.watchMonth(october.id).first).carryOverCents, 93000);
-  });
+      final expense = (await db.watchExpenses(september.id).first).single;
+      expect(
+        (expense.budgetId, expense.amountCents, expense.title, expense.note),
+        (fun, 7000, 'Cinema', null),
+      );
+      expect((await db.watchMonth(october.id).first).carryOverCents, 93000);
+    },
+  );
 
-  test('a custom order is kept, new budgets go last, new months copy it',
-      () async {
-    final september = await db.getOrCreateMonth(2026, 9);
-    final rent = await db.addBudget(september.id, 'Rent', 90000);
-    final food = await db.addBudget(september.id, 'Food', 40000);
-    final fun = await db.addBudget(september.id, 'Fun', 10000);
+  test(
+    'a custom order is kept, new budgets go last, new months copy it',
+    () async {
+      final september = await db.getOrCreateMonth(2026, 9);
+      final rent = await db.addBudget(september.id, 'Rent', 90000);
+      final food = await db.addBudget(september.id, 'Food', 40000);
+      final fun = await db.addBudget(september.id, 'Fun', 10000);
 
-    await db.setCustomBudgetOrder([fun, rent, food]);
-    final car = await db.addBudget(september.id, 'Car', 5000);
+      await db.setCustomBudgetOrder([fun, rent, food]);
+      final car = await db.addBudget(september.id, 'Car', 5000);
 
-    expect((await db.watchSettings().first).budgetOrder, BudgetOrder.custom);
-    final ordered = (await db.watchBudgets(september.id).first).toList()
-      ..sort((a, b) => a.position.compareTo(b.position));
-    expect(ordered.map((b) => b.id), [fun, rent, food, car]);
+      expect((await db.watchSettings().first).budgetOrder, BudgetOrder.custom);
+      final ordered = (await db.watchBudgets(september.id).first).toList()
+        ..sort((a, b) => a.position.compareTo(b.position));
+      expect(ordered.map((b) => b.id), [fun, rent, food, car]);
 
-    final october = await db.getOrCreateMonth(2026, 10);
-    final copied = (await db.watchBudgets(october.id).first).toList()
-      ..sort((a, b) => a.position.compareTo(b.position));
-    expect(copied.map((b) => b.name), ['Fun', 'Rent', 'Food', 'Car']);
-  });
+      final october = await db.getOrCreateMonth(2026, 10);
+      final copied = (await db.watchBudgets(october.id).first).toList()
+        ..sort((a, b) => a.position.compareTo(b.position));
+      expect(copied.map((b) => b.name), ['Fun', 'Rent', 'Food', 'Car']);
+    },
+  );
 
-  test('upgrading turns savings and the guided budgets into categories',
-      () async {
-    late int monthId;
-    final upgraded = await openUpgradedFrom(17, (old) async {
-      monthId = (await old.getOrCreateMonth(2026, 9)).id;
-      await old.addBudget(monthId, 'giving', 5000);
-      await old.addBudget(monthId, 'Groceries', 40000);
-      await old.addBudget(monthId, 'Transportation', 8000);
-      await old.addBudget(monthId, 'Fun', 10000);
-      await old.addBudget(monthId, 'ETF', 20000,
-          category: BudgetCategory.savings);
-      // Savings first, whatever it's called.
-      await old.addBudget(monthId, 'Rent', 1000,
-          category: BudgetCategory.savings);
-    });
+  test(
+    'upgrading turns savings and the guided budgets into categories',
+    () async {
+      late int monthId;
+      final upgraded = await openUpgradedFrom(17, (old) async {
+        monthId = (await old.getOrCreateMonth(2026, 9)).id;
+        await old.addBudget(monthId, 'giving', 5000);
+        await old.addBudget(monthId, 'Groceries', 40000);
+        await old.addBudget(monthId, 'Transportation', 8000);
+        await old.addBudget(monthId, 'Fun', 10000);
+        await old.addBudget(
+          monthId,
+          'ETF',
+          20000,
+          category: BudgetCategory.savings,
+        );
+        // Savings first, whatever it's called.
+        await old.addBudget(
+          monthId,
+          'Rent',
+          1000,
+          category: BudgetCategory.savings,
+        );
+      });
 
-    final budgets = await upgraded.watchBudgets(monthId).first;
-    expect(budgets.map((b) => (b.name, b.category)), [
-      ('giving', BudgetCategory.giving),
-      ('Groceries', BudgetCategory.essential),
-      ('Transportation', BudgetCategory.essential),
-      ('Fun', BudgetCategory.other),
-      ('ETF', BudgetCategory.savings),
-      ('Rent', BudgetCategory.savings),
-    ]);
-  });
+      final budgets = await upgraded.watchBudgets(monthId).first;
+      expect(budgets.map((b) => (b.name, b.category)), [
+        ('giving', BudgetCategory.giving),
+        ('Groceries', BudgetCategory.essential),
+        ('Transportation', BudgetCategory.essential),
+        ('Fun', BudgetCategory.other),
+        ('ETF', BudgetCategory.savings),
+        ('Rent', BudgetCategory.savings),
+      ]);
+    },
+  );
 
   test('upgrading keeps the order budgets were added in', () async {
     late int monthId;
@@ -1002,8 +1122,10 @@ void main() {
       const october = (year: 2026, month: 10);
       const november = (year: 2026, month: 11);
       expect(monthsToChooseFrom([], DateTime(2026, 10, 28)), [october]);
-      expect(monthsToChooseFrom([], DateTime(2026, 10, 29)),
-          [november, october]);
+      expect(monthsToChooseFrom([], DateTime(2026, 10, 29)), [
+        november,
+        october,
+      ]);
       expect(monthsToChooseFrom([], DateTime(2026, 12, 29)), [
         (year: 2027, month: 1),
         (year: 2026, month: 12),

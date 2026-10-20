@@ -11,8 +11,10 @@ part 'history_providers.g.dart';
 Stream<List<MonthSummary>> pastMonths(Ref ref) async* {
   final db = ref.watch(appDatabaseProvider);
   final currentMonthId = await ref.watch(currentMonthIdProvider.future);
-  yield* db.watchMonthSummaries().map((months) =>
-      months.where((summary) => summary.month.id != currentMonthId).toList());
+  yield* db.watchMonthSummaries().map(
+    (months) =>
+        months.where((summary) => summary.month.id != currentMonthId).toList(),
+  );
 }
 
 @riverpod

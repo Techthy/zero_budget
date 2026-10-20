@@ -70,14 +70,11 @@ class AddExpenseScreen extends ConsumerWidget {
               budgets: sortBudgets(budgets.where((b) => !b.isFixed), order),
               // What's left in each budget, as if the expense being changed
               // wasn't there.
-              spent: spentByBudget(
-                expenses.where((e) => e.id != expense?.id),
-              ),
+              spent: spentByBudget(expenses.where((e) => e.id != expense?.id)),
               initialBudgetId: expense?.budgetId ?? budgetId,
               expense: expense,
             ),
-          (AsyncError(:final error), _) ||
-          (_, AsyncError(:final error)) =>
+          (AsyncError(:final error), _) || (_, AsyncError(:final error)) =>
             Center(child: Text('Something went wrong: $error')),
           _ => const Center(child: CircularProgressIndicator()),
         },

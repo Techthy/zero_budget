@@ -312,23 +312,20 @@ class _BudgetDialogState extends State<_BudgetDialog> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              switch (_category) {
-                BudgetCategory.giving =>
-                  'Given away, like to a charity or your church. Comes first '
-                      'in your plan.',
-                BudgetCategory.essential =>
-                  'Needed to live and work, like rent, groceries or getting '
-                      'to work.',
-                BudgetCategory.savings =>
-                  'Counts towards your savings goal, like a transfer to your '
-                      'savings account. Make it fixed to count it in full.',
-                BudgetCategory.other =>
-                  'Everything else, like insurance, subscriptions or money '
-                      'for fun.',
-              },
-              style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
-            ),
+            Text(switch (_category) {
+              BudgetCategory.giving =>
+                'Given away, like to a charity or your church. Comes first '
+                    'in your plan.',
+              BudgetCategory.essential =>
+                'Needed to live and work, like rent, groceries or getting '
+                    'to work.',
+              BudgetCategory.savings =>
+                'Counts towards your savings goal, like a transfer to your '
+                    'savings account. Make it fixed to count it in full.',
+              BudgetCategory.other =>
+                'Everything else, like insurance, subscriptions or money '
+                    'for fun.',
+            }, style: textTheme.bodySmall?.copyWith(color: c.inkMuted)),
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,

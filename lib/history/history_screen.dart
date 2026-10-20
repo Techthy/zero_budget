@@ -21,28 +21,29 @@ class HistoryScreen extends ConsumerWidget {
       body: LeafBackground(
         child: switch (months) {
           AsyncData(value: []) => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  "No past months yet. Once a month is over, you'll find it "
-                  'here.',
-                  textAlign: TextAlign.center,
-                ),
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                "No past months yet. Once a month is over, you'll find it "
+                'here.',
+                textAlign: TextAlign.center,
               ),
             ),
+          ),
           AsyncData(value: final months) => Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    for (final summary in months) _MonthTile(summary: summary),
-                  ],
-                ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  for (final summary in months) _MonthTile(summary: summary),
+                ],
               ),
             ),
-          AsyncError(:final error) =>
-            Center(child: Text('Something went wrong: $error')),
+          ),
+          AsyncError(:final error) => Center(
+            child: Text('Something went wrong: $error'),
+          ),
           _ => const Center(child: CircularProgressIndicator()),
         },
       ),

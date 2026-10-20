@@ -147,7 +147,11 @@ class _LeftToAssign extends StatelessWidget {
         c.inkMuted,
         'Start by adding your income for this month.',
       ),
-      0 => (c.sproutTint, c.onSproutTint, 'Every ${currency.unitName} has a job.'),
+      0 => (
+        c.sproutTint,
+        c.onSproutTint,
+        'Every ${currency.unitName} has a job.',
+      ),
       > 0 => (
         c.highlight,
         c.onHighlight,

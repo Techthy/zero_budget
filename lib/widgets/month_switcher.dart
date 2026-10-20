@@ -19,9 +19,8 @@ class MonthSwitcher extends ConsumerWidget {
     return PopupMenuButton<YearMonth>(
       tooltip: 'Switch month',
       initialValue: current,
-      onSelected: (month) => ref
-          .read(appDatabaseProvider)
-          .selectMonth(month, calendar: today),
+      onSelected: (month) =>
+          ref.read(appDatabaseProvider).selectMonth(month, calendar: today),
       itemBuilder: (_) => [
         for (final month in months)
           CheckedPopupMenuItem(
