@@ -1315,13 +1315,13 @@ void main() {
   });
 
   test('formatCents follows the currency', () {
-    addTearDown(() => currency = Currency.eur);
-    currency = Currency.usd;
+    addTearDown(() => useCurrency(Currency.eur));
+    useCurrency(Currency.usd);
     expect(formatCents(123450), r'$1234.50');
     expect(formatCents(-2500), r'-$25.00');
-    currency = Currency.gbp;
+    useCurrency(Currency.gbp);
     expect(formatCents(5), '£0.05');
-    currency = Currency.chf;
+    useCurrency(Currency.chf);
     expect(formatCents(123450), 'CHF 1234.50');
     expect(formatSignedCents(2500), '+CHF 25.00');
   });

@@ -136,7 +136,7 @@ void main() {
   });
 
   testWidgets('choosing a currency shows every amount in it', (tester) async {
-    addTearDown(() => currency = Currency.eur);
+    addTearDown(() => useCurrency(Currency.eur));
     await tester.runAsync(() async {
       const october = (year: 2026, month: 10);
       await db.selectMonth(october, calendar: october);

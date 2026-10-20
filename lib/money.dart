@@ -63,9 +63,14 @@ enum Currency {
   String get _gap => symbol.length > 1 ? ' ' : '';
 }
 
-/// The currency [formatCents] shows amounts in. The app keeps it in sync
-/// with the settings.
-Currency currency = Currency.eur;
+Currency _currency = Currency.eur;
+
+/// The currency [formatCents] shows amounts in, see [useCurrency].
+Currency get currency => _currency;
+
+/// Shows amounts in [currency] from now on. The app calls it whenever the
+/// currency is changed in the settings.
+void useCurrency(Currency currency) => _currency = currency;
 
 /// Formats cents with two decimals in [currency], e.g. 123450 -> "1234,50€".
 String formatCents(int cents) {
