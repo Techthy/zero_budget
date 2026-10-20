@@ -2,21 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../money.dart';
 import '../theme/budget_theme.dart';
+import '../widgets/app_sheet.dart';
 
 /// Opens the explanation of zero-based budgeting in a sheet from the bottom.
-Future<void> showZeroBasedHelp(BuildContext context) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.85,
-        maxChildSize: 0.95,
-        builder: (context, controller) =>
-            _ZeroBasedHelp(controller: controller),
-      ),
-    );
+Future<void> showZeroBasedHelp(BuildContext context) => showReadingSheet(
+  context,
+  (controller) => _ZeroBasedHelp(controller: controller),
+);
 
 typedef _Section = ({IconData icon, String title, String text});
 
@@ -77,7 +69,7 @@ class _ZeroBasedHelp extends StatelessWidget {
     return SafeArea(
       child: ListView(
         controller: controller,
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        padding: sheetPadding,
         children: [
           Text('How a zero-based budget works', style: textTheme.titleLarge),
           const SizedBox(height: 16),

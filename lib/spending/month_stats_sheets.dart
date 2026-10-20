@@ -7,6 +7,7 @@ import '../month/month_providers.dart';
 import '../settings/buffer_dialog.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
+import '../widgets/app_sheet.dart';
 import 'month_stats.dart';
 
 // The details behind the tiles of the MonthStatsCard, each in a sheet from
@@ -36,12 +37,7 @@ typedef _MonthData = ({
 Future<void> _showSheet(
   BuildContext context,
   Widget Function(_MonthData data) builder,
-) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  showDragHandle: true,
-  builder: (_) => _MonthDataSheet(builder: builder),
-);
+) => showAppSheet<void>(context, (_) => _MonthDataSheet(builder: builder));
 
 /// Loads the current month for one of the sheets.
 class _MonthDataSheet extends ConsumerWidget {
@@ -59,27 +55,21 @@ class _MonthDataSheet extends ConsumerWidget {
         budgets == null ||
         expenses == null ||
         bufferCents == null) {
-      return const SizedBox(
-        height: 240,
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const SheetLoading();
     }
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: builder((
+    return SheetBody(
+      child: builder((
+        month: month,
+        budgets: budgets,
+        spent: spentByBudget(expenses),
+        bufferCents: bufferCents,
+        stats: MonthStats.of(
           month: month,
           budgets: budgets,
-          spent: spentByBudget(expenses),
+          expenses: expenses,
           bufferCents: bufferCents,
-          stats: MonthStats.of(
-            month: month,
-            budgets: budgets,
-            expenses: expenses,
-            bufferCents: bufferCents,
-          ),
-        )),
-      ),
+        ),
+      )),
     );
   }
 }

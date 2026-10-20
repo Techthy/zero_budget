@@ -6,6 +6,7 @@ import '../data/database_provider.dart';
 import '../money.dart';
 import '../month/month_providers.dart';
 import '../theme/budget_theme.dart';
+import '../widgets/app_sheet.dart';
 import 'plan_editing.dart';
 import 'zero_based_help.dart';
 
@@ -108,11 +109,9 @@ class MonthOverviewCard extends ConsumerWidget {
   }
 
   Future<void> _editNotes(BuildContext context, WidgetRef ref) async {
-    final notes = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => _NotesSheet(notes: month.notes),
+    final notes = await showAppSheet<String>(
+      context,
+      (_) => _NotesSheet(notes: month.notes),
     );
     if (notes != null) {
       await ref.read(appDatabaseProvider).updateMonthNotes(month.id, notes);
@@ -122,12 +121,7 @@ class MonthOverviewCard extends ConsumerWidget {
 
 /// Opens the month's incomes in a sheet from the bottom.
 Future<void> showIncomeSheet(BuildContext context) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => const _IncomeSheet(),
-    );
+    showAppSheet<void>(context, (_) => const _IncomeSheet());
 
 /// What's left to assign, colored by whether it's all assigned.
 class _LeftToAssign extends StatelessWidget {
@@ -280,82 +274,76 @@ class _IncomeSheet extends ConsumerWidget {
     final month = ref.watch(currentMonthProvider).value;
     final incomes = ref.watch(currentIncomesProvider).value;
     if (month == null || incomes == null) {
-      return const SizedBox(
-        height: 240,
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const SheetLoading();
     }
     final isLocked = month.isLocked;
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Income this month', style: textTheme.titleLarge),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: AlignmentDirectional.centerStart,
+    return SheetBody(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Income this month', style: textTheme.titleLarge),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              formatCents(month.incomeCents),
+              style: textTheme.headlineMedium,
+            ),
+          ),
+          if (isLocked)
+            Text(
+              'Your plan is locked in. Unlock it to change your income.',
+              style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
+            ),
+          const SizedBox(height: 8),
+          if (incomes.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                formatCents(month.incomeCents),
-                style: textTheme.headlineMedium,
+                'No income yet. Add every source of money coming in this '
+                'month, like your salary.',
+                style: textTheme.bodyMedium,
               ),
             ),
-            if (isLocked)
-              Text(
-                'Your plan is locked in. Unlock it to change your income.',
-                style: textTheme.bodySmall?.copyWith(color: c.inkMuted),
-              ),
+          for (final income in incomes)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(income.name, overflow: TextOverflow.ellipsis),
+              subtitle: Text(formatCents(income.amountCents)),
+              onTap: isLocked
+                  ? null
+                  : () => promptEditIncome(context, ref, income),
+              trailing: isLocked
+                  ? null
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Edit ${income.name}',
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: () =>
+                              promptEditIncome(context, ref, income),
+                        ),
+                        IconButton(
+                          tooltip: 'Delete ${income.name}',
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => ref
+                              .read(appDatabaseProvider)
+                              .deleteIncome(income.id),
+                        ),
+                      ],
+                    ),
+            ),
+          if (!isLocked) ...[
             const SizedBox(height: 8),
-            if (incomes.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(
-                  'No income yet. Add every source of money coming in this '
-                  'month, like your salary.',
-                  style: textTheme.bodyMedium,
-                ),
-              ),
-            for (final income in incomes)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(income.name, overflow: TextOverflow.ellipsis),
-                subtitle: Text(formatCents(income.amountCents)),
-                onTap: isLocked
-                    ? null
-                    : () => promptEditIncome(context, ref, income),
-                trailing: isLocked
-                    ? null
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: 'Edit ${income.name}',
-                            icon: const Icon(Icons.edit_outlined),
-                            onPressed: () =>
-                                promptEditIncome(context, ref, income),
-                          ),
-                          IconButton(
-                            tooltip: 'Delete ${income.name}',
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => ref
-                                .read(appDatabaseProvider)
-                                .deleteIncome(income.id),
-                          ),
-                        ],
-                      ),
-              ),
-            if (!isLocked) ...[
-              const SizedBox(height: 8),
-              FilledButton.tonalIcon(
-                onPressed: () => promptAddIncome(context, ref, month.id),
-                icon: const Icon(Icons.add),
-                label: const Text('Add income'),
-              ),
-            ],
+            FilledButton.tonalIcon(
+              onPressed: () => promptAddIncome(context, ref, month.id),
+              icon: const Icon(Icons.add),
+              label: const Text('Add income'),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

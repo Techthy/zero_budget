@@ -8,6 +8,7 @@ import '../money.dart';
 import '../month/month_providers.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
+import '../widgets/app_sheet.dart';
 import '../widgets/leaf_background.dart';
 import 'savings_plant.dart';
 import 'savings_providers.dart';
@@ -34,12 +35,7 @@ class SavingsPlantButton extends ConsumerWidget {
 
 /// Opens the [SavingsGoalSheet] from the bottom.
 Future<void> showSavingsGoalSheet(BuildContext context) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => const SavingsGoalSheet(),
-    );
+    showAppSheet<void>(context, (_) => const SavingsGoalSheet());
 
 /// How far the savings goal is, month by month, with a way to change it.
 class SavingsGoalSheet extends ConsumerWidget {
@@ -76,118 +72,112 @@ class SavingsGoalSheet extends ConsumerWidget {
       ),
     );
     if (progress == null) {
-      return const SizedBox(
-        height: 240,
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const SheetLoading();
     }
     final goalCents = progress.goalCents;
     final savedCents = progress.savedCents;
 
     return LeafBackground(
       expand: false,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Stack(
-                children: [
-                  Center(
-                    child: SavingsPlant(growth: progress.fraction, size: 120),
-                  ),
-                  if (goalCents != null)
-                    PositionedDirectional(
-                      top: 0,
-                      end: 0,
-                      child: IconButton(
-                        tooltip: 'Change goal',
-                        icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _editGoal(context, ref, progress),
-                      ),
+      child: SheetBody(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Stack(
+              children: [
+                Center(
+                  child: SavingsPlant(growth: progress.fraction, size: 120),
+                ),
+                if (goalCents != null)
+                  PositionedDirectional(
+                    top: 0,
+                    end: 0,
+                    child: IconButton(
+                      tooltip: 'Change goal',
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => _editGoal(context, ref, progress),
                     ),
-                ],
-              ),
-              if (goalCents != null) ...[
-                const SizedBox(height: 8),
-                Center(child: _GrowthStage(fraction: progress.fraction)),
+                  ),
               ],
-              const SizedBox(height: 16),
+            ),
+            if (goalCents != null) ...[
+              const SizedBox(height: 8),
+              Center(child: _GrowthStage(fraction: progress.fraction)),
+            ],
+            const SizedBox(height: 16),
+            Text(
+              goalCents == null
+                  ? 'Grow your savings'
+                  : 'Savings goal ${progress.periodName}',
+              style: textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            if (goalCents == null)
               Text(
-                goalCents == null
-                    ? 'Grow your savings'
-                    : 'Savings goal ${progress.periodName}',
-                style: textTheme.headlineSmall,
+                'Set a goal for the quarter or the year, and watch your '
+                'plant grow with everything you put aside.',
+                style: textTheme.bodyLarge,
+                textAlign: TextAlign.center,
+              )
+            else ...[
+              Text(
+                '${formatCents(savedCents)} of ${formatCents(goalCents)} '
+                'saved',
+                style: textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 12),
+              _GrowthVine(fraction: progress.fraction),
               const SizedBox(height: 8),
-              if (goalCents == null)
-                Text(
-                  'Set a goal for the quarter or the year, and watch your '
-                  'plant grow with everything you put aside.',
-                  style: textTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                )
-              else ...[
-                Text(
-                  '${formatCents(savedCents)} of ${formatCents(goalCents)} '
-                  'saved',
-                  style: textTheme.titleMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                _GrowthVine(fraction: progress.fraction),
-                const SizedBox(height: 8),
-                Text(
-                  savedCents >= goalCents
-                      ? 'Goal reached. Well done!'
-                      : '${formatCents(goalCents - savedCents)} to go',
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              if (progress.months.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                Text('What you planted', style: textTheme.titleSmall),
-                const SizedBox(height: 4),
-                for (final (:month, :savedCents) in progress.months)
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.eco_outlined, color: c.sproutStrong),
-                    minLeadingWidth: 24,
-                    title: Text(formatMonth(month.year, month.month)),
-                    trailing: Text(
-                      formatCents(savedCents),
-                      style: textTheme.bodyMedium,
-                    ),
-                  ),
-              ],
-              if (!hasSavingsBudget) ...[
-                const SizedBox(height: 16),
-                Card(
-                  color: c.sproutTint,
-                  child: ListTile(
-                    leading: Icon(Icons.spa_outlined, color: c.onSproutTint),
-                    title: Text(
-                      'Give a budget the Savings category on the Plan tab, '
-                      'like a transfer to your savings account. What you put '
-                      'aside with it helps your plant grow.',
-                      style: TextStyle(color: c.onSproutTint),
-                    ),
-                  ),
-                ),
-              ],
-              if (goalCents == null) ...[
-                const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: () => _editGoal(context, ref, progress),
-                  icon: const Icon(Icons.spa_outlined),
-                  label: const Text('Set a goal'),
-                ),
-              ],
+              Text(
+                savedCents >= goalCents
+                    ? 'Goal reached. Well done!'
+                    : '${formatCents(goalCents - savedCents)} to go',
+                textAlign: TextAlign.center,
+              ),
             ],
-          ),
+            if (progress.months.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text('What you planted', style: textTheme.titleSmall),
+              const SizedBox(height: 4),
+              for (final (:month, :savedCents) in progress.months)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.eco_outlined, color: c.sproutStrong),
+                  minLeadingWidth: 24,
+                  title: Text(formatMonth(month.year, month.month)),
+                  trailing: Text(
+                    formatCents(savedCents),
+                    style: textTheme.bodyMedium,
+                  ),
+                ),
+            ],
+            if (!hasSavingsBudget) ...[
+              const SizedBox(height: 16),
+              Card(
+                color: c.sproutTint,
+                child: ListTile(
+                  leading: Icon(Icons.spa_outlined, color: c.onSproutTint),
+                  title: Text(
+                    'Give a budget the Savings category on the Plan tab, '
+                    'like a transfer to your savings account. What you put '
+                    'aside with it helps your plant grow.',
+                    style: TextStyle(color: c.onSproutTint),
+                  ),
+                ),
+              ),
+            ],
+            if (goalCents == null) ...[
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () => _editGoal(context, ref, progress),
+                icon: const Icon(Icons.spa_outlined),
+                label: const Text('Set a goal'),
+              ),
+            ],
+          ],
         ),
       ),
     );

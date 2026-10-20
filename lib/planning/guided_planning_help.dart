@@ -3,21 +3,13 @@ import 'package:flutter/material.dart';
 import '../budget_order.dart';
 import '../money.dart';
 import '../theme/budget_theme.dart';
+import '../widgets/app_sheet.dart';
 
 /// Opens the explanation of the guided planning in a sheet from the bottom.
-Future<void> showGuidedPlanningHelp(BuildContext context) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.85,
-        maxChildSize: 0.95,
-        builder: (context, controller) =>
-            _GuidedPlanningHelp(controller: controller),
-      ),
-    );
+Future<void> showGuidedPlanningHelp(BuildContext context) => showReadingSheet(
+  context,
+  (controller) => _GuidedPlanningHelp(controller: controller),
+);
 
 typedef _HelpStep = ({String title, String text});
 
@@ -103,7 +95,7 @@ class _GuidedPlanningHelp extends StatelessWidget {
     return SafeArea(
       child: ListView(
         controller: controller,
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        padding: sheetPadding,
         children: [
           Text('How step by step works', style: textTheme.titleLarge),
           const SizedBox(height: 4),
