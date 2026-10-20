@@ -273,7 +273,7 @@ lib/
   *.dart      the app, its home screen, and helpers for money, dates and
               sorting budgets
   data/       database tables, queries and migrations (drift)
-  welcome/    the Plan tab: incomes, budgets, step-by-step planning,
+  planning/   the Plan tab: incomes, budgets, step-by-step planning,
               setting up a new month, locking the plan in
   spending/   the Track tab and adding expenses
   savings/    the savings goal and its growing plant

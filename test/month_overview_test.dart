@@ -312,18 +312,16 @@ void main() {
     await planSeptember(tester);
     await pumpScreen(tester);
 
-    expect(find.text('Set up October 2026'), findsOneWidget);
+    expect(find.text('Welcome to October 2026'), findsOneWidget);
     expect(find.text('Keeping 2 of 2 budgets'), findsOneWidget);
     await tapAndSettle(tester, find.text('Gym'));
     expect(find.text('Keeping 1 of 2 budgets'), findsOneWidget);
 
     await tester.tap(find.text('Go to my plan'));
     await settleQueries(tester);
-    expect(find.text('Set up October 2026'), findsNothing);
-    // The plan, with its card to plan step by step. It's not empty, so
-    // it doesn't greet a new user.
+    expect(find.text('Welcome to October 2026'), findsNothing);
+    // The plan, with its card to plan step by step.
     expect(find.text('Plan step by step'), findsOneWidget);
-    expect(find.text('Plan your month'), findsOneWidget);
     final (month, budgets) = (await tester.runAsync(() async {
       final month = await db.getOrCreateMonth(2026, 10);
       return (month, await db.watchBudgets(month.id).first);

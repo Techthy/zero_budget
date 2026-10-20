@@ -158,9 +158,7 @@ class _BudgetPlan extends ConsumerWidget {
     final title = switch ((isLocked, isEditing)) {
       (true, _) => 'Planned Budget',
       (false, true) => 'Edit your plan',
-      // Nothing planned yet, like when the app is first opened.
-      _ when incomes.isEmpty && budgets.isEmpty => 'Welcome!',
-      (false, false) => 'Plan your month',
+      (false, false) => 'Welcome!',
     };
     final spent = spentByBudget(expenses);
     final budgetOrder =

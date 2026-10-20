@@ -8,9 +8,13 @@ import '../theme/budget_theme.dart';
 /// top-right and bottom-left corners. They stay put while the content scrolls
 /// and never take taps.
 class LeafBackground extends StatelessWidget {
-  const LeafBackground({super.key, required this.child});
+  const LeafBackground({super.key, required this.child, this.expand = true});
 
   final Widget child;
+
+  /// Whether it fills all the space it gets, like a screen, or is only as
+  /// big as [child], like a sheet sized to its content.
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
@@ -23,10 +27,12 @@ class LeafBackground extends StatelessWidget {
       vein: c.sproutStrong.withValues(alpha: dark ? 0.13 : 0.18),
     );
     return Stack(
-      fit: StackFit.expand,
+      fit: expand ? StackFit.expand : StackFit.loose,
       children: [
-        IgnorePointer(
-          child: RepaintBoundary(child: CustomPaint(painter: painter)),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: RepaintBoundary(child: CustomPaint(painter: painter)),
+          ),
         ),
         child,
       ],
