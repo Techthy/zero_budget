@@ -174,7 +174,7 @@ enum Appearance { system, light, dark }
 /// How budgets are listed, see [Settings.budgetOrder].
 enum BudgetOrder {
   /// By [BudgetCategory], like in the guided planning.
-  /// Shown as "Recommended".
+  /// Shown as "By category".
   category,
 
   /// All from A to Z.
