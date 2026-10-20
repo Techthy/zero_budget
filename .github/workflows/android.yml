@@ -131,7 +131,7 @@ jobs:
         if: always()
         run: rm -f android/app/release.jks android/key.properties
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: zero-budget-apk
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -154,7 +154,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
       VERSION: ${{ needs.build.outputs.version }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: zero-budget-apk
 
@@ -187,7 +187,7 @@ jobs:
           echo "::error::Releases must be signed with the release key. Add the ANDROID_KEYSTORE secrets, then run this workflow again."
           exit 1
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: zero-budget-apk
 
