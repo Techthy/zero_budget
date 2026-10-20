@@ -50,11 +50,9 @@ class _Node {
   /// The amount shown beside the node: what's left of a budget while
   /// tracking, otherwise the node's amount.
   String get valueText => switch (spending) {
-    (:final spentCents, :final availableCents)
-        when spentCents > availableCents =>
-      '${formatCents(spentCents - availableCents)} over',
-    (:final spentCents, :final availableCents) =>
-      '${formatCents(availableCents - spentCents)} left',
+    (:final spentCents, :final availableCents) => formatLeftCents(
+      availableCents - spentCents,
+    ),
     null => formatCents(cents),
   };
 }

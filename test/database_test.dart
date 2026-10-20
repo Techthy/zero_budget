@@ -1226,6 +1226,12 @@ void main() {
     expect(formatCents(-2500), '-25,00€');
   });
 
+  test('formatLeftCents says what is left, or how far it went over', () {
+    expect(formatLeftCents(1250), '12,50€ left');
+    expect(formatLeftCents(0), '0,00€ left');
+    expect(formatLeftCents(-300), '3,00€ over');
+  });
+
   test('formatCents follows the currency', () {
     addTearDown(() => currency = Currency.eur);
     currency = Currency.usd;

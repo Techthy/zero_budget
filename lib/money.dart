@@ -84,6 +84,12 @@ String formatCents(int cents) {
 String formatSignedCents(int cents) =>
     '${cents > 0 ? '+' : ''}${formatCents(cents)}';
 
+/// What's left of an amount, like "12,50€ left", or how far it went over
+/// when [leftCents] is negative, like "3,00€ over".
+String formatLeftCents(int leftCents) => leftCents < 0
+    ? '${formatCents(-leftCents)} over'
+    : '${formatCents(leftCents)} left';
+
 /// Formats cents as plain input for an amount field, e.g. 123450 -> "1234.50",
 /// which [parseAmountToCents] reads back.
 String formatAmount(int cents) =>

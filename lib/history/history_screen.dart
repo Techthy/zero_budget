@@ -73,9 +73,7 @@ class _MonthTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              leftCents < 0
-                  ? '${formatCents(-leftCents)} over'
-                  : '${formatCents(leftCents)} left',
+              formatLeftCents(leftCents),
               style: TextStyle(color: leftCents < 0 ? colors.error : null),
             ),
             const Icon(Icons.chevron_right),

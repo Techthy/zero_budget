@@ -272,26 +272,25 @@ class _OnTrackDetails extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final (:budgets, :spent, :stats, month: _, bufferCents: _) = data;
 
-    final over = <(Budget, int)>[];
-    final almost = <(Budget, int)>[];
+    final over = <_BudgetUse>[];
+    final almost = <_BudgetUse>[];
     for (final budget in budgets) {
-      final spentCents = spent[budget.id] ?? 0;
-      final availableCents = budget.amountCents + budget.savedCents;
-      if (spentCents > availableCents) {
-        over.add((budget, spentCents));
+      final use = _BudgetUse.of(budget, spent[budget.id] ?? 0);
+      if (use.leftCents < 0) {
+        over.add(use);
       } else if (!budget.isFixed &&
           !budget.isSinkingFund &&
           budget.category != BudgetCategory.savings &&
-          availableCents > 0 &&
-          spentCents >= availableCents * _almostUsedUp) {
-        almost.add((budget, spentCents));
+          use.plannedCents > 0 &&
+          use.spentCents >= use.plannedCents * _almostUsedUp) {
+        almost.add(use);
       }
     }
     // The most over, or the closest to it, first.
-    int overBy((Budget, int) entry) =>
-        entry.$2 - entry.$1.amountCents - entry.$1.savedCents;
-    over.sort((a, b) => overBy(b).compareTo(overBy(a)));
-    almost.sort((a, b) => overBy(b).compareTo(overBy(a)));
+    int byLeft(_BudgetUse a, _BudgetUse b) =>
+        a.leftCents.compareTo(b.leftCents);
+    over.sort(byLeft);
+    almost.sort(byLeft);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -314,18 +313,15 @@ class _OnTrackDetails extends StatelessWidget {
           Text(
             over.length == 1
                 ? '1 budget is over'
-                : '${over.length} '
-                      'budgets are over',
+                : '${over.length} budgets are over',
             style: textTheme.titleSmall?.copyWith(color: c.danger),
           ),
-          for (final entry in over)
+          for (final use in over)
             _Line(
-              label: entry.$1.name,
-              amount: '${formatCents(overBy(entry))} over',
+              label: use.budget.name,
+              amount: formatLeftCents(use.leftCents),
               amountColor: c.danger,
-              caption:
-                  '${formatCents(entry.$2)} spent of '
-                  '${formatCents(entry.$1.amountCents + entry.$1.savedCents)}',
+              caption: use.spentOfPlanned,
             ),
           const SizedBox(height: 8),
           const _Note(
@@ -336,18 +332,35 @@ class _OnTrackDetails extends StatelessWidget {
         if (almost.isNotEmpty) ...[
           const SizedBox(height: 24),
           Text('Almost used up', style: textTheme.titleSmall),
-          for (final entry in almost)
+          for (final use in almost)
             _Line(
-              label: entry.$1.name,
-              amount: '${formatCents(-overBy(entry))} left',
-              caption:
-                  '${formatCents(entry.$2)} spent of '
-                  '${formatCents(entry.$1.amountCents + entry.$1.savedCents)}',
+              label: use.budget.name,
+              amount: formatLeftCents(use.leftCents),
+              caption: use.spentOfPlanned,
             ),
         ],
       ],
     );
   }
+}
+
+/// What was spent from a budget, against what it has this month.
+class _BudgetUse {
+  _BudgetUse.of(this.budget, this.spentCents)
+    : plannedCents = availableCents(budget);
+
+  final Budget budget;
+  final int spentCents;
+
+  /// What the budget has to spend, a sinking fund's savings included.
+  final int plannedCents;
+
+  /// Negative when the budget is over.
+  int get leftCents => plannedCents - spentCents;
+
+  /// Like "50,00€ spent of 40,00€".
+  String get spentOfPlanned =>
+      '${formatCents(spentCents)} spent of ${formatCents(plannedCents)}';
 }
 
 class _SinkingFundsDetails extends StatelessWidget {

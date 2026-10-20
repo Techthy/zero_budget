@@ -369,7 +369,5 @@ class _BudgetPicker extends StatelessWidget {
 
   bool _isOverspent(Budget budget) => _leftCents(budget) < 0;
 
-  String _leftText(Budget budget) => _isOverspent(budget)
-      ? '${formatCents(-_leftCents(budget))} over'
-      : '${formatCents(_leftCents(budget))} left';
+  String _leftText(Budget budget) => formatLeftCents(_leftCents(budget));
 }

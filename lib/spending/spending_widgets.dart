@@ -230,10 +230,10 @@ class _BudgetSpendingCardState extends State<_BudgetSpendingCard> {
     final leftCents = plannedCents - spentCents;
 
     final (leftText, leftColor) = switch (leftCents) {
-      < 0 => ('${formatCents(-leftCents)} over', c.danger),
+      < 0 => (formatLeftCents(leftCents), c.danger),
       // Fixed costs are spent in full once the plan is locked in.
       0 when budget.isFixed && plannedCents > 0 => ('Paid in full', c.inkMuted),
-      _ => ('${formatCents(leftCents)} left', c.forestDeep),
+      _ => (formatLeftCents(leftCents), c.forestDeep),
     };
 
     return Card(
