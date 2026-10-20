@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database.dart';
 import '../data/database_provider.dart';
+import '../dates.dart';
 import '../money.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
@@ -135,6 +136,60 @@ Future<void> confirmDeleteBudget(
     if (!confirmed) return;
   }
   await ref.read(appDatabaseProvider).deleteBudget(budget.id);
+}
+
+/// Corrects what [month] carries over from the month before, in a dialog.
+Future<void> promptEditCarryOver(
+  BuildContext context,
+  WidgetRef ref,
+  Month month,
+) async {
+  final carryOverCents = await showDialog<int>(
+    context: context,
+    builder: (_) => _CarryOverDialog(
+      carryOverCents: month.carryOverCents,
+      leftCents: month.carryOverCents - month.carryOverAdjustmentCents,
+    ),
+  );
+  if (carryOverCents != null) {
+    await ref
+        .read(appDatabaseProvider)
+        .setCarryOverCents(month.id, carryOverCents);
+  }
+}
+
+/// Replaces [month]'s plan with the month before's, once the user confirms,
+/// see [AppDatabase.copyPlanFromMonthBefore]. [expenses] tracked against it
+/// are deleted with it.
+Future<void> confirmCopyPlanFromMonthBefore(
+  BuildContext context,
+  WidgetRef ref,
+  Month month,
+  List<Expense> expenses,
+) async {
+  final monthName = formatMonth(month.year, month.month);
+  final confirmed = await showConfirmDialog(
+    context,
+    title: "Copy last month's plan?",
+    message: [
+      "This replaces $monthName's incomes and budgets with last month's.",
+      if (expenses.isNotEmpty)
+        'Its ${expenses.length} tracked '
+            '${expenses.length == 1 ? 'expense is' : 'expenses are'} '
+            'deleted too.',
+      'Your notes are kept.',
+    ].join(' '),
+    confirmLabel: 'Replace plan',
+  );
+  if (!confirmed) return;
+  final copied = await ref
+      .read(appDatabaseProvider)
+      .copyPlanFromMonthBefore(month.id);
+  if (!copied && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('There is no earlier month to copy.')),
+    );
+  }
 }
 
 /// Adds a new income, or edits [income] when one is given.
@@ -371,6 +426,97 @@ class _BudgetDialogState extends State<_BudgetDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(onPressed: _submit, child: Text(isNew ? 'Add' : 'Save')),
+      ],
+    );
+  }
+}
+
+/// Corrects the month's carryover, returning it in cents.
+class _CarryOverDialog extends StatefulWidget {
+  const _CarryOverDialog({
+    required this.carryOverCents,
+    required this.leftCents,
+  });
+
+  final int carryOverCents;
+
+  /// What last month left, which the carryover is without corrections.
+  final int leftCents;
+
+  @override
+  State<_CarryOverDialog> createState() => _CarryOverDialogState();
+}
+
+class _CarryOverDialogState extends State<_CarryOverDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final _amount = TextEditingController(
+    text: formatAmount(widget.carryOverCents.abs()),
+  );
+  // Number keyboards on phones often have no minus key, so overspending is a
+  // switch instead.
+  late var _isOverspent = widget.carryOverCents < 0;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    final cents = parseAmountToCents(_amount.text)!;
+    Navigator.of(context).pop(_isOverspent ? -cents : cents);
+  }
+
+  void _useLeftCents() => setState(() {
+    _amount.text = formatAmount(widget.leftCents.abs());
+    _isOverspent = widget.leftCents < 0;
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Carried over'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Last month left ${formatCents(widget.leftCents)}, and this '
+              "follows any changes to it. Correct it if it doesn't match "
+              'what was actually left; the correction is kept on top.',
+            ),
+            if (widget.carryOverCents != widget.leftCents)
+              TextButton(
+                onPressed: _useLeftCents,
+                child: const Text('Remove correction'),
+              ),
+            AmountField(
+              controller: _amount,
+              autofocus: true,
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Overspent'),
+              subtitle: const Text(
+                'Last month went over, so this is taken off this month.',
+              ),
+              value: _isOverspent,
+              onChanged: (value) => setState(() => _isOverspent = value),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
       ],
     );
   }

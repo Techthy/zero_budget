@@ -4,17 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../budget_order.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
-import '../dates.dart';
 import '../money.dart';
 import '../month/month_providers.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
-import '../widgets/amount_field.dart';
 import '../widgets/async_view.dart';
 import '../widgets/budget_badges.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/budget_sankey.dart';
-import '../widgets/confirm_dialog.dart';
 import '../widgets/leaf_background.dart';
 import '../widgets/new_month_card.dart';
 import '../widgets/reorderable_budgets.dart';
@@ -64,50 +61,6 @@ class _BudgetPlan extends ConsumerWidget {
   /// Spending tracked so far, if the plan was locked in before.
   final List<Expense> expenses;
 
-  Future<void> _copyPlanFromMonthBefore(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final monthName = formatMonth(month.year, month.month);
-    final confirmed = await showConfirmDialog(
-      context,
-      title: "Copy last month's plan?",
-      message: [
-        "This replaces $monthName's incomes and budgets with last month's.",
-        if (expenses.isNotEmpty)
-          'Its ${expenses.length} tracked '
-              '${expenses.length == 1 ? 'expense is' : 'expenses are'} '
-              'deleted too.',
-        'Your notes are kept.',
-      ].join(' '),
-      confirmLabel: 'Replace plan',
-    );
-    if (!confirmed) return;
-    final copied = await ref
-        .read(appDatabaseProvider)
-        .copyPlanFromMonthBefore(month.id);
-    if (!copied && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('There is no earlier month to copy.')),
-      );
-    }
-  }
-
-  Future<void> _editCarryOver(BuildContext context, WidgetRef ref) async {
-    final carryOverCents = await showDialog<int>(
-      context: context,
-      builder: (_) => _CarryOverDialog(
-        carryOverCents: month.carryOverCents,
-        leftCents: month.carryOverCents - month.carryOverAdjustmentCents,
-      ),
-    );
-    if (carryOverCents != null) {
-      await ref
-          .read(appDatabaseProvider)
-          .setCarryOverCents(month.id, carryOverCents);
-    }
-  }
-
   /// Locks the plan in, or says what's in the way when [blocker] is set.
   void _lock(BuildContext context, WidgetRef ref, String? blocker) {
     if (blocker != null) {
@@ -122,7 +75,6 @@ class _BudgetPlan extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
-    final leftCents = leftToAssignCents(month, budgets);
     // A locked in plan is read only until it's unlocked for editing.
     final isLocked = month.isLocked;
     // Tracked expenses mean the plan was locked in before and is being edited.
@@ -134,16 +86,7 @@ class _BudgetPlan extends ConsumerWidget {
     };
     final spent = spentByBudget(expenses);
     final budgetOrder = ref.watch(budgetOrderProvider);
-    final lockBlocker = switch (leftCents) {
-      _ when month.assignableCents == 0 || budgets.isEmpty =>
-        'Add your income and budgets before locking in.',
-      > 0 =>
-        'Assign the remaining ${formatCents(leftCents)} before locking in.',
-      < 0 =>
-        'Take ${formatCents(-leftCents)} off your budgets before locking '
-            'in.',
-      _ => null,
-    };
+    final lockBlocker = _lockBlocker(month, budgets);
 
     return Center(
       child: ConstrainedBox(
@@ -158,7 +101,12 @@ class _BudgetPlan extends ConsumerWidget {
                   _TitleRow(
                     title: title,
                     isLocked: isLocked,
-                    onCopyPlan: () => _copyPlanFromMonthBefore(context, ref),
+                    onCopyPlan: () => confirmCopyPlanFromMonthBefore(
+                      context,
+                      ref,
+                      month,
+                      expenses,
+                    ),
                     // Tracking pauses while the plan is unlocked; expenses are
                     // kept.
                     onLockToggle: isLocked
@@ -173,7 +121,8 @@ class _BudgetPlan extends ConsumerWidget {
                     month: month,
                     incomes: incomes,
                     budgets: budgets,
-                    onEditCarryOver: () => _editCarryOver(context, ref),
+                    onEditCarryOver: () =>
+                        promptEditCarryOver(context, ref, month),
                   ),
                   if (budgets.isNotEmpty) ...[
                     const SizedBox(height: 24),
@@ -224,84 +173,145 @@ class _BudgetPlan extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               sliver: ReorderableBudgetsSliver(
                 budgets: sortBudgets(budgets, budgetOrder),
-                itemBuilder: (context, budget) => Card(
-                  child: ListTile(
-                    title: BudgetNameWithBadges(budget),
-                    subtitle: Text(
-                      [
-                        formatCents(budget.amountCents),
-                        if (budget.savedCents != 0)
-                          '${formatCents(budget.savedCents)} saved',
-                        if (spent[budget.id] case final spentCents?)
-                          '${formatCents(spentCents)} spent',
-                      ].join(' · '),
-                    ),
-                    onTap: isLocked
-                        ? null
-                        : () => promptEditBudget(context, ref, budget),
-                    trailing: isLocked
-                        ? null
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                tooltip: 'Edit ${budget.name}',
-                                icon: const Icon(Icons.edit_outlined),
-                                onPressed: () =>
-                                    promptEditBudget(context, ref, budget),
-                              ),
-                              IconButton(
-                                tooltip: 'Delete ${budget.name}',
-                                icon: const Icon(Icons.delete_outline),
-                                onPressed: () => confirmDeleteBudget(
-                                  context,
-                                  ref,
-                                  budget,
-                                  expenses,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
+                itemBuilder: (context, budget) => _PlanBudgetTile(
+                  budget: budget,
+                  spentCents: spent[budget.id],
+                  isLocked: isLocked,
+                  expenses: expenses,
                 ),
               ),
             ),
+            // Space below the budgets, with the lock button while planning.
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              sliver: SliverList.list(
-                children: [
-                  if (!isLocked) ...[
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: lockBlocker == null
-                          ? () => ref
-                                .read(appDatabaseProvider)
-                                .lockMonth(month.id)
-                          : null,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
+              sliver: SliverToBoxAdapter(
+                child: isLocked
+                    ? null
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 24),
+                        child: _LockFooter(
+                          isEditing: isEditing,
+                          blocker: lockBlocker,
+                          onLock: () =>
+                              ref.read(appDatabaseProvider).lockMonth(month.id),
+                        ),
                       ),
-                      icon: const Icon(Icons.lock_outline),
-                      label: Text(
-                        isEditing ? 'Lock in changes' : 'Lock in budget',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      lockBlocker ??
-                          'Once locked in, fixed budgets count as spent in '
-                              'full and you track the rest of your spending '
-                              'for the month.',
-                      style: textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// What keeps [month]'s plan from being locked in, or null once every bit of
+/// its money has a job.
+String? _lockBlocker(Month month, List<Budget> budgets) {
+  final leftCents = leftToAssignCents(month, budgets);
+  return switch (leftCents) {
+    _ when month.assignableCents == 0 || budgets.isEmpty =>
+      'Add your income and budgets before locking in.',
+    > 0 => 'Assign the remaining ${formatCents(leftCents)} before locking in.',
+    < 0 =>
+      'Take ${formatCents(-leftCents)} off your budgets before locking in.',
+    _ => null,
+  };
+}
+
+/// A budget in the plan: what it's assigned, and what it saved and spent.
+/// It's changed by tapping it, or deleted, until the plan is locked in.
+class _PlanBudgetTile extends ConsumerWidget {
+  const _PlanBudgetTile({
+    required this.budget,
+    required this.spentCents,
+    required this.isLocked,
+    required this.expenses,
+  });
+
+  final Budget budget;
+
+  /// Null when nothing was spent from it yet.
+  final int? spentCents;
+  final bool isLocked;
+
+  /// The month's expenses, to say what deleting the budget takes with it.
+  final List<Expense> expenses;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final spentCents = this.spentCents;
+    return Card(
+      child: ListTile(
+        title: BudgetNameWithBadges(budget),
+        subtitle: Text(
+          [
+            formatCents(budget.amountCents),
+            if (budget.savedCents != 0)
+              '${formatCents(budget.savedCents)} saved',
+            if (spentCents != null) '${formatCents(spentCents)} spent',
+          ].join(' · '),
+        ),
+        onTap: isLocked ? null : () => promptEditBudget(context, ref, budget),
+        trailing: isLocked
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'Edit ${budget.name}',
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => promptEditBudget(context, ref, budget),
+                  ),
+                  IconButton(
+                    tooltip: 'Delete ${budget.name}',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () =>
+                        confirmDeleteBudget(context, ref, budget, expenses),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// The button to lock the plan in, with what's in the way, or what locking
+/// in does.
+class _LockFooter extends StatelessWidget {
+  const _LockFooter({
+    required this.isEditing,
+    required this.blocker,
+    required this.onLock,
+  });
+
+  /// Whether the plan was locked in before and is being changed.
+  final bool isEditing;
+
+  /// What keeps the plan from being locked in, see [_lockBlocker].
+  final String? blocker;
+  final VoidCallback onLock;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FilledButton.icon(
+          onPressed: blocker == null ? onLock : null,
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          icon: const Icon(Icons.lock_outline),
+          label: Text(isEditing ? 'Lock in changes' : 'Lock in budget'),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          blocker ??
+              'Once locked in, fixed budgets count as spent in full and you '
+                  'track the rest of your spending for the month.',
+          style: Theme.of(context).textTheme.bodyMedium,
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
@@ -444,97 +454,6 @@ class _GuidedPlanningCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Corrects the month's carryover, returning it in cents.
-class _CarryOverDialog extends StatefulWidget {
-  const _CarryOverDialog({
-    required this.carryOverCents,
-    required this.leftCents,
-  });
-
-  final int carryOverCents;
-
-  /// What last month left, which the carryover is without corrections.
-  final int leftCents;
-
-  @override
-  State<_CarryOverDialog> createState() => _CarryOverDialogState();
-}
-
-class _CarryOverDialogState extends State<_CarryOverDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final _amount = TextEditingController(
-    text: formatAmount(widget.carryOverCents.abs()),
-  );
-  // Number keyboards on phones often have no minus key, so overspending is a
-  // switch instead.
-  late var _isOverspent = widget.carryOverCents < 0;
-
-  @override
-  void dispose() {
-    _amount.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    final cents = parseAmountToCents(_amount.text)!;
-    Navigator.of(context).pop(_isOverspent ? -cents : cents);
-  }
-
-  void _useLeftCents() => setState(() {
-    _amount.text = formatAmount(widget.leftCents.abs());
-    _isOverspent = widget.leftCents < 0;
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Carried over'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Last month left ${formatCents(widget.leftCents)}, and this '
-              "follows any changes to it. Correct it if it doesn't match "
-              'what was actually left; the correction is kept on top.',
-            ),
-            if (widget.carryOverCents != widget.leftCents)
-              TextButton(
-                onPressed: _useLeftCents,
-                child: const Text('Remove correction'),
-              ),
-            AmountField(
-              controller: _amount,
-              autofocus: true,
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Overspent'),
-              subtitle: const Text(
-                'Last month went over, so this is taken off this month.',
-              ),
-              value: _isOverspent,
-              onChanged: (value) => setState(() => _isOverspent = value),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Save')),
-      ],
     );
   }
 }
