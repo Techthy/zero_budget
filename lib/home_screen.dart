@@ -8,8 +8,8 @@ import 'spending/add_expense_screen.dart';
 import 'settings/settings_providers.dart';
 import 'settings/settings_screen.dart';
 import 'spending/spending_screen.dart';
-import 'welcome/welcome_providers.dart';
-import 'welcome/welcome_screen.dart';
+import 'planning/planning_providers.dart';
+import 'planning/planning_screen.dart';
 import 'widgets/month_switcher.dart';
 
 enum _Tab { plan, track }
@@ -84,7 +84,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     Widget body = IndexedStack(
       index: _tab.index,
-      children: const [WelcomeScreen(), SpendingScreen()],
+      children: const [PlanningScreen(), SpendingScreen()],
     );
     final showDebugBar = ref.watch(
       settingsProvider.select((settings) => settings.value?.showDebugBar),

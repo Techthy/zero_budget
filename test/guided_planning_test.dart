@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
 import 'package:zero_budget/data/database_provider.dart';
 import 'package:zero_budget/theme/budget_theme.dart';
-import 'package:zero_budget/welcome/guided_planning_screen.dart';
-import 'package:zero_budget/welcome/welcome_providers.dart';
+import 'package:zero_budget/planning/guided_planning_screen.dart';
+import 'package:zero_budget/planning/planning_providers.dart';
 
 void main() {
   late AppDatabase db;

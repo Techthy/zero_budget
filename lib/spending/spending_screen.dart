@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database.dart';
 import '../data/database_provider.dart';
-import '../welcome/welcome_providers.dart';
+import '../planning/planning_providers.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/budget_sankey.dart';
 import '../widgets/leaf_background.dart';

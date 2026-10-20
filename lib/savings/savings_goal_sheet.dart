@@ -5,7 +5,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../money.dart';
-import '../welcome/welcome_providers.dart';
+import '../planning/planning_providers.dart';
 import '../widgets/amount_field.dart';
 import 'savings_plant.dart';
 import 'savings_providers.dart';

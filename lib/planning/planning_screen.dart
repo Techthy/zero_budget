@@ -22,10 +22,10 @@ import 'guided_planning_screen.dart';
 import 'month_set_up.dart';
 import 'month_overview_card.dart';
 import 'plan_editing.dart';
-import 'welcome_providers.dart';
+import 'planning_providers.dart';
 
-class WelcomeScreen extends ConsumerWidget {
-  const WelcomeScreen({super.key});
+class PlanningScreen extends ConsumerWidget {
+  const PlanningScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -158,7 +158,9 @@ class _BudgetPlan extends ConsumerWidget {
     final title = switch ((isLocked, isEditing)) {
       (true, _) => 'Planned Budget',
       (false, true) => 'Edit your plan',
-      (false, false) => 'Welcome!',
+      // Nothing planned yet, like when the app is first opened.
+      _ when incomes.isEmpty && budgets.isEmpty => 'Welcome!',
+      (false, false) => 'Plan your month',
     };
     final spent = spentByBudget(expenses);
     final budgetOrder =

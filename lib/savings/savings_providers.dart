@@ -4,7 +4,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../settings/settings_providers.dart';
-import '../welcome/welcome_providers.dart';
+import '../planning/planning_providers.dart';
 
 part 'savings_providers.g.dart';
 

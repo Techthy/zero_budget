@@ -6,7 +6,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../money.dart';
 import '../settings/settings_providers.dart';
-import '../welcome/welcome_providers.dart';
+import '../planning/planning_providers.dart';
 import '../widgets/amount_field.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/leaf_background.dart';

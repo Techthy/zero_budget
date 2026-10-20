@@ -2,7 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/database.dart';
 import '../data/database_provider.dart';
-import '../welcome/welcome_providers.dart';
+import '../planning/planning_providers.dart';
 
 part 'spending_providers.g.dart';
 

@@ -6,7 +6,7 @@ import '../data/database_provider.dart';
 import '../money.dart';
 import '../theme/budget_theme.dart';
 import 'plan_editing.dart';
-import 'welcome_providers.dart';
+import 'planning_providers.dart';
 import 'zero_based_help.dart';
 
 /// The month's money in one card: what's left to assign on top, then where it

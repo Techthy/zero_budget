@@ -5,7 +5,7 @@ import '../data/database.dart';
 import '../money.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
-import '../welcome/welcome_providers.dart';
+import '../planning/planning_providers.dart';
 import 'month_stats.dart';
 import 'spending_providers.dart';
 import 'spending_widgets.dart';

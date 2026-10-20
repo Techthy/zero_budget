@@ -8,7 +8,7 @@ import 'package:zero_budget/data/database_provider.dart';
 import 'package:zero_budget/dates.dart';
 import 'package:zero_budget/money.dart';
 import 'package:zero_budget/savings/savings_providers.dart';
-import 'package:zero_budget/welcome/welcome_providers.dart';
+import 'package:zero_budget/planning/planning_providers.dart';
 
 void main() {
   late AppDatabase db;

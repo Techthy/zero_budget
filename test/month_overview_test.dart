@@ -6,8 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:zero_budget/data/database.dart';
 import 'package:zero_budget/data/database_provider.dart';
 import 'package:zero_budget/theme/budget_theme.dart';
-import 'package:zero_budget/welcome/welcome_providers.dart';
-import 'package:zero_budget/welcome/welcome_screen.dart';
+import 'package:zero_budget/planning/planning_providers.dart';
+import 'package:zero_budget/planning/planning_screen.dart';
 
 void main() {
   late AppDatabase db;
@@ -35,7 +35,7 @@ void main() {
         ],
         child: MaterialApp(
           theme: budgetTheme(Brightness.light),
-          home: const WelcomeScreen(),
+          home: const PlanningScreen(),
         ),
       ),
     );
@@ -312,16 +312,18 @@ void main() {
     await planSeptember(tester);
     await pumpScreen(tester);
 
-    expect(find.text('Welcome to October 2026'), findsOneWidget);
+    expect(find.text('Set up October 2026'), findsOneWidget);
     expect(find.text('Keeping 2 of 2 budgets'), findsOneWidget);
     await tapAndSettle(tester, find.text('Gym'));
     expect(find.text('Keeping 1 of 2 budgets'), findsOneWidget);
 
     await tester.tap(find.text('Go to my plan'));
     await settleQueries(tester);
-    expect(find.text('Welcome to October 2026'), findsNothing);
-    // The plan, with its card to plan step by step.
+    expect(find.text('Set up October 2026'), findsNothing);
+    // The plan, with its card to plan step by step. It's not empty, so
+    // it doesn't greet a new user.
     expect(find.text('Plan step by step'), findsOneWidget);
+    expect(find.text('Plan your month'), findsOneWidget);
     final (month, budgets) = (await tester.runAsync(() async {
       final month = await db.getOrCreateMonth(2026, 10);
       return (month, await db.watchBudgets(month.id).first);

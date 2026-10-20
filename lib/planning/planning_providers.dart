@@ -4,7 +4,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 
-part 'welcome_providers.g.dart';
+part 'planning_providers.g.dart';
 
 /// Days to shift today by, so moving through time can be tried out in debug
 /// builds.

@@ -14,7 +14,7 @@ import '../widgets/amount_field.dart';
 import '../widgets/fixed_badge.dart';
 import '../widgets/leaf_background.dart';
 import 'plan_editing.dart';
-import 'welcome_providers.dart';
+import 'planning_providers.dart';
 
 /// Opens the guided planning for the current month.
 Future<void> startGuidedPlanning(BuildContext context) =>

@@ -8,7 +8,7 @@ import 'package:zero_budget/home_screen.dart';
 import 'package:zero_budget/main.dart';
 import 'package:zero_budget/money.dart';
 import 'package:zero_budget/theme/budget_theme.dart';
-import 'package:zero_budget/welcome/welcome_providers.dart';
+import 'package:zero_budget/planning/planning_providers.dart';
 
 void main() {
   late AppDatabase db;
