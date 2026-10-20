@@ -31,10 +31,9 @@ class MonthOverviewCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // A locked in plan is read only until it's unlocked for editing.
-    final isLocked = month.lockedAt != null;
-    final assignedCents = budgets.fold(0, (sum, b) => sum + b.amountCents);
-    final availableCents = month.incomeCents + month.carryOverCents;
-    final leftCents = availableCents - assignedCents;
+    final isLocked = month.isLocked;
+    final assignedCents = totalAssignedCents(budgets);
+    final leftCents = leftToAssignCents(month, budgets);
     // Nothing left from last month, like in the first month: what's there
     // was entered as the balance to start from.
     final isStartingBalance =
@@ -95,7 +94,10 @@ class MonthOverviewCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _LeftToAssign(availableCents: availableCents, leftCents: leftCents),
+          _LeftToAssign(
+            assignableCents: month.assignableCents,
+            leftCents: leftCents,
+          ),
           for (final (i, row) in rows.indexed) ...[
             if (i > 0) const Divider(height: 1, indent: 52),
             row,
@@ -129,10 +131,10 @@ Future<void> showIncomeSheet(BuildContext context) =>
 
 /// What's left to assign, colored by whether it's all assigned.
 class _LeftToAssign extends StatelessWidget {
-  const _LeftToAssign({required this.availableCents, required this.leftCents});
+  const _LeftToAssign({required this.assignableCents, required this.leftCents});
 
   /// Income plus whatever was carried over from last month.
-  final int availableCents;
+  final int assignableCents;
   final int leftCents;
 
   @override
@@ -142,7 +144,7 @@ class _LeftToAssign extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     final (background, foreground, message) = switch (leftCents) {
-      0 when availableCents == 0 => (
+      0 when assignableCents == 0 => (
         c.surfaceSunken,
         c.inkMuted,
         'Start by adding your income for this month.',
@@ -283,7 +285,7 @@ class _IncomeSheet extends ConsumerWidget {
         child: Center(child: CircularProgressIndicator()),
       );
     }
-    final isLocked = month.lockedAt != null;
+    final isLocked = month.isLocked;
 
     return SafeArea(
       child: SingleChildScrollView(

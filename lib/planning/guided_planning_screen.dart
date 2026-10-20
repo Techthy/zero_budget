@@ -264,7 +264,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
     for (final budget in budgets) {
       if (!matched.contains(budget.id)) assignedCents += budget.amountCents;
     }
-    return month.incomeCents + month.carryOverCents - assignedCents;
+    return month.assignableCents - assignedCents;
   }
 
   /// The budgets that aren't giving, one of the essentials or savings.

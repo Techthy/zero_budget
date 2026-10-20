@@ -98,10 +98,7 @@ class _BudgetSankeyState extends State<BudgetSankey> {
   /// Both sides always add up to the same total: money that isn't covered
   /// shows up as a source, money that isn't assigned as a target.
   ({List<_Node> sources, List<_Node> targets}) _nodes() {
-    final assignedCents = widget.budgets.fold(
-      0,
-      (sum, b) => sum + b.amountCents,
-    );
+    final assignedCents = totalAssignedCents(widget.budgets);
     final incomeCents = widget.incomes.fold(0, (sum, i) => sum + i.amountCents);
     final leftCents = incomeCents + widget.carryOverCents - assignedCents;
 

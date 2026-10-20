@@ -25,8 +25,8 @@ class SpendingTotal extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.budgetColors;
     final textTheme = Theme.of(context).textTheme;
-    final spentCents = expenses.fold(0, (sum, e) => sum + e.amountCents);
-    final plannedCents = budgets.fold(0, (sum, b) => sum + availableCents(b));
+    final spentCents = totalSpentCents(expenses);
+    final plannedCents = totalPlannedCents(budgets);
     final leftCents = plannedCents - spentCents;
 
     return Padding(
@@ -226,7 +226,7 @@ class _BudgetSpendingCardState extends State<_BudgetSpendingCard> {
     final onEdit = widget.onEditExpense;
     final onAdd = widget.onAddExpense;
     final plannedCents = availableCents(budget);
-    final spentCents = expenses.fold(0, (sum, e) => sum + e.amountCents);
+    final spentCents = totalSpentCents(expenses);
     final leftCents = plannedCents - spentCents;
 
     final (leftText, leftColor) = switch (leftCents) {

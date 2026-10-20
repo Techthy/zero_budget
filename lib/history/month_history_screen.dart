@@ -104,7 +104,7 @@ class _MonthReview extends StatelessWidget {
                       ),
                     _AmountRow(
                       label: 'Planned',
-                      cents: budgets.fold(0, (sum, b) => sum + b.amountCents),
+                      cents: totalAssignedCents(budgets),
                     ),
                     _AmountRow(
                       label: 'Balance at month end',

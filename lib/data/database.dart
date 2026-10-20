@@ -196,9 +196,36 @@ typedef MonthSummary = ({Month month, int plannedCents, int spentCents});
 /// What a month's savings budgets spent.
 typedef MonthSavings = ({YearMonth month, int savedCents});
 
+/// What a month's plan says about itself.
+extension MonthPlan on Month {
+  /// Whether the plan is locked in to track spending against it.
+  bool get isLocked => lockedAt != null;
+
+  /// All the money the plan gives a job: the income plus what was carried
+  /// over.
+  int get assignableCents => incomeCents + carryOverCents;
+}
+
 /// What can be spent from [budget] this month, including a sinking fund's
 /// savings.
 int availableCents(Budget budget) => budget.amountCents + budget.savedCents;
+
+/// What [budgets] are assigned, without sinking funds' earlier savings.
+int totalAssignedCents(Iterable<Budget> budgets) =>
+    budgets.fold(0, (sum, budget) => sum + budget.amountCents);
+
+/// What [budgets] can spend this month, sinking funds' savings included.
+int totalPlannedCents(Iterable<Budget> budgets) =>
+    budgets.fold(0, (sum, budget) => sum + availableCents(budget));
+
+/// What [month] still has to give a job once [budgets] got theirs; negative
+/// when more was assigned than there is.
+int leftToAssignCents(Month month, Iterable<Budget> budgets) =>
+    month.assignableCents - totalAssignedCents(budgets);
+
+/// What [expenses] add up to.
+int totalSpentCents(Iterable<Expense> expenses) =>
+    expenses.fold(0, (sum, expense) => sum + expense.amountCents);
 
 /// What a sinking fund has saved once [spentCents] came out of it this month.
 int fundBalanceCents(Budget budget, int spentCents) =>
@@ -213,7 +240,7 @@ int monthBalanceCents(
   List<Budget> budgets,
   Map<int, int> spentByBudget,
 ) {
-  var balanceCents = month.incomeCents + month.carryOverCents;
+  var balanceCents = month.assignableCents;
   for (final budget in budgets) {
     balanceCents -= budget.isSinkingFund
         ? budget.amountCents
@@ -233,7 +260,7 @@ int expectedBankBalanceCents(
   Iterable<Expense> expenses, {
   required int bufferCents,
 }) {
-  var balanceCents = bufferCents + month.incomeCents + month.carryOverCents;
+  var balanceCents = bufferCents + month.assignableCents;
   for (final budget in budgets) {
     balanceCents += budget.savedCents;
   }

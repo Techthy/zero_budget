@@ -198,10 +198,8 @@ class _BankBalanceDetails extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final (:month, :budgets, :bufferCents, :stats, spent: _) = data;
-    final assignedCents = budgets.fold(0, (sum, b) => sum + b.amountCents);
     // Money with no job yet is in the account too.
-    final unassignedCents =
-        month.incomeCents + month.carryOverCents - assignedCents;
+    final unassignedCents = leftToAssignCents(month, budgets);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

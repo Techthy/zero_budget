@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/database.dart';
 import 'debug/month_travel_bar.dart';
 import 'month/month_providers.dart';
 import 'planning/planning_screen.dart';
@@ -63,7 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isLockedProvider = currentMonthProvider.select(
-      (month) => month.value?.lockedAt != null,
+      (month) => month.value?.isLocked ?? false,
     );
     final isLocked = ref.watch(isLockedProvider);
     // A month that's locked in opens on tracking, one still being planned on
@@ -72,7 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.listen(
       currentMonthProvider.select(
         (month) =>
-            (id: month.value?.id, isLocked: month.value?.lockedAt != null),
+            (id: month.value?.id, isLocked: month.value?.isLocked ?? false),
       ),
       (previous, next) {
         if (next.id == null || next.id == previous?.id) return;

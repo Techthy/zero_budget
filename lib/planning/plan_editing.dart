@@ -117,7 +117,7 @@ Future<void> confirmDeleteBudget(
 ) async {
   final tracked = expenses.where((e) => e.budgetId == budget.id).toList();
   if (tracked.isNotEmpty || budget.savedCents != 0) {
-    final spentCents = tracked.fold(0, (sum, e) => sum + e.amountCents);
+    final spentCents = totalSpentCents(tracked);
     final confirmed = await showConfirmDialog(
       context,
       title: 'Delete ${budget.name}?',

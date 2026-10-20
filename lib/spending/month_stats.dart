@@ -51,7 +51,7 @@ class MonthStats {
 
     return MonthStats._(
       plannedCents: plannedCents,
-      spentCents: expenses.fold(0, (sum, e) => sum + e.amountCents),
+      spentCents: totalSpentCents(expenses),
       bankBalanceCents: expectedBankBalanceCents(
         month,
         budgets,

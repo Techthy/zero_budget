@@ -147,11 +147,9 @@ class _BudgetPlan extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
-    final assignedCents = budgets.fold(0, (sum, b) => sum + b.amountCents);
-    final availableCents = month.incomeCents + month.carryOverCents;
-    final leftCents = availableCents - assignedCents;
+    final leftCents = leftToAssignCents(month, budgets);
     // A locked in plan is read only until it's unlocked for editing.
-    final isLocked = month.lockedAt != null;
+    final isLocked = month.isLocked;
     // Tracked expenses mean the plan was locked in before and is being edited.
     final isEditing = expenses.isNotEmpty;
     final title = switch ((isLocked, isEditing)) {
@@ -162,7 +160,7 @@ class _BudgetPlan extends ConsumerWidget {
     final spent = spentByBudget(expenses);
     final budgetOrder = ref.watch(budgetOrderProvider);
     final lockBlocker = switch (leftCents) {
-      _ when availableCents == 0 || budgets.isEmpty =>
+      _ when month.assignableCents == 0 || budgets.isEmpty =>
         'Add your income and budgets before locking in.',
       > 0 =>
         'Assign the remaining ${formatCents(leftCents)} before locking in.',

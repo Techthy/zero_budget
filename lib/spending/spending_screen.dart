@@ -86,7 +86,7 @@ class _SpendingOverview extends ConsumerWidget {
                   const NewMonthCard(),
                   Text('Your budget overview', style: textTheme.titleLarge),
                   const SizedBox(height: 8),
-                  if (month.lockedAt == null) ...[
+                  if (!month.isLocked) ...[
                     const SizedBox(height: 16),
                     Card(
                       color: colors.secondaryContainer,
@@ -148,9 +148,9 @@ class _SpendingOverview extends ConsumerWidget {
                     ref.read(appDatabaseProvider).deleteExpense(expense.id),
                 onEditExpense: (expense) => openEditExpense(context, expense),
                 // Expenses are only added while tracking.
-                onAddExpense: month.lockedAt == null
-                    ? null
-                    : (budget) => openAddExpense(context, budgetId: budget.id),
+                onAddExpense: month.isLocked
+                    ? (budget) => openAddExpense(context, budgetId: budget.id)
+                    : null,
               ),
             ),
           ],
