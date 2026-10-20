@@ -38,6 +38,7 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appName"] = "Zero Budget"
     }
 
     signingConfigs {
@@ -51,13 +52,12 @@ android {
         }
     }
 
-    // With the release key set up, debug builds are signed with it too, so
-    // they install over published releases and the other way round.
     buildTypes {
+        // A separate app next to the published one, with its own data and the
+        // debug key, so trying things out never touches the real budget.
         getByName("debug") {
-            signingConfig = signingConfigs.getByName(
-                if (keystorePropertiesFile.exists()) "release" else "debug"
-            )
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appName"] = "Zero Budget Debug"
         }
         release {
             signingConfig = signingConfigs.getByName(
