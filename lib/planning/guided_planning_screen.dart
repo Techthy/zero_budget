@@ -6,15 +6,14 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../money.dart';
+import '../month/month_providers.dart';
 import '../savings/savings_providers.dart';
 import '../settings/settings_providers.dart';
-import '../spending/spending_providers.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
-import '../widgets/fixed_badge.dart';
+import '../widgets/budget_badges.dart';
 import '../widgets/leaf_background.dart';
 import 'plan_editing.dart';
-import 'planning_providers.dart';
 
 /// Opens the guided planning for the current month.
 Future<void> startGuidedPlanning(BuildContext context) =>

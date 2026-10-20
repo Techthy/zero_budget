@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../dates.dart';
-import '../planning/planning_providers.dart';
+import '../month/month_providers.dart';
 
 /// Moves today to earlier or later days, for testing how months carry over
 /// and start. Only shown in debug builds.

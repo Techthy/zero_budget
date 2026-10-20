@@ -10,6 +10,11 @@ part 'settings_providers.g.dart';
 Stream<Setting> settings(Ref ref) =>
     ref.watch(appDatabaseProvider).watchSettings();
 
+/// The buffer to keep in the bank account on top of the plan.
+@riverpod
+Stream<int> bufferCents(Ref ref) =>
+    ref.watch(appDatabaseProvider).watchBufferCents();
+
 /// The app's version as the build named it, like 1.2.0 for a release or
 /// 1.2.0-nightly.57 for a nightly.
 @riverpod

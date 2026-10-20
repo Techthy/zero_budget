@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database.dart';
 import '../money.dart';
-import '../planning/planning_providers.dart';
+import '../month/month_providers.dart';
 import '../settings/buffer_dialog.dart';
+import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
 import 'month_stats.dart';
-import 'spending_providers.dart';
 
 // The details behind the tiles of the MonthStatsCard, each in a sheet from
 // the bottom. They follow the month as it changes while they're open.

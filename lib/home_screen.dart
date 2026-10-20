@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'debug/month_travel_bar.dart';
+import 'month/month_providers.dart';
+import 'planning/planning_screen.dart';
 import 'savings/savings_goal_sheet.dart';
-import 'spending/add_expense_screen.dart';
 import 'settings/settings_providers.dart';
 import 'settings/settings_screen.dart';
+import 'spending/expense_screen.dart';
 import 'spending/spending_screen.dart';
-import 'planning/planning_providers.dart';
-import 'planning/planning_screen.dart';
 import 'widgets/month_switcher.dart';
 
 enum _Tab { plan, track }

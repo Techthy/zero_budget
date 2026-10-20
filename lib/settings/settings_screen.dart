@@ -7,7 +7,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../history/history_screen.dart';
 import '../money.dart';
-import '../planning/planning_providers.dart';
+import '../month/month_providers.dart';
 import '../widgets/leaf_background.dart';
 import 'buffer_dialog.dart';
 import 'settings_providers.dart';

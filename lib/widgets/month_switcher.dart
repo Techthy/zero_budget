@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/database_provider.dart';
 import '../dates.dart';
-import '../planning/planning_providers.dart';
+import '../month/month_providers.dart';
 
 /// Shows the month the user works in, and lets them switch to another one.
 class MonthSwitcher extends ConsumerWidget {

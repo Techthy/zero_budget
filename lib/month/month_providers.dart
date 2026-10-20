@@ -4,7 +4,7 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 
-part 'planning_providers.g.dart';
+part 'month_providers.g.dart';
 
 /// Days to shift today by, so moving through time can be tried out in debug
 /// builds.
@@ -116,4 +116,11 @@ Stream<List<Income>> currentIncomes(Ref ref) async* {
   final db = ref.watch(appDatabaseProvider);
   final monthId = await ref.watch(currentMonthIdProvider.future);
   yield* db.watchIncomes(monthId);
+}
+
+@riverpod
+Stream<List<Expense>> currentExpenses(Ref ref) async* {
+  final db = ref.watch(appDatabaseProvider);
+  final monthId = await ref.watch(currentMonthIdProvider.future);
+  yield* db.watchExpenses(monthId);
 }

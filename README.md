@@ -273,6 +273,8 @@ lib/
   *.dart      the app, its home screen, and helpers for money, dates and
               sorting budgets
   data/       database tables, queries and migrations (drift)
+  month/      the month you work in: today, switching months and moving
+              on to a new one
   planning/   the Plan tab: incomes, budgets, step-by-step planning,
               setting up a new month, locking the plan in
   spending/   the Track tab and adding expenses

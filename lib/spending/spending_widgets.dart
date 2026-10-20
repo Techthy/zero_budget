@@ -7,12 +7,12 @@ import '../dates.dart';
 import '../money.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
-import '../widgets/fixed_badge.dart';
+import '../widgets/budget_badges.dart';
 import '../widgets/reorderable_budgets.dart';
 
 /// Everything spent against everything planned across [budgets].
-class SpendingTotalWidget extends StatelessWidget {
-  const SpendingTotalWidget({
+class SpendingTotal extends StatelessWidget {
+  const SpendingTotal({
     super.key,
     required this.budgets,
     required this.expenses,

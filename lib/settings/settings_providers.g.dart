@@ -42,6 +42,44 @@ final class SettingsProvider
 
 String _$settingsHash() => r'e7ebe58834936753a5598249462db6aa6b81f85b';
 
+/// The buffer to keep in the bank account on top of the plan.
+
+@ProviderFor(bufferCents)
+final bufferCentsProvider = BufferCentsProvider._();
+
+/// The buffer to keep in the bank account on top of the plan.
+
+final class BufferCentsProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, Stream<int>>
+    with $FutureModifier<int>, $StreamProvider<int> {
+  /// The buffer to keep in the bank account on top of the plan.
+  BufferCentsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'bufferCentsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$bufferCentsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<int> create(Ref ref) {
+    return bufferCents(ref);
+  }
+}
+
+String _$bufferCentsHash() => r'37f36c6ee8651a4b9568a083b1ec2003c50a715f';
+
 /// The app's version as the build named it, like 1.2.0 for a release or
 /// 1.2.0-nightly.57 for a nightly.
 

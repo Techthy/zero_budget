@@ -5,12 +5,11 @@ import '../budget_order.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../money.dart';
+import '../month/month_providers.dart';
 import '../settings/settings_providers.dart';
-import '../planning/planning_providers.dart';
 import '../widgets/amount_field.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/leaf_background.dart';
-import 'spending_providers.dart';
 
 /// Opens the screen to add an expense, with the budget [budgetId] already
 /// picked when it's given.
@@ -20,7 +19,7 @@ Future<void> openAddExpense(BuildContext context, {int? budgetId}) {
   return Navigator.of(context).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
-      builder: (_) => AddExpenseScreen(budgetId: budgetId),
+      builder: (_) => ExpenseScreen(budgetId: budgetId),
     ),
   );
 }
@@ -31,15 +30,15 @@ Future<void> openEditExpense(BuildContext context, Expense expense) {
   return Navigator.of(context).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
-      builder: (_) => AddExpenseScreen(expense: expense),
+      builder: (_) => ExpenseScreen(expense: expense),
     ),
   );
 }
 
 /// Notes down an expense quickly: what it was, the amount, a tap on its
 /// budget, done. Given an [expense], changes that one instead.
-class AddExpenseScreen extends ConsumerWidget {
-  const AddExpenseScreen({super.key, this.budgetId, this.expense});
+class ExpenseScreen extends ConsumerWidget {
+  const ExpenseScreen({super.key, this.budgetId, this.expense});
 
   /// The budget picked to start with, if any.
   final int? budgetId;

@@ -118,7 +118,7 @@ class _MonthReview extends StatelessWidget {
                 ),
               ),
             ),
-            SpendingTotalWidget(budgets: budgets, expenses: expenses),
+            SpendingTotal(budgets: budgets, expenses: expenses),
             if (month.notes case final notes?) ...[
               const SizedBox(height: 24),
               Text('Notes', style: textTheme.titleLarge),

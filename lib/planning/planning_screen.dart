@@ -6,23 +6,22 @@ import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../money.dart';
+import '../month/month_providers.dart';
 import '../settings/settings_providers.dart';
-import '../spending/spending_providers.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
+import '../widgets/budget_badges.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/budget_sankey.dart';
 import '../widgets/confirm_dialog.dart';
-import '../widgets/fixed_badge.dart';
 import '../widgets/leaf_background.dart';
 import '../widgets/new_month_card.dart';
 import '../widgets/reorderable_budgets.dart';
 import 'guided_planning_help.dart';
 import 'guided_planning_screen.dart';
-import 'month_set_up.dart';
 import 'month_overview_card.dart';
+import 'month_set_up.dart';
 import 'plan_editing.dart';
-import 'planning_providers.dart';
 
 class PlanningScreen extends ConsumerWidget {
   const PlanningScreen({super.key});

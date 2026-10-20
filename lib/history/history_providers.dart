@@ -2,7 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/database.dart';
 import '../data/database_provider.dart';
-import '../planning/planning_providers.dart';
+import '../month/month_providers.dart';
 
 part 'history_providers.g.dart';
 

@@ -8,7 +8,6 @@ import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
 import 'month_stats.dart';
 import 'month_stats_sheets.dart';
-import 'spending_providers.dart';
 import 'spending_widgets.dart';
 
 /// The month at a glance: what's left to spend, then a few numbers that help

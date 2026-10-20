@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../money.dart';
+import '../month/month_providers.dart';
 import '../theme/budget_theme.dart';
-import '../planning/planning_providers.dart';
 
 /// Asks to move on to the next month, from [planAheadDays] before it starts
 /// so it can be planned ahead, until the user moves on or says not yet.

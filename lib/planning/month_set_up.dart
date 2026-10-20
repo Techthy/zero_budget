@@ -8,7 +8,7 @@ import '../dates.dart';
 import '../money.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
-import '../widgets/fixed_badge.dart';
+import '../widgets/budget_badges.dart';
 import 'guided_planning_screen.dart';
 
 /// The first look at a month copied from the month before, see

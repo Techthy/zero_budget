@@ -6,8 +6,8 @@ import '../data/database_provider.dart';
 import '../money.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
+import '../widgets/budget_badges.dart';
 import '../widgets/confirm_dialog.dart';
-import '../widgets/fixed_badge.dart';
 
 // Adding and changing the incomes and budgets of a month's plan, shared by
 // the plan screen and the guided planning.
