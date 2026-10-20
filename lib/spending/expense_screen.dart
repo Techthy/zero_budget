@@ -8,6 +8,7 @@ import '../money.dart';
 import '../month/month_providers.dart';
 import '../settings/settings_providers.dart';
 import '../widgets/amount_field.dart';
+import '../widgets/async_view.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/leaf_background.dart';
 
@@ -48,8 +49,6 @@ class ExpenseScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final budgets = ref.watch(currentBudgetsProvider);
-    final expenses = ref.watch(currentExpensesProvider);
     // Listed like everywhere else, to find the budget quickly.
     final order = ref.watch(budgetOrderProvider);
 
@@ -58,21 +57,23 @@ class ExpenseScreen extends ConsumerWidget {
         title: Text(expense == null ? 'New expense' : 'Edit expense'),
       ),
       body: LeafBackground(
-        child: switch ((budgets, expenses)) {
-          (AsyncData(value: final budgets), AsyncData(value: final expenses)) =>
-            _ExpenseForm(
-              // Fixed budgets are spent in full when the plan is locked in.
-              budgets: sortBudgets(budgets.where((b) => !b.isFixed), order),
-              // What's left in each budget, as if the expense being changed
-              // wasn't there.
-              spent: spentByBudget(expenses.where((e) => e.id != expense?.id)),
-              initialBudgetId: expense?.budgetId ?? budgetId,
-              expense: expense,
+        child: AsyncView(
+          value: ref.watch(currentMonthDetailsProvider),
+          data: (details) => _ExpenseForm(
+            // Fixed budgets are spent in full when the plan is locked in.
+            budgets: sortBudgets(
+              details.budgets.where((b) => !b.isFixed),
+              order,
             ),
-          (AsyncError(:final error), _) || (_, AsyncError(:final error)) =>
-            Center(child: Text('Something went wrong: $error')),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
+            // What's left in each budget, as if the expense being changed
+            // wasn't there.
+            spent: spentByBudget(
+              details.expenses.where((e) => e.id != expense?.id),
+            ),
+            initialBudgetId: expense?.budgetId ?? budgetId,
+            expense: expense,
+          ),
+        ),
       ),
     );
   }

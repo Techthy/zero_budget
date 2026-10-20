@@ -125,3 +125,79 @@ Stream<List<Expense>> currentExpenses(Ref ref) async* {
   final monthId = await ref.watch(currentMonthIdProvider.future);
   yield* db.watchExpenses(monthId);
 }
+
+/// A month with its incomes, budgets and expenses: everything its plan and
+/// its tracking show.
+typedef MonthDetails = ({
+  Month month,
+  List<Income> incomes,
+  List<Budget> budgets,
+  List<Expense> expenses,
+});
+
+/// The current month's details, once all of them are loaded.
+@riverpod
+AsyncValue<MonthDetails> currentMonthDetails(Ref ref) => _combineDetails(
+  ref.watch(currentMonthProvider),
+  ref.watch(currentIncomesProvider),
+  ref.watch(currentBudgetsProvider),
+  ref.watch(currentExpensesProvider),
+);
+
+/// Any month's details, like one looked back at, once all of them are
+/// loaded.
+@riverpod
+AsyncValue<MonthDetails> monthDetails(Ref ref, int monthId) => _combineDetails(
+  ref.watch(_monthByIdProvider(monthId)),
+  ref.watch(_incomesOfMonthProvider(monthId)),
+  ref.watch(_budgetsOfMonthProvider(monthId)),
+  ref.watch(_expensesOfMonthProvider(monthId)),
+);
+
+@riverpod
+Stream<Month> _monthById(Ref ref, int monthId) =>
+    ref.watch(appDatabaseProvider).watchMonth(monthId);
+
+@riverpod
+Stream<List<Income>> _incomesOfMonth(Ref ref, int monthId) =>
+    ref.watch(appDatabaseProvider).watchIncomes(monthId);
+
+@riverpod
+Stream<List<Budget>> _budgetsOfMonth(Ref ref, int monthId) =>
+    ref.watch(appDatabaseProvider).watchBudgets(monthId);
+
+@riverpod
+Stream<List<Expense>> _expensesOfMonth(Ref ref, int monthId) =>
+    ref.watch(appDatabaseProvider).watchExpenses(monthId);
+
+/// Puts a month's details together once all of them are loaded, or passes on
+/// the first thing that couldn't be loaded.
+AsyncValue<MonthDetails> _combineDetails(
+  AsyncValue<Month> month,
+  AsyncValue<List<Income>> incomes,
+  AsyncValue<List<Budget>> budgets,
+  AsyncValue<List<Expense>> expenses,
+) => switch ((month, incomes, budgets, expenses)) {
+  (
+    AsyncData(value: final month),
+    AsyncData(value: final incomes),
+    AsyncData(value: final budgets),
+    AsyncData(value: final expenses),
+  ) =>
+    AsyncData((
+      month: month,
+      incomes: incomes,
+      budgets: budgets,
+      expenses: expenses,
+    )),
+  (AsyncError(:final error, :final stackTrace), _, _, _) ||
+  (_, AsyncError(:final error, :final stackTrace), _, _) ||
+  (_, _, AsyncError(:final error, :final stackTrace), _) ||
+  (
+    _,
+    _,
+    _,
+    AsyncError(:final error, :final stackTrace),
+  ) => AsyncError(error, stackTrace),
+  _ => const AsyncLoading(),
+};

@@ -532,3 +532,447 @@ final class CurrentExpensesProvider
 }
 
 String _$currentExpensesHash() => r'585c4cf8e149b0697627ad5d3814a6890ebc7476';
+
+/// The current month's details, once all of them are loaded.
+
+@ProviderFor(currentMonthDetails)
+final currentMonthDetailsProvider = CurrentMonthDetailsProvider._();
+
+/// The current month's details, once all of them are loaded.
+
+final class CurrentMonthDetailsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<MonthDetails>,
+          AsyncValue<MonthDetails>,
+          AsyncValue<MonthDetails>
+        >
+    with $Provider<AsyncValue<MonthDetails>> {
+  /// The current month's details, once all of them are loaded.
+  CurrentMonthDetailsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'currentMonthDetailsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$currentMonthDetailsHash();
+
+  @$internal
+  @override
+  $ProviderElement<AsyncValue<MonthDetails>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AsyncValue<MonthDetails> create(Ref ref) {
+    return currentMonthDetails(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<MonthDetails> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<MonthDetails>>(value),
+    );
+  }
+}
+
+String _$currentMonthDetailsHash() =>
+    r'e58f81a25e620965f8484ccb7f3d72db813b47f1';
+
+/// Any month's details, like one looked back at, once all of them are
+/// loaded.
+
+@ProviderFor(monthDetails)
+final monthDetailsProvider = MonthDetailsFamily._();
+
+/// Any month's details, like one looked back at, once all of them are
+/// loaded.
+
+final class MonthDetailsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<MonthDetails>,
+          AsyncValue<MonthDetails>,
+          AsyncValue<MonthDetails>
+        >
+    with $Provider<AsyncValue<MonthDetails>> {
+  /// Any month's details, like one looked back at, once all of them are
+  /// loaded.
+  MonthDetailsProvider._({
+    required MonthDetailsFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'monthDetailsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$monthDetailsHash();
+
+  @override
+  String toString() {
+    return r'monthDetailsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<AsyncValue<MonthDetails>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  AsyncValue<MonthDetails> create(Ref ref) {
+    final argument = this.argument as int;
+    return monthDetails(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<MonthDetails> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<MonthDetails>>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is MonthDetailsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$monthDetailsHash() => r'c032519e2b1d59b8d59291de2a5429a2dbbe4158';
+
+/// Any month's details, like one looked back at, once all of them are
+/// loaded.
+
+final class MonthDetailsFamily extends $Family
+    with $FunctionalFamilyOverride<AsyncValue<MonthDetails>, int> {
+  MonthDetailsFamily._()
+    : super(
+        retry: null,
+        name: r'monthDetailsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Any month's details, like one looked back at, once all of them are
+  /// loaded.
+
+  MonthDetailsProvider call(int monthId) =>
+      MonthDetailsProvider._(argument: monthId, from: this);
+
+  @override
+  String toString() => r'monthDetailsProvider';
+}
+
+@ProviderFor(_monthById)
+final _monthByIdProvider = _MonthByIdFamily._();
+
+final class _MonthByIdProvider
+    extends $FunctionalProvider<AsyncValue<Month>, Month, Stream<Month>>
+    with $FutureModifier<Month>, $StreamProvider<Month> {
+  _MonthByIdProvider._({
+    required _MonthByIdFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'_monthByIdProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$_monthByIdHash();
+
+  @override
+  String toString() {
+    return r'_monthByIdProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<Month> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<Month> create(Ref ref) {
+    final argument = this.argument as int;
+    return _monthById(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _MonthByIdProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$_monthByIdHash() => r'ecd911721704ba32fe2b0e81616ac1aa6e43846a';
+
+final class _MonthByIdFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<Month>, int> {
+  _MonthByIdFamily._()
+    : super(
+        retry: null,
+        name: r'_monthByIdProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  _MonthByIdProvider call(int monthId) =>
+      _MonthByIdProvider._(argument: monthId, from: this);
+
+  @override
+  String toString() => r'_monthByIdProvider';
+}
+
+@ProviderFor(_incomesOfMonth)
+final _incomesOfMonthProvider = _IncomesOfMonthFamily._();
+
+final class _IncomesOfMonthProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Income>>,
+          List<Income>,
+          Stream<List<Income>>
+        >
+    with $FutureModifier<List<Income>>, $StreamProvider<List<Income>> {
+  _IncomesOfMonthProvider._({
+    required _IncomesOfMonthFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'_incomesOfMonthProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$_incomesOfMonthHash();
+
+  @override
+  String toString() {
+    return r'_incomesOfMonthProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Income>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Income>> create(Ref ref) {
+    final argument = this.argument as int;
+    return _incomesOfMonth(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _IncomesOfMonthProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$_incomesOfMonthHash() => r'c6bc6de8d63221dfadb201d74d768354fb986892';
+
+final class _IncomesOfMonthFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Income>>, int> {
+  _IncomesOfMonthFamily._()
+    : super(
+        retry: null,
+        name: r'_incomesOfMonthProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  _IncomesOfMonthProvider call(int monthId) =>
+      _IncomesOfMonthProvider._(argument: monthId, from: this);
+
+  @override
+  String toString() => r'_incomesOfMonthProvider';
+}
+
+@ProviderFor(_budgetsOfMonth)
+final _budgetsOfMonthProvider = _BudgetsOfMonthFamily._();
+
+final class _BudgetsOfMonthProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Budget>>,
+          List<Budget>,
+          Stream<List<Budget>>
+        >
+    with $FutureModifier<List<Budget>>, $StreamProvider<List<Budget>> {
+  _BudgetsOfMonthProvider._({
+    required _BudgetsOfMonthFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'_budgetsOfMonthProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$_budgetsOfMonthHash();
+
+  @override
+  String toString() {
+    return r'_budgetsOfMonthProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Budget>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Budget>> create(Ref ref) {
+    final argument = this.argument as int;
+    return _budgetsOfMonth(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _BudgetsOfMonthProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$_budgetsOfMonthHash() => r'72830a353c15b696196b215a65f8bc3067e47b2b';
+
+final class _BudgetsOfMonthFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Budget>>, int> {
+  _BudgetsOfMonthFamily._()
+    : super(
+        retry: null,
+        name: r'_budgetsOfMonthProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  _BudgetsOfMonthProvider call(int monthId) =>
+      _BudgetsOfMonthProvider._(argument: monthId, from: this);
+
+  @override
+  String toString() => r'_budgetsOfMonthProvider';
+}
+
+@ProviderFor(_expensesOfMonth)
+final _expensesOfMonthProvider = _ExpensesOfMonthFamily._();
+
+final class _ExpensesOfMonthProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Expense>>,
+          List<Expense>,
+          Stream<List<Expense>>
+        >
+    with $FutureModifier<List<Expense>>, $StreamProvider<List<Expense>> {
+  _ExpensesOfMonthProvider._({
+    required _ExpensesOfMonthFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'_expensesOfMonthProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$_expensesOfMonthHash();
+
+  @override
+  String toString() {
+    return r'_expensesOfMonthProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Expense>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Expense>> create(Ref ref) {
+    final argument = this.argument as int;
+    return _expensesOfMonth(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _ExpensesOfMonthProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$_expensesOfMonthHash() => r'87642a5ec5b9c656db55fc455c349b7806a18396';
+
+final class _ExpensesOfMonthFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Expense>>, int> {
+  _ExpensesOfMonthFamily._()
+    : super(
+        retry: null,
+        name: r'_expensesOfMonthProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  _ExpensesOfMonthProvider call(int monthId) =>
+      _ExpensesOfMonthProvider._(argument: monthId, from: this);
+
+  @override
+  String toString() => r'_expensesOfMonthProvider';
+}

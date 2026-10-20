@@ -745,6 +745,29 @@ void main() {
     },
   );
 
+  test(
+    'monthDetails loads a month with its incomes, budgets and expenses',
+    () async {
+      final container = ProviderContainer.test(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+      );
+      final september = await db.getOrCreateMonth(2026, 9);
+      await db.addIncome(september.id, 'Salary', 300000);
+      final food = await db.addBudget(september.id, 'Food', 40000);
+      await db.addExpense(food, 2500, title: 'Market');
+      final provider = monthDetailsProvider(september.id);
+      container.listen(provider, (_, _) {});
+
+      expect(container.read(provider), isA<AsyncLoading<MonthDetails>>());
+      await pumpEventQueue();
+      final details = container.read(provider).value!;
+      expect(details.month.id, september.id);
+      expect(details.incomes.map((i) => i.name), ['Salary']);
+      expect(details.budgets.map((b) => b.name), ['Food']);
+      expect(details.expenses.map((e) => e.title), ['Market']);
+    },
+  );
+
   test('a new month is offered days before it starts, and only once', () async {
     final container = ProviderContainer.test(
       overrides: [appDatabaseProvider.overrideWithValue(db)],

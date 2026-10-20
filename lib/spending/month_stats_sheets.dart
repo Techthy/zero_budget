@@ -47,16 +47,10 @@ class _MonthDataSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final month = ref.watch(currentMonthProvider).value;
-    final budgets = ref.watch(currentBudgetsProvider).value;
-    final expenses = ref.watch(currentExpensesProvider).value;
+    final details = ref.watch(currentMonthDetailsProvider).value;
     final bufferCents = ref.watch(bufferCentsProvider).value;
-    if (month == null ||
-        budgets == null ||
-        expenses == null ||
-        bufferCents == null) {
-      return const SheetLoading();
-    }
+    if (details == null || bufferCents == null) return const SheetLoading();
+    final (:month, :budgets, :expenses, incomes: _) = details;
     return SheetBody(
       child: builder((
         month: month,

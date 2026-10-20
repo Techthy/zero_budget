@@ -8,6 +8,7 @@ import '../data/database_provider.dart';
 import '../history/history_screen.dart';
 import '../money.dart';
 import '../month/month_providers.dart';
+import '../widgets/async_view.dart';
 import '../widgets/leaf_background.dart';
 import 'buffer_dialog.dart';
 import 'settings_providers.dart';
@@ -33,18 +34,13 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: LeafBackground(
-        child: switch (settings) {
-          AsyncData(value: final settings) => _SettingsList(settings: settings),
-          AsyncError(:final error) => Center(
-            child: Text('Something went wrong: $error'),
-          ),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
+        child: AsyncView(
+          value: ref.watch(settingsProvider),
+          data: (settings) => _SettingsList(settings: settings),
+        ),
       ),
     );
   }

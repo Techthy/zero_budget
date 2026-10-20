@@ -16,19 +16,3 @@ Stream<List<MonthSummary>> pastMonths(Ref ref) async* {
         months.where((summary) => summary.month.id != currentMonthId).toList(),
   );
 }
-
-@riverpod
-Stream<Month> monthById(Ref ref, int monthId) =>
-    ref.watch(appDatabaseProvider).watchMonth(monthId);
-
-@riverpod
-Stream<List<Income>> incomesForMonth(Ref ref, int monthId) =>
-    ref.watch(appDatabaseProvider).watchIncomes(monthId);
-
-@riverpod
-Stream<List<Budget>> budgetsForMonth(Ref ref, int monthId) =>
-    ref.watch(appDatabaseProvider).watchBudgets(monthId);
-
-@riverpod
-Stream<List<Expense>> expensesForMonth(Ref ref, int monthId) =>
-    ref.watch(appDatabaseProvider).watchExpenses(monthId);

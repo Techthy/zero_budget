@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../month/month_providers.dart';
+import '../widgets/async_view.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/budget_sankey.dart';
 import '../widgets/leaf_background.dart';
@@ -18,38 +19,18 @@ class SpendingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final month = ref.watch(currentMonthProvider);
-    final incomes = ref.watch(currentIncomesProvider);
-    final budgets = ref.watch(currentBudgetsProvider);
-    final expenses = ref.watch(currentExpensesProvider);
-
     return Scaffold(
       body: LeafBackground(
         child: SafeArea(
-          child: switch ((month, incomes, budgets, expenses)) {
-            (
-              AsyncData(value: final month),
-              AsyncData(value: final incomes),
-              AsyncData(value: final budgets),
-              AsyncData(value: final expenses),
-            ) =>
-              _SpendingOverview(
-                month: month,
-                incomes: incomes,
-                budgets: budgets,
-                expenses: expenses,
-              ),
-            (AsyncError(:final error), _, _, _) ||
-            (_, AsyncError(:final error), _, _) ||
-            (_, _, AsyncError(:final error), _) ||
-            (
-              _,
-              _,
-              _,
-              AsyncError(:final error),
-            ) => Center(child: Text('Something went wrong: $error')),
-            _ => const Center(child: CircularProgressIndicator()),
-          },
+          child: AsyncView(
+            value: ref.watch(currentMonthDetailsProvider),
+            data: (details) => _SpendingOverview(
+              month: details.month,
+              incomes: details.incomes,
+              budgets: details.budgets,
+              expenses: details.expenses,
+            ),
+          ),
         ),
       ),
     );

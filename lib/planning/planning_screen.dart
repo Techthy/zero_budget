@@ -10,6 +10,7 @@ import '../month/month_providers.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
+import '../widgets/async_view.dart';
 import '../widgets/budget_badges.dart';
 import '../widgets/budget_order_button.dart';
 import '../widgets/budget_sankey.dart';
@@ -28,46 +29,20 @@ class PlanningScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final month = ref.watch(currentMonthProvider);
-    final incomes = ref.watch(currentIncomesProvider);
-    final budgets = ref.watch(currentBudgetsProvider);
-    final expenses = ref.watch(currentExpensesProvider);
-
     return Scaffold(
       body: LeafBackground(
         child: SafeArea(
-          child: switch ((month, incomes, budgets, expenses)) {
-            (
-              AsyncData(value: final month),
-              AsyncData(value: _),
-              AsyncData(value: final budgets),
-              AsyncData(value: _),
-            )
-                when month.needsSetUp =>
-              MonthSetUp(month: month, budgets: budgets),
-            (
-              AsyncData(value: final month),
-              AsyncData(value: final incomes),
-              AsyncData(value: final budgets),
-              AsyncData(value: final expenses),
-            ) =>
-              _BudgetPlan(
-                month: month,
-                incomes: incomes,
-                budgets: budgets,
-                expenses: expenses,
-              ),
-            (AsyncError(:final error), _, _, _) ||
-            (_, AsyncError(:final error), _, _) ||
-            (_, _, AsyncError(:final error), _) ||
-            (
-              _,
-              _,
-              _,
-              AsyncError(:final error),
-            ) => Center(child: Text('Something went wrong: $error')),
-            _ => const Center(child: CircularProgressIndicator()),
-          },
+          child: AsyncView(
+            value: ref.watch(currentMonthDetailsProvider),
+            data: (details) => details.month.needsSetUp
+                ? MonthSetUp(month: details.month, budgets: details.budgets)
+                : _BudgetPlan(
+                    month: details.month,
+                    incomes: details.incomes,
+                    budgets: details.budgets,
+                    expenses: details.expenses,
+                  ),
+          ),
         ),
       ),
     );
