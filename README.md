@@ -240,8 +240,11 @@ opening a pull request.
 
    ```sh
    flutter analyze
-   flutter test test/database_test.dart
+   flutter test
    ```
+
+   Widget tests that use the database have to let its queries run, see
+   [test/test_helpers.dart](test/test_helpers.dart).
 
 3. Open a pull request that describes what you changed and why.
 

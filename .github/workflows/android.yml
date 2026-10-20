@@ -47,8 +47,7 @@ jobs:
 
       - run: flutter analyze --no-fatal-infos
 
-      # The widget tests can hang, so only the database tests run here.
-      - run: flutter test test/database_test.dart
+      - run: flutter test
 
       - name: Read the version
         id: version
