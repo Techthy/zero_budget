@@ -926,6 +926,64 @@ void main() {
     expect(now.fraction, 1);
   });
 
+  group('suggestMonthlySavings', () {
+    SavingsProgress progress({int? goalCents = 600000}) => SavingsProgress(
+      goalCents: goalCents,
+      period: SavingsPeriod.year,
+      month: (year: 2026, month: 10),
+      months: [
+        (month: (year: 2026, month: 9), savedCents: 100000),
+        // What's being planned doesn't count as saved before.
+        (month: (year: 2026, month: 10), savedCents: 50000),
+      ],
+    );
+
+    test('spreads what is still needed over the months left', () {
+      // 5000,00€ still needed over October to December, rounded up to
+      // whole euros.
+      expect(suggestMonthlySavings(progress(), (year: 2026, month: 10)), (
+        savedBeforeCents: 100000,
+        perMonthCents: 166700,
+        monthsLeft: 3,
+      ));
+    });
+
+    test('counts the months left in a quarter', () {
+      final quarter = SavingsProgress(
+        goalCents: 300000,
+        period: SavingsPeriod.quarter,
+        month: (year: 2026, month: 11),
+        months: [(month: (year: 2026, month: 10), savedCents: 100000)],
+      );
+      // 2000,00€ still needed over November and December.
+      expect(suggestMonthlySavings(quarter, (year: 2026, month: 11)), (
+        savedBeforeCents: 100000,
+        perMonthCents: 100000,
+        monthsLeft: 2,
+      ));
+    });
+
+    test('suggests nothing more once the goal is reached', () {
+      expect(
+        suggestMonthlySavings(progress(goalCents: 80000), (
+          year: 2026,
+          month: 10,
+        ))?.perMonthCents,
+        0,
+      );
+    });
+
+    test('has nothing to suggest without a goal', () {
+      expect(
+        suggestMonthlySavings(progress(goalCents: null), (
+          year: 2026,
+          month: 10,
+        )),
+        isNull,
+      );
+    });
+  });
+
   test('savingsPeriodOf', () {
     expect(savingsPeriodOf((year: 2026, month: 11), SavingsPeriod.quarter), (
       first: (year: 2026, month: 10),

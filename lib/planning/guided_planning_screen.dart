@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 
-import '../budget_order.dart';
 import '../data/database.dart';
 import '../data/database_provider.dart';
 import '../dates.dart';
 import '../money.dart';
 import '../month/month_providers.dart';
-import '../savings/savings_providers.dart';
 import '../settings/settings_providers.dart';
 import '../theme/budget_theme.dart';
-import '../widgets/amount_field.dart';
-import '../widgets/budget_badges.dart';
 import '../widgets/leaf_background.dart';
+import 'guided_budgets.dart';
+import 'guided_planning_steps.dart';
 import 'left_to_assign.dart';
-import 'plan_editing.dart';
 
 /// Opens the guided planning for the current month.
 Future<void> startGuidedPlanning(BuildContext context) =>
@@ -28,47 +26,6 @@ Route<void> guidedPlanningRoute() => MaterialPageRoute<void>(
 );
 
 enum _Step { balance, income, giving, essentials, savings, everythingElse }
-
-/// A budget the guided planning asks for by name: giving, the essentials
-/// and savings.
-///
-/// It's matched to the month's first budget with the same name, ignoring case,
-/// see [AppDatabase.setBudgetByName]. Giving and savings match the first
-/// budget of their category first, whatever it's called.
-class _NamedBudget {
-  _NamedBudget(
-    this.name, {
-    required this.category,
-    required this.isFixed,
-    required this.helperText,
-  });
-
-  final String name;
-  final BudgetCategory category;
-
-  /// Whether it's added as a fixed budget, when it's new.
-  final bool isFixed;
-
-  final String helperText;
-  final controller = TextEditingController();
-
-  int get cents => parseAmountToCents(controller.text) ?? 0;
-
-  Budget? matchIn(List<Budget> budgets) {
-    // There's one of each essential, but one budget can stand for all giving
-    // or savings.
-    if (category != BudgetCategory.essential) {
-      for (final budget in budgets) {
-        if (budget.category == category) return budget;
-      }
-    }
-    final lower = name.toLowerCase();
-    for (final budget in budgets) {
-      if (budget.name.toLowerCase() == lower) return budget;
-    }
-    return null;
-  }
-}
 
 /// Walks through planning the current month one step at a time: the starting
 /// balance (only before there's a month to carry money over from), income,
@@ -86,87 +43,37 @@ class GuidedPlanningScreen extends ConsumerStatefulWidget {
 
 class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _balance = TextEditingController();
+  final _buffer = TextEditingController();
+  final _budgets = GuidedBudgets();
 
   /// Null until the month's plan is loaded.
   List<_Step>? _steps;
   var _index = 0;
   var _saving = false;
 
-  final _balance = TextEditingController();
-  final _buffer = TextEditingController();
-
-  final _giving = _NamedBudget(
-    givingBudgetName,
-    category: BudgetCategory.giving,
-    isFixed: false,
-    helperText: 'Leave empty to skip.',
-  );
-  final _rent = _NamedBudget(
-    rentBudgetName,
-    category: BudgetCategory.essential,
-    isFixed: true,
-    helperText: 'Rent or mortgage payment.',
-  );
-  final _utilities = _NamedBudget(
-    utilitiesBudgetName,
-    category: BudgetCategory.essential,
-    isFixed: false,
-    helperText: 'Electricity, heating, water, internet and your phone plan.',
-  );
-  final _groceries = _NamedBudget(
-    groceriesBudgetName,
-    category: BudgetCategory.essential,
-    isFixed: false,
-    helperText: 'Food and other daily needs.',
-  );
-  final _transportation = _NamedBudget(
-    transportationBudgetName,
-    category: BudgetCategory.essential,
-    isFixed: false,
-    helperText:
-        'A transit pass, fuel or other costs of getting to work. Leave empty '
-        "if you don't need any.",
-  );
-  final _savings = _NamedBudget(
-    savingsBudgetName,
-    category: BudgetCategory.savings,
-    isFixed: true,
-    helperText:
-        'Fixed, so it counts towards your savings goal in full once you lock '
-        'your plan in. Leave empty to skip.',
-  );
-
-  List<_NamedBudget> get _named => [
-    _giving,
-    _rent,
-    _utilities,
-    _groceries,
-    _transportation,
-    _savings,
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
 
   @override
   void dispose() {
     _balance.dispose();
     _buffer.dispose();
-    for (final named in _named) {
-      named.controller.dispose();
-    }
+    _budgets.dispose();
     super.dispose();
   }
 
-  /// Whether [_start] was called.
-  var _started = false;
-
-  /// Fills the steps in from the month's plan as it is, once it's loaded.
-  Future<void> _start(
-    Month month,
-    List<Budget> budgets,
-    Setting settings,
-  ) async {
-    _started = true;
-    final db = ref.read(appDatabaseProvider);
-    final hasMonthBefore = await db.hasMonthBefore(month.id);
+  /// Fills the steps in from the month's plan as it is.
+  Future<void> _start() async {
+    final month = await _load(currentMonthProvider.future);
+    final budgets = await _load(currentBudgetsProvider.future);
+    final settings = await _load(settingsProvider.future);
+    final hasMonthBefore = await ref
+        .read(appDatabaseProvider)
+        .hasMonthBefore(month.id);
     if (!mounted) return;
 
     setState(() {
@@ -177,12 +84,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
       if (month.carryOverCents != 0 && balanceCents >= 0) {
         _balance.text = formatAmount(balanceCents);
       }
-      for (final named in _named) {
-        final budget = named.matchIn(budgets);
-        if (budget != null && budget.amountCents > 0) {
-          named.controller.text = formatAmount(budget.amountCents);
-        }
-      }
+      _budgets.fillFrom(budgets);
       _steps = [
         if (!hasMonthBefore) _Step.balance,
         _Step.income,
@@ -193,6 +95,19 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
       ];
     });
   }
+
+  /// What [provider] has once it's loaded, kept alive while waiting for it.
+  Future<T> _load<T>(ProviderListenable<Future<T>> provider) async {
+    final subscription = ref.listenManual(provider, (_, _) {});
+    try {
+      return await subscription.read();
+    } finally {
+      subscription.close();
+    }
+  }
+
+  /// Shows what was typed, like in what's left to assign.
+  void _refresh() => setState(() {});
 
   Future<void> _next(Month month) async {
     if (!_formKey.currentState!.validate()) return;
@@ -214,167 +129,66 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
   void _back() => setState(() => _index--);
 
   Future<void> _save(_Step step, Month month) async {
-    final db = ref.read(appDatabaseProvider);
     switch (step) {
       case _Step.balance:
-        final balanceCents = parseAmountToCents(_balance.text)!;
-        final bufferCents = parseAmountToCents(_buffer.text)!;
-        await db.setBufferCents(bufferCents);
-        await db.setCarryOverCents(month.id, balanceCents - bufferCents);
+        await _saveBalance(month);
       case _Step.giving:
-        await _saveNamed(month, [_giving]);
+        await _saveBudgets([_budgets.giving], month);
       case _Step.essentials:
-        await _saveNamed(month, [
-          _rent,
-          _utilities,
-          _groceries,
-          _transportation,
-        ]);
+        await _saveBudgets(_budgets.essentials, month);
       case _Step.savings:
-        await _saveNamed(month, [_savings]);
+        await _saveBudgets([_budgets.savings], month);
       case _Step.income || _Step.everythingElse:
         // Saved as they're changed.
         break;
     }
   }
 
-  Future<void> _saveNamed(Month month, List<_NamedBudget> named) async {
+  /// Keeps the buffer, and starts the month with the balance above it.
+  Future<void> _saveBalance(Month month) async {
+    final db = ref.read(appDatabaseProvider);
+    final balanceCents = parseAmountToCents(_balance.text)!;
+    final bufferCents = parseAmountToCents(_buffer.text)!;
+    await db.setBufferCents(bufferCents);
+    await db.setCarryOverCents(month.id, balanceCents - bufferCents);
+  }
+
+  Future<void> _saveBudgets(List<GuidedBudget> guided, Month month) async {
     final db = ref.read(appDatabaseProvider);
     final budgets = await ref.read(currentBudgetsProvider.future);
-    for (final budget in named) {
-      // Keeps the name of a budget matched by its category.
-      await db.setBudgetByName(
-        month.id,
-        budget.matchIn(budgets)?.name ?? budget.name,
-        budget.cents,
-        isFixed: budget.isFixed,
-        category: budget.category,
-      );
+    for (final budget in guided) {
+      await budget.saveTo(db, month.id, budgets);
     }
-  }
-
-  /// What's left to assign, counting giving, the essentials and savings as
-  /// they're entered, before they're saved.
-  int _leftCents(Month month, List<Budget> budgets) {
-    var assignedCents = 0;
-    final matched = <int>{};
-    for (final named in _named) {
-      if (named.matchIn(budgets) case final budget?) matched.add(budget.id);
-      assignedCents += named.cents;
-    }
-    for (final budget in budgets) {
-      if (!matched.contains(budget.id)) assignedCents += budget.amountCents;
-    }
-    return month.assignableCents - assignedCents;
-  }
-
-  /// The budgets that aren't giving, one of the essentials or savings.
-  List<Budget> _otherBudgets(List<Budget> budgets) {
-    final matched = {for (final named in _named) named.matchIn(budgets)?.id};
-    return [
-      for (final budget in budgets)
-        if (!matched.contains(budget.id)) budget,
-    ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final month = ref.watch(currentMonthProvider).value;
-    final incomes = ref.watch(currentIncomesProvider).value;
-    final budgets = ref.watch(currentBudgetsProvider).value;
-    final expenses = ref.watch(currentExpensesProvider).value;
-    final settings = ref.watch(settingsProvider).value;
-    if (!_started && month != null && budgets != null && settings != null) {
-      _start(month, budgets, settings);
-    }
+    final details = ref.watch(currentMonthDetailsProvider).value;
     final steps = _steps;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          month == null
-              ? 'Plan your month'
-              : 'Plan ${formatMonth(month.year, month.month)}',
-        ),
+        title: Text(switch (details?.month) {
+          final month? => 'Plan ${formatMonth(month.year, month.month)}',
+          null => 'Plan your month',
+        }),
       ),
       body: LeafBackground(
-        child: switch ((steps, month, incomes, budgets, expenses)) {
-          (
-            final steps?,
-            final month?,
-            final incomes?,
-            final budgets?,
-            final expenses?,
-          ) =>
-            _buildStep(steps, month, incomes, budgets, expenses),
-          _ => const Center(child: CircularProgressIndicator()),
-        },
+        child: steps == null || details == null
+            ? const Center(child: CircularProgressIndicator())
+            : _buildStep(steps, details),
       ),
     );
   }
 
-  Widget _buildStep(
-    List<_Step> steps,
-    Month month,
-    List<Income> incomes,
-    List<Budget> budgets,
-    List<Expense> expenses,
-  ) {
+  Widget _buildStep(List<_Step> steps, MonthDetails details) {
     final textTheme = Theme.of(context).textTheme;
     final step = steps[_index];
-    final isLast = _index == steps.length - 1;
-    final monthName = formatMonth(month.year, month.month);
-
-    final (title, intro) = switch (step) {
-      _Step.balance => (
-        'Where you start',
-        "Let's see what you have to plan $monthName with.",
-      ),
-      _Step.income => (
-        'Your income',
-        'What money comes in during $monthName? Add every source, like '
-            'your salary or a side job.',
-      ),
-      _Step.giving => (
-        'Giving first',
-        'What do you want to give this month? To a charity, your church, '
-            'or people you care about. It comes first in your plan.',
-      ),
-      _Step.essentials => (
-        'The essentials',
-        'Cover what you need to live and work before anything else. Leave '
-            "any that don't apply empty.",
-      ),
-      _Step.savings => (
-        'Pay yourself',
-        'What do you want to put aside this month? It counts towards your '
-            'savings goal.',
-      ),
-      _Step.everythingElse => (
-        'Everything else',
-        'Give the rest of your money a job: insurance, subscriptions, or '
-            'money for fun.',
-      ),
-    };
-
-    final content = switch (step) {
-      _Step.balance => _balanceStep(monthName),
-      _Step.income => _incomeStep(month, incomes),
-      _Step.giving => [
-        AmountField(
-          controller: _giving.controller,
-          labelText: _giving.name,
-          helperText: _giving.helperText,
-          isRequired: false,
-          autofocus: true,
-          onChanged: (_) => setState(() {}),
-          onSubmitted: (_) => _next(month),
-        ),
-      ],
-      _Step.essentials => _essentialsStep(month),
-      _Step.savings => _savingsStep(month),
-      _Step.everythingElse => _everythingElseStep(month, budgets, expenses),
-    };
+    final month = details.month;
+    final (title, intro) = _titleAndIntro(
+      step,
+      formatMonth(month.year, month.month),
+    );
 
     return SafeArea(
       top: false,
@@ -407,7 +221,7 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
                         const SizedBox(height: 8),
                         Text(intro, style: textTheme.bodyLarge),
                         const SizedBox(height: 24),
-                        ...content,
+                        _content(step, details),
                       ],
                     ),
                   ),
@@ -421,254 +235,125 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
                 child: LeftToAssign.compact(
-                  leftCents: _leftCents(month, budgets),
+                  leftCents: _budgets.leftToAssignCents(month, details.budgets),
                   assignableCents: month.assignableCents,
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
-            child: Row(
-              children: [
-                if (_index > 0)
-                  OutlinedButton(
-                    onPressed: _saving ? null : _back,
-                    child: const Text('Back'),
-                  ),
-                const Spacer(),
-                FilledButton(
-                  onPressed: _saving ? null : () => _next(month),
-                  child: Text(isLast ? 'Finish' : 'Next'),
-                ),
-              ],
-            ),
+          _StepButtons(
+            canGoBack: _index > 0,
+            isLast: _index == steps.length - 1,
+            isSaving: _saving,
+            onBack: _back,
+            onNext: () => _next(month),
           ),
         ],
       ),
     );
   }
 
-  List<Widget> _balanceStep(String monthName) {
-    final balanceCents = parseAmountToCents(_balance.text);
-    final bufferCents = parseAmountToCents(_buffer.text);
-    return [
-      AmountField(
-        controller: _balance,
-        labelText: 'Account balance',
-        helperText:
-            "What's in your account right now. Leave out this "
-            "month's income if it came in already; that's next.",
+  Widget _content(_Step step, MonthDetails details) {
+    final month = details.month;
+    return switch (step) {
+      _Step.balance => BalanceStep(
+        balance: _balance,
+        buffer: _buffer,
+        monthName: formatMonth(month.year, month.month),
+        onChanged: _refresh,
+      ),
+      _Step.income => IncomeStep(month: month, incomes: details.incomes),
+      _Step.giving => GuidedAmountField(
+        _budgets.giving,
         autofocus: true,
-        textInputAction: TextInputAction.next,
-        onChanged: (_) => setState(() {}),
+        onChanged: _refresh,
+        onSubmitted: () => _next(month),
       ),
-      const SizedBox(height: 16),
-      AmountField(
-        controller: _buffer,
-        labelText: 'Buffer',
-        helperText:
-            'Always stays in your account as a safety net. You can '
-            'change it later in Settings.',
-        onChanged: (_) => setState(() {}),
+      _Step.essentials => EssentialsStep(
+        essentials: _budgets.essentials,
+        onChanged: _refresh,
       ),
-      if (balanceCents != null && bufferCents != null) ...[
-        const SizedBox(height: 24),
-        Text(
-          balanceCents >= bufferCents
-              ? 'You start $monthName with '
-                    '${formatCents(balanceCents - bufferCents)} to plan, on '
-                    'top of your income.'
-              : 'Your balance is ${formatCents(bufferCents - balanceCents)} '
-                    'below your buffer, so that comes off your plan for '
-                    '$monthName.',
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-      ],
-    ];
+      _Step.savings => SavingsStep(
+        savings: _budgets.savings,
+        month: month,
+        onChanged: _refresh,
+        onSubmitted: () => _next(month),
+      ),
+      _Step.everythingElse => EverythingElseStep(
+        month: month,
+        others: _budgets.othersIn(details.budgets),
+        expenses: details.expenses,
+      ),
+    };
   }
+}
 
-  List<Widget> _incomeStep(Month month, List<Income> incomes) {
-    return [
-      if (incomes.isEmpty)
-        const Padding(
-          padding: EdgeInsets.only(bottom: 16),
-          child: Text('No income yet.'),
-        ),
-      for (final income in incomes)
-        Card(
-          child: ListTile(
-            title: Text(income.name, overflow: TextOverflow.ellipsis),
-            subtitle: Text(formatCents(income.amountCents)),
-            onTap: () => promptEditIncome(context, ref, income),
-            trailing: IconButton(
-              tooltip: 'Delete ${income.name}',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () =>
-                  ref.read(appDatabaseProvider).deleteIncome(income.id),
+(String, String) _titleAndIntro(_Step step, String monthName) => switch (step) {
+  _Step.balance => (
+    'Where you start',
+    "Let's see what you have to plan $monthName with.",
+  ),
+  _Step.income => (
+    'Your income',
+    'What money comes in during $monthName? Add every source, like '
+        'your salary or a side job.',
+  ),
+  _Step.giving => (
+    'Giving first',
+    'What do you want to give this month? To a charity, your church, '
+        'or people you care about. It comes first in your plan.',
+  ),
+  _Step.essentials => (
+    'The essentials',
+    'Cover what you need to live and work before anything else. Leave '
+        "any that don't apply empty.",
+  ),
+  _Step.savings => (
+    'Pay yourself',
+    'What do you want to put aside this month? It counts towards your '
+        'savings goal.',
+  ),
+  _Step.everythingElse => (
+    'Everything else',
+    'Give the rest of your money a job: insurance, subscriptions, or '
+        'money for fun.',
+  ),
+};
+
+/// Back and Next, or Finish on the last step. Both wait while a step is
+/// saved.
+class _StepButtons extends StatelessWidget {
+  const _StepButtons({
+    required this.canGoBack,
+    required this.isLast,
+    required this.isSaving,
+    required this.onBack,
+    required this.onNext,
+  });
+
+  final bool canGoBack;
+  final bool isLast;
+  final bool isSaving;
+  final VoidCallback onBack;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+      child: Row(
+        children: [
+          if (canGoBack)
+            OutlinedButton(
+              onPressed: isSaving ? null : onBack,
+              child: const Text('Back'),
             ),
+          const Spacer(),
+          FilledButton(
+            onPressed: isSaving ? null : onNext,
+            child: Text(isLast ? 'Finish' : 'Next'),
           ),
-        ),
-      const SizedBox(height: 8),
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: FilledButton.tonalIcon(
-          onPressed: () => promptAddIncome(context, ref, month.id),
-          icon: const Icon(Icons.add),
-          label: const Text('Add income'),
-        ),
+        ],
       ),
-    ];
-  }
-
-  List<Widget> _savingsStep(Month month) {
-    final c = context.budgetColors;
-    final textTheme = Theme.of(context).textTheme;
-    final progress = ref.watch(savingsProgressProvider).value;
-    final goalCents = progress?.goalCents;
-
-    final Widget goal;
-    if (progress == null) {
-      goal = const SizedBox.shrink();
-    } else if (goalCents == null) {
-      goal = Text(
-        'Set a savings goal with the plant at the top of the app to see how '
-        'each month gets you there.',
-        style: textTheme.bodyMedium?.copyWith(color: c.inkMuted),
-      );
-    } else {
-      final thisMonth = (year: month.year, month: month.month);
-      // This month's savings are what's being planned here.
-      final savedBeforeCents = progress.months
-          .where((m) => m.month != thisMonth)
-          .fold(0, (sum, m) => sum + m.savedCents);
-      final period = savingsPeriodOf(thisMonth, progress.period);
-      final monthsLeft = period.last.month - month.month + 1;
-      final neededCents = goalCents - savedBeforeCents;
-      final monthsLeftText = monthsLeft == 1
-          ? 'the last month'
-          : 'the $monthsLeft months left';
-      // Rounded up to a whole amount of the currency, so the goal is met.
-      final perMonthCents = neededCents <= 0
-          ? 0
-          : (neededCents / monthsLeft / 100).ceil() * 100;
-
-      goal = Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: c.sproutTint,
-          borderRadius: BudgetRadius.md,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Your goal for ${progress.periodName}: ${formatCents(goalCents)}',
-              style: textTheme.titleMedium?.copyWith(color: c.onSproutTint),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              neededCents <= 0
-                  ? "You've reached it already. Anything you save now is a "
-                        'bonus.'
-                  : '${formatCents(savedBeforeCents)} saved so far. To reach '
-                        'it, put aside about ${formatCents(perMonthCents)} a '
-                        'month for $monthsLeftText.',
-              style: textTheme.bodyMedium?.copyWith(color: c.onSproutTint),
-            ),
-            if (perMonthCents > 0 && _savings.cents != perMonthCents) ...[
-              const SizedBox(height: 8),
-              FilledButton.tonal(
-                onPressed: () => setState(
-                  () => _savings.controller.text = formatAmount(perMonthCents),
-                ),
-                child: Text('Use ${formatCents(perMonthCents)}'),
-              ),
-            ],
-          ],
-        ),
-      );
-    }
-
-    return [
-      AmountField(
-        controller: _savings.controller,
-        labelText: _savings.name,
-        helperText: _savings.helperText,
-        isRequired: false,
-        autofocus: true,
-        onChanged: (_) => setState(() {}),
-        onSubmitted: (_) => _next(month),
-      ),
-      const SizedBox(height: 24),
-      goal,
-    ];
-  }
-
-  List<Widget> _essentialsStep(Month month) {
-    AmountField field(_NamedBudget named, {bool autofocus = false}) =>
-        AmountField(
-          controller: named.controller,
-          labelText: named.name,
-          helperText: named.helperText,
-          isRequired: false,
-          autofocus: autofocus,
-          textInputAction: TextInputAction.next,
-          onChanged: (_) => setState(() {}),
-        );
-
-    return [
-      field(_rent, autofocus: true),
-      const SizedBox(height: 16),
-      field(_utilities),
-      const SizedBox(height: 16),
-      field(_groceries),
-      const SizedBox(height: 16),
-      field(_transportation),
-      const SizedBox(height: 16),
-      Text(
-        'Rent is a fixed cost: once you lock your plan in, it counts as '
-        'spent in full. The others are flexible: you track what you spend.',
-        style: Theme.of(context).textTheme.bodyMedium
-            ?.copyWith(color: context.budgetColors.inkMuted),
-      ),
-    ];
-  }
-
-  List<Widget> _everythingElseStep(
-    Month month,
-    List<Budget> budgets,
-    List<Expense> expenses,
-  ) {
-    final others = _otherBudgets(budgets);
-    return [
-      if (others.isEmpty)
-        const Padding(
-          padding: EdgeInsets.only(bottom: 16),
-          child: Text('No other budgets yet.'),
-        ),
-      for (final budget in others)
-        Card(
-          child: ListTile(
-            title: BudgetNameWithBadges(budget),
-            subtitle: Text(formatCents(budget.amountCents)),
-            onTap: () => promptEditBudget(context, ref, budget),
-            trailing: IconButton(
-              tooltip: 'Delete ${budget.name}',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () =>
-                  confirmDeleteBudget(context, ref, budget, expenses),
-            ),
-          ),
-        ),
-      const SizedBox(height: 8),
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: FilledButton.tonalIcon(
-          onPressed: () => promptAddBudget(context, ref, month.id),
-          icon: const Icon(Icons.add),
-          label: const Text('Add budget'),
-        ),
-      ),
-    ];
+    );
   }
 }

@@ -30,6 +30,41 @@ String formatSavingsPeriod(YearMonth month, SavingsPeriod period) =>
       SavingsPeriod.year => '${month.year}',
     };
 
+/// How much to put aside each month to reach a savings goal, see
+/// [suggestMonthlySavings].
+typedef SavingsSuggestion = ({
+  int savedBeforeCents,
+  int perMonthCents,
+  int monthsLeft,
+});
+
+/// How [progress] can still reach its goal when [month] is planned: what was
+/// saved in the period before it, and about how much to put aside in each of
+/// the months left, [month] included. That's rounded up to a whole amount of
+/// the currency, so the goal is met, and 0 once it's reached. Null without a
+/// goal.
+SavingsSuggestion? suggestMonthlySavings(
+  SavingsProgress progress,
+  YearMonth month,
+) {
+  final goalCents = progress.goalCents;
+  if (goalCents == null) return null;
+  // This month's savings are what's being planned.
+  final savedBeforeCents = progress.months
+      .where((saved) => saved.month != month)
+      .fold(0, (sum, saved) => sum + saved.savedCents);
+  final period = savingsPeriodOf(month, progress.period);
+  final monthsLeft = period.last.month - month.month + 1;
+  final neededCents = goalCents - savedBeforeCents;
+  return (
+    savedBeforeCents: savedBeforeCents,
+    perMonthCents: neededCents <= 0
+        ? 0
+        : (neededCents / monthsLeft / 100).ceil() * 100,
+    monthsLeft: monthsLeft,
+  );
+}
+
 /// What was saved towards the savings goal in the period of [month].
 class SavingsProgress {
   const SavingsProgress({
