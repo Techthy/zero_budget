@@ -75,6 +75,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// October's expenses as they're saved, newest first.
+  Future<List<Expense>> octoberExpenses() async {
+    final month = await db.getOrCreateMonth(2026, 10);
+    return db.watchExpenses(month.id).first;
+  }
+
   Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
     await tester.tap(finder);
     await tester.pumpAndSettle();
@@ -227,13 +233,17 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Add expense'));
     await tester.pumpAndSettle();
 
-    final expenses = (await tester.runAsync(() async {
-      final month = await db.getOrCreateMonth(2026, 10);
-      return db.watchExpenses(month.id).first;
-    }))!;
+    expect(find.text('Added 3,00€ to Groceries.'), findsOneWidget);
+    var expenses = (await tester.runAsync(octoberExpenses))!;
     expect(expenses.where((e) => e.title == 'Bread').map((e) => e.budgetId), [
       groceriesId,
     ]);
+
+    // Undo takes it out again.
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expenses = (await tester.runAsync(octoberExpenses))!;
+    expect(expenses.where((e) => e.title == 'Bread'), isEmpty);
     await unmount(tester);
   });
 
@@ -280,13 +290,18 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Save changes'));
     await tester.pumpAndSettle();
 
-    final expenses = (await tester.runAsync(() async {
-      final month = await db.getOrCreateMonth(2026, 10);
-      return db.watchExpenses(month.id).first;
-    }))!;
-    final snacks = expenses.singleWhere((e) => e.budgetId == groceriesId);
+    expect(find.text('Saved Snacks.'), findsOneWidget);
+    Future<Expense> groceriesExpense() async =>
+        (await octoberExpenses()).singleWhere((e) => e.budgetId == groceriesId);
+    final snacks = (await tester.runAsync(groceriesExpense))!;
     expect((snacks.title, snacks.amountCents), ('Snacks', 4500));
     expect(find.text('Snacks'), findsOneWidget);
+
+    // Undo changes it back.
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    final undone = (await tester.runAsync(groceriesExpense))!;
+    expect((undone.title, undone.amountCents), ('Too many snacks', 50000));
     await unmount(tester);
   });
 

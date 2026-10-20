@@ -14,25 +14,18 @@ import '../widgets/leaf_background.dart';
 
 /// Opens the screen to add an expense, with the budget [budgetId] already
 /// picked when it's given.
-Future<void> openAddExpense(BuildContext context, {int? budgetId}) {
-  // A snack bar from the last expense would cover the button to add one.
-  ScaffoldMessenger.of(context).hideCurrentSnackBar();
-  return Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (_) => ExpenseScreen(budgetId: budgetId),
-    ),
-  );
-}
+Future<void> openAddExpense(BuildContext context, {int? budgetId}) =>
+    _open(context, ExpenseScreen(budgetId: budgetId));
 
 /// Opens the screen to change [expense].
-Future<void> openEditExpense(BuildContext context, Expense expense) {
+Future<void> openEditExpense(BuildContext context, Expense expense) =>
+    _open(context, ExpenseScreen(expense: expense));
+
+Future<void> _open(BuildContext context, ExpenseScreen screen) {
+  // A snack bar from the last expense would cover the button to save.
   ScaffoldMessenger.of(context).hideCurrentSnackBar();
   return Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (_) => ExpenseScreen(expense: expense),
-    ),
+    MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => screen),
   );
 }
 
@@ -78,6 +71,9 @@ class ExpenseScreen extends ConsumerWidget {
     );
   }
 }
+
+/// What the form says an expense is.
+typedef _Entry = ({Budget budget, int amountCents, String title, String? note});
 
 class _ExpenseForm extends ConsumerStatefulWidget {
   const _ExpenseForm({
@@ -132,61 +128,67 @@ class _ExpenseFormState extends ConsumerState<_ExpenseForm> {
     if (_saving || !_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
-    final db = ref.read(appDatabaseProvider);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    final budget = widget.budgets.firstWhere((b) => b.id == _budgetId);
-    final amountCents = parseAmountToCents(_amount.text)!;
     final note = _note.text.trim();
-    if (widget.expense case final old?) {
-      await db.updateExpense(
-        old.id,
-        budgetId: budget.id,
-        amountCents: amountCents,
-        title: _title.text.trim(),
-        note: note.isEmpty ? null : note,
-      );
-      navigator.pop();
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('Saved ${_title.text.trim()}.'),
-            persist: false,
-            action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () => db.updateExpense(
-                old.id,
-                budgetId: old.budgetId,
-                amountCents: old.amountCents,
-                title: old.title,
-                note: old.note,
-              ),
-            ),
-          ),
-        );
-      return;
-    }
-    final id = await db.addExpense(
-      budget.id,
-      amountCents,
+    final entry = (
+      budget: widget.budgets.firstWhere((b) => b.id == _budgetId),
+      amountCents: parseAmountToCents(_amount.text)!,
       title: _title.text.trim(),
       note: note.isEmpty ? null : note,
     );
+    final (message, undo) = switch (widget.expense) {
+      final old? => await _change(old, entry),
+      null => await _add(entry),
+    };
 
     navigator.pop();
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('Added ${formatCents(amountCents)} to ${budget.name}.'),
+          content: Text(message),
           persist: false,
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () => db.deleteExpense(id),
-          ),
+          action: SnackBarAction(label: 'Undo', onPressed: undo),
         ),
       );
+  }
+
+  /// Adds [entry] as a new expense; returns what to say, and how to undo it.
+  Future<(String, VoidCallback)> _add(_Entry entry) async {
+    final db = ref.read(appDatabaseProvider);
+    final id = await db.addExpense(
+      entry.budget.id,
+      entry.amountCents,
+      title: entry.title,
+      note: entry.note,
+    );
+    return (
+      'Added ${formatCents(entry.amountCents)} to ${entry.budget.name}.',
+      () => db.deleteExpense(id),
+    );
+  }
+
+  /// Changes [old] to [entry]; returns what to say, and how to undo it.
+  Future<(String, VoidCallback)> _change(Expense old, _Entry entry) async {
+    final db = ref.read(appDatabaseProvider);
+    await db.updateExpense(
+      old.id,
+      budgetId: entry.budget.id,
+      amountCents: entry.amountCents,
+      title: entry.title,
+      note: entry.note,
+    );
+    return (
+      'Saved ${entry.title}.',
+      () => db.updateExpense(
+        old.id,
+        budgetId: old.budgetId,
+        amountCents: old.amountCents,
+        title: old.title,
+        note: old.note,
+      ),
+    );
   }
 
   @override

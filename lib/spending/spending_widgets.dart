@@ -57,36 +57,22 @@ class SpendingTotal extends StatelessWidget {
 }
 
 /// A card per budget showing what was spent from it, which opens up to list
-/// its expenses. Budgets are listed in the order picked in the settings, see
-/// [BudgetOrder].
-///
-/// Expenses get an edit button when [onEditExpense] is set and a delete
-/// button when [onDeleteExpense] is set, and budgets that take expenses get a
-/// button to add one when [onAddExpense] is set. Fixed expenses follow their
-/// budget, so they get neither.
+/// its expenses, to look back at. Budgets are listed in the order picked in
+/// the settings, see [BudgetOrder].
 class BudgetSpendingList extends ConsumerWidget {
   const BudgetSpendingList({
     super.key,
     required this.budgets,
     required this.expenses,
-    this.onDeleteExpense,
-    this.onEditExpense,
-    this.onAddExpense,
   });
 
   final List<Budget> budgets;
   final List<Expense> expenses;
-  final ValueChanged<Expense>? onDeleteExpense;
-  final ValueChanged<Expense>? onEditExpense;
-  final ValueChanged<Budget>? onAddExpense;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final order = ref.watch(budgetOrderProvider);
-    final expensesByBudget = <int, List<Expense>>{};
-    for (final expense in expenses) {
-      (expensesByBudget[expense.budgetId] ??= []).add(expense);
-    }
+    final expensesByBudget = groupByBudget(expenses);
 
     return Column(
       children: [
@@ -95,17 +81,20 @@ class BudgetSpendingList extends ConsumerWidget {
             key: ValueKey(budget.id),
             budget: budget,
             expenses: expensesByBudget[budget.id] ?? const [],
-            onDeleteExpense: onDeleteExpense,
-            onEditExpense: onEditExpense,
-            onAddExpense: onAddExpense,
           ),
       ],
     );
   }
 }
 
-/// Like [BudgetSpendingList], as a sliver whose budgets can be moved by long
-/// pressing one and dragging it, see [ReorderableBudgetsSliver].
+/// Like [BudgetSpendingList], for the month being tracked: a sliver whose
+/// budgets can be moved by long pressing one and dragging it, see
+/// [ReorderableBudgetsSliver].
+///
+/// Expenses get an edit button when [onEditExpense] is set and a delete
+/// button when [onDeleteExpense] is set, and budgets that take expenses get a
+/// button to add one when [onAddExpense] is set. Fixed expenses follow their
+/// budget, so they get neither.
 class ReorderableBudgetSpendingList extends ConsumerWidget {
   const ReorderableBudgetSpendingList({
     super.key,
@@ -125,10 +114,7 @@ class ReorderableBudgetSpendingList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final order = ref.watch(budgetOrderProvider);
-    final expensesByBudget = <int, List<Expense>>{};
-    for (final expense in expenses) {
-      (expensesByBudget[expense.budgetId] ??= []).add(expense);
-    }
+    final expensesByBudget = groupByBudget(expenses);
 
     return ReorderableBudgetsSliver(
       budgets: sortBudgets(budgets, order),

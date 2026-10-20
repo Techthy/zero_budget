@@ -270,6 +270,15 @@ int expectedBankBalanceCents(
   return balanceCents;
 }
 
+/// Groups [expenses] by the id of the budget they came out of.
+Map<int, List<Expense>> groupByBudget(Iterable<Expense> expenses) {
+  final grouped = <int, List<Expense>>{};
+  for (final expense in expenses) {
+    (grouped[expense.budgetId] ??= []).add(expense);
+  }
+  return grouped;
+}
+
 /// Sums [expenses] per budget id.
 Map<int, int> spentByBudget(Iterable<Expense> expenses) {
   final spent = <int, int>{};
