@@ -151,19 +151,7 @@ class _BudgetTile extends StatelessWidget {
       value: kept,
       onChanged: onChanged == null ? null : (value) => onChanged!(value!),
       controlAffinity: ListTileControlAffinity.leading,
-      // Badges go on the next line when they don't fit.
-      title: Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text(budget.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          if (budget.isFixed) const FixedBadge(),
-          if (budget.isSinkingFund) const SinkingFundBadge(),
-          if (budget.category != BudgetCategory.other)
-            CategoryBadge(budget.category),
-        ],
-      ),
+      title: BudgetNameWithBadges(budget),
       subtitle: Text(switch (budget.savedCents) {
         0 => formatCents(budget.amountCents),
         final savedCents when !kept =>

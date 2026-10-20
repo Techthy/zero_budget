@@ -3,9 +3,37 @@ import 'package:flutter/material.dart';
 import '../data/database.dart';
 import '../theme/budget_theme.dart';
 
+/// A budget's name with its badges after it, which go on the next line when
+/// they don't fit.
+class BudgetNameWithBadges extends StatelessWidget {
+  const BudgetNameWithBadges(this.budget, {super.key});
+
+  final Budget budget;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(budget.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ...budgetBadges(budget),
+      ],
+    );
+  }
+}
+
+/// The badges that describe [budget]: how it's spent, and what it's for.
+List<Widget> budgetBadges(Budget budget) => [
+  if (budget.isFixed) const _FixedBadge(),
+  if (budget.isSinkingFund) const _SinkingFundBadge(),
+  if (budget.category != BudgetCategory.other) _CategoryBadge(budget.category),
+];
+
 /// Marks a budget that is always spent in full.
-class FixedBadge extends StatelessWidget {
-  const FixedBadge({super.key});
+class _FixedBadge extends StatelessWidget {
+  const _FixedBadge();
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +47,8 @@ class FixedBadge extends StatelessWidget {
 }
 
 /// Marks a budget that saves up over several months.
-class SinkingFundBadge extends StatelessWidget {
-  const SinkingFundBadge({super.key});
+class _SinkingFundBadge extends StatelessWidget {
+  const _SinkingFundBadge();
 
   @override
   Widget build(BuildContext context) {
@@ -43,8 +71,8 @@ String categoryLabel(BudgetCategory category) => switch (category) {
 
 /// Marks what a budget is for. Outlined, unlike the badges for how a budget
 /// behaves, and left out for [BudgetCategory.other].
-class CategoryBadge extends StatelessWidget {
-  const CategoryBadge(this.category, {super.key})
+class _CategoryBadge extends StatelessWidget {
+  const _CategoryBadge(this.category)
     : assert(category != BudgetCategory.other);
 
   final BudgetCategory category;
