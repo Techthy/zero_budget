@@ -13,6 +13,7 @@ import '../theme/budget_theme.dart';
 import '../widgets/amount_field.dart';
 import '../widgets/budget_badges.dart';
 import '../widgets/leaf_background.dart';
+import 'left_to_assign.dart';
 import 'plan_editing.dart';
 
 /// Opens the guided planning for the current month.
@@ -415,7 +416,16 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
             ),
           ),
           if (step != _Step.balance)
-            _LeftToAssignBar(leftCents: _leftCents(month, budgets)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: LeftToAssign.compact(
+                  leftCents: _leftCents(month, budgets),
+                  assignableCents: month.assignableCents,
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
             child: Row(
@@ -660,56 +670,5 @@ class _GuidedPlanningScreenState extends ConsumerState<GuidedPlanningScreen> {
         ),
       ),
     ];
-  }
-}
-
-/// What's left to assign, kept in view while planning.
-class _LeftToAssignBar extends StatelessWidget {
-  const _LeftToAssignBar({required this.leftCents});
-
-  final int leftCents;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.budgetColors;
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-    final (background, foreground, message) = switch (leftCents) {
-      0 => (
-        c.sproutTint,
-        c.onSproutTint,
-        'Every ${currency.unitName} has a job.',
-      ),
-      > 0 => (c.highlight, c.onHighlight, 'Left to assign'),
-      _ => (colors.error, colors.onError, 'Over-assigned'),
-    };
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BudgetRadius.md,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  message,
-                  style: textTheme.bodyLarge?.copyWith(color: foreground),
-                ),
-              ),
-              Text(
-                formatCents(leftCents.abs()),
-                style: textTheme.titleMedium?.copyWith(color: foreground),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

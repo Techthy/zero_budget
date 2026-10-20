@@ -7,8 +7,8 @@ import '../money.dart';
 import '../month/month_providers.dart';
 import '../theme/budget_theme.dart';
 import '../widgets/app_sheet.dart';
+import 'left_to_assign.dart';
 import 'plan_editing.dart';
-import 'zero_based_help.dart';
 
 /// The month's money in one card: what's left to assign on top, then where it
 /// comes from and the notes. Income and notes open in a sheet from the
@@ -95,9 +95,9 @@ class MonthOverviewCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _LeftToAssign(
-            assignableCents: month.assignableCents,
+          LeftToAssign(
             leftCents: leftCents,
+            assignableCents: month.assignableCents,
           ),
           for (final (i, row) in rows.indexed) ...[
             if (i > 0) const Divider(height: 1, indent: 52),
@@ -122,84 +122,6 @@ class MonthOverviewCard extends ConsumerWidget {
 /// Opens the month's incomes in a sheet from the bottom.
 Future<void> showIncomeSheet(BuildContext context) =>
     showAppSheet<void>(context, (_) => const _IncomeSheet());
-
-/// What's left to assign, colored by whether it's all assigned.
-class _LeftToAssign extends StatelessWidget {
-  const _LeftToAssign({required this.assignableCents, required this.leftCents});
-
-  /// Income plus whatever was carried over from last month.
-  final int assignableCents;
-  final int leftCents;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.budgetColors;
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    final (background, foreground, message) = switch (leftCents) {
-      0 when assignableCents == 0 => (
-        c.surfaceSunken,
-        c.inkMuted,
-        'Start by adding your income for this month.',
-      ),
-      0 => (
-        c.sproutTint,
-        c.onSproutTint,
-        'Every ${currency.unitName} has a job.',
-      ),
-      > 0 => (
-        c.highlight,
-        c.onHighlight,
-        'Give this money a job by adding budgets.',
-      ),
-      _ => (
-        colors.error,
-        colors.onError,
-        "You've assigned more than you have this month.",
-      ),
-    };
-
-    return Container(
-      color: background,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  leftCents < 0 ? 'Over-assigned' : 'Left to assign',
-                  style: textTheme.titleMedium?.copyWith(color: foreground),
-                ),
-              ),
-              IconButton(
-                tooltip: 'How a zero-based budget works',
-                visualDensity: VisualDensity.compact,
-                icon: Icon(Icons.info_outline, color: foreground),
-                onPressed: () => showZeroBasedHelp(context),
-              ),
-            ],
-          ),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              formatCents(leftCents.abs()),
-              style: textTheme.headlineMedium?.copyWith(color: foreground),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            message,
-            style: textTheme.bodyMedium?.copyWith(color: foreground),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// A line of the overview: an icon, a title with a short explanation, and an
 /// amount. Rows with [onTap] show a chevron.
