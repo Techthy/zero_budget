@@ -51,11 +51,7 @@ class ExpenseScreen extends ConsumerWidget {
     final budgets = ref.watch(currentBudgetsProvider);
     final expenses = ref.watch(currentExpensesProvider);
     // Listed like everywhere else, to find the budget quickly.
-    final order =
-        ref.watch(
-          settingsProvider.select((settings) => settings.value?.budgetOrder),
-        ) ??
-        BudgetOrder.category;
+    final order = ref.watch(budgetOrderProvider);
 
     return Scaffold(
       appBar: AppBar(

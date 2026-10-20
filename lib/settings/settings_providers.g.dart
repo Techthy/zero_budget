@@ -42,6 +42,52 @@ final class SettingsProvider
 
 String _$settingsHash() => r'e7ebe58834936753a5598249462db6aa6b81f85b';
 
+/// How budgets are listed; by category until the settings are loaded.
+
+@ProviderFor(budgetOrder)
+final budgetOrderProvider = BudgetOrderProvider._();
+
+/// How budgets are listed; by category until the settings are loaded.
+
+final class BudgetOrderProvider
+    extends $FunctionalProvider<BudgetOrder, BudgetOrder, BudgetOrder>
+    with $Provider<BudgetOrder> {
+  /// How budgets are listed; by category until the settings are loaded.
+  BudgetOrderProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetOrderProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetOrderHash();
+
+  @$internal
+  @override
+  $ProviderElement<BudgetOrder> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BudgetOrder create(Ref ref) {
+    return budgetOrder(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BudgetOrder value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BudgetOrder>(value),
+    );
+  }
+}
+
+String _$budgetOrderHash() => r'244b6cc802c9d3dbb8da04930ce8122ba96129e9';
+
 /// The buffer to keep in the bank account on top of the plan.
 
 @ProviderFor(bufferCents)

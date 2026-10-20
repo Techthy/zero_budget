@@ -258,14 +258,16 @@ final class SelectableMonthsProvider
 
 String _$selectableMonthsHash() => r'910d6fd87fdd6048feee92095b43ce17d9e84d6a';
 
-/// A month that started after the current one, to ask the user whether to
-/// move on to it; null if there's none.
+/// The month after the current one, to ask the user whether to move on to
+/// it, from [planAheadDays] before it starts; null if there's none, see
+/// [newMonthToOffer].
 
 @ProviderFor(monthToOffer)
 final monthToOfferProvider = MonthToOfferProvider._();
 
-/// A month that started after the current one, to ask the user whether to
-/// move on to it; null if there's none.
+/// The month after the current one, to ask the user whether to move on to
+/// it, from [planAheadDays] before it starts; null if there's none, see
+/// [newMonthToOffer].
 
 final class MonthToOfferProvider
     extends
@@ -275,8 +277,9 @@ final class MonthToOfferProvider
           FutureOr<YearMonth?>
         >
     with $FutureModifier<YearMonth?>, $FutureProvider<YearMonth?> {
-  /// A month that started after the current one, to ask the user whether to
-  /// move on to it; null if there's none.
+  /// The month after the current one, to ask the user whether to move on to
+  /// it, from [planAheadDays] before it starts; null if there's none, see
+  /// [newMonthToOffer].
   MonthToOfferProvider._()
     : super(
         from: null,

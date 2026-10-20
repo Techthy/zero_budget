@@ -49,11 +49,7 @@ class _MonthSetUpState extends ConsumerState<MonthSetUp> {
     final c = context.budgetColors;
     final textTheme = Theme.of(context).textTheme;
     final month = widget.month;
-    final budgetOrder =
-        ref.watch(
-          settingsProvider.select((settings) => settings.value?.budgetOrder),
-        ) ??
-        BudgetOrder.category;
+    final budgetOrder = ref.watch(budgetOrderProvider);
     final budgets = sortBudgets(widget.budgets, budgetOrder);
     final keptCount = budgets.length - _unticked.length;
 

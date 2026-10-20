@@ -10,6 +10,11 @@ part 'settings_providers.g.dart';
 Stream<Setting> settings(Ref ref) =>
     ref.watch(appDatabaseProvider).watchSettings();
 
+/// How budgets are listed; by category until the settings are loaded.
+@riverpod
+BudgetOrder budgetOrder(Ref ref) =>
+    ref.watch(settingsProvider).value?.budgetOrder ?? BudgetOrder.category;
+
 /// The buffer to keep in the bank account on top of the plan.
 @riverpod
 Stream<int> bufferCents(Ref ref) =>

@@ -160,11 +160,7 @@ class _BudgetPlan extends ConsumerWidget {
       (false, false) => 'Welcome!',
     };
     final spent = spentByBudget(expenses);
-    final budgetOrder =
-        ref.watch(
-          settingsProvider.select((settings) => settings.value?.budgetOrder),
-        ) ??
-        BudgetOrder.category;
+    final budgetOrder = ref.watch(budgetOrderProvider);
     final lockBlocker = switch (leftCents) {
       _ when availableCents == 0 || budgets.isEmpty =>
         'Add your income and budgets before locking in.',

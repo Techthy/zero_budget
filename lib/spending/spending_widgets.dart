@@ -82,11 +82,7 @@ class BudgetSpendingList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final order =
-        ref.watch(
-          settingsProvider.select((settings) => settings.value?.budgetOrder),
-        ) ??
-        BudgetOrder.category;
+    final order = ref.watch(budgetOrderProvider);
     final expensesByBudget = <int, List<Expense>>{};
     for (final expense in expenses) {
       (expensesByBudget[expense.budgetId] ??= []).add(expense);
@@ -128,11 +124,7 @@ class ReorderableBudgetSpendingList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final order =
-        ref.watch(
-          settingsProvider.select((settings) => settings.value?.budgetOrder),
-        ) ??
-        BudgetOrder.category;
+    final order = ref.watch(budgetOrderProvider);
     final expensesByBudget = <int, List<Expense>>{};
     for (final expense in expenses) {
       (expensesByBudget[expense.budgetId] ??= []).add(expense);

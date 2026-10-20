@@ -15,9 +15,7 @@ class BudgetOrderButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final order = ref.watch(
-      settingsProvider.select((settings) => settings.value?.budgetOrder),
-    );
+    final order = ref.watch(budgetOrderProvider);
 
     return PopupMenuButton<BudgetOrder>(
       tooltip: 'Sort budgets',
